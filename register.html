@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연차관리 시스템 - 회원가입</title>
+    <link rel="stylesheet" href="styles/login.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <h1 class="login-title">회원가입</h1>
+                <p class="login-subtitle">새로운 계정을 만들어 연차관리 시스템을 시작하세요</p>
+            </div>
+
+            <div class="error-message" id="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="error-text"></span>
+            </div>
+
+            <div class="success-message" id="success-message">
+                <i class="fas fa-check-circle"></i>
+                <span id="success-text"></span>
+            </div>
+
+            <form class="login-form" id="register-form">
+                <div class="form-group">
+                    <label for="name">이름</label>
+                    <div class="input-container">
+                        <input type="text" id="name" name="name" placeholder="이름을 입력하세요" required>
+                        <i class="fas fa-id-card input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="birthdate">생년월일</label>
+                    <div class="input-container">
+                        <input type="text" id="birthdate" name="birthdate" placeholder="YYYY-MM-DD (예: 1990-01-01)" maxlength="10" required>
+                        <i class="fas fa-calendar input-icon"></i>
+                        <button type="button" class="date-picker-btn" id="birthdate-picker">
+                            <i class="fas fa-calendar-alt"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">이메일</label>
+                    <div class="input-container">
+                        <input type="email" id="email" name="email" placeholder="이메일을 입력하세요" required>
+                        <i class="fas fa-envelope input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="joindate">입사연월일 <span class="required-notice">*</span></label>
+                    <div class="input-container">
+                        <input type="text" id="joindate" name="joindate" placeholder="YYYY-MM-DD (예: 2024-01-01)" maxlength="10" required>
+                        <i class="fas fa-briefcase input-icon"></i>
+                        <button type="button" class="date-picker-btn" id="joindate-picker">
+                            <i class="fas fa-calendar-alt"></i>
+                        </button>
+                    </div>
+                    <div class="field-notice">
+                        <i class="fas fa-info-circle"></i>
+                        <span>연차 계산의 기준이 되는 중요한 정보입니다. 정확한 입사일을 입력해주세요.</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="branch">소속지점</label>
+                    <div class="input-container">
+                        <select id="branch" name="branch" required>
+                            <option value="">소속지점을 선택하세요</option>
+                            <option value="본점">본점</option>
+                            <option value="강남점">강남점</option>
+                            <option value="서초점">서초점</option>
+                            <option value="송파점">송파점</option>
+                            <option value="마포점">마포점</option>
+                            <option value="용산점">용산점</option>
+                            <option value="영등포점">영등포점</option>
+                            <option value="구로점">구로점</option>
+                            <option value="금천점">금천점</option>
+                            <option value="관악점">관악점</option>
+                        </select>
+                        <i class="fas fa-building input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="department">부서</label>
+                    <div class="input-container">
+                        <select id="department" name="department" required>
+                            <option value="">부서를 선택하세요</option>
+                            <option value="경영지원팀">경영지원팀</option>
+                            <option value="인사팀">인사팀</option>
+                            <option value="총무팀">총무팀</option>
+                            <option value="재무팀">재무팀</option>
+                            <option value="마케팅팀">마케팅팀</option>
+                            <option value="영업팀">영업팀</option>
+                            <option value="개발팀">개발팀</option>
+                            <option value="디자인팀">디자인팀</option>
+                            <option value="고객서비스팀">고객서비스팀</option>
+                            <option value="품질관리팀">품질관리팀</option>
+                            <option value="물류팀">물류팀</option>
+                            <option value="구매팀">구매팀</option>
+                        </select>
+                        <i class="fas fa-users input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="username">아이디</label>
+                    <div class="input-container">
+                        <input type="text" id="username" name="username" placeholder="아이디를 입력하세요" required>
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <div class="input-container">
+                        <input type="password" id="password" name="password" placeholder="비밀번호를 입력하세요 (6자 이상)" required>
+                        <i class="fas fa-lock input-icon"></i>
+                        <button type="button" class="password-toggle" id="password-toggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">비밀번호 확인</label>
+                    <div class="input-container">
+                        <input type="password" id="confirm-password" name="confirm-password" placeholder="비밀번호를 다시 입력하세요" required>
+                        <i class="fas fa-lock input-icon"></i>
+                        <button type="button" class="password-toggle" id="confirm-password-toggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="login-options">
+                    <div class="remember-me">
+                        <input type="checkbox" id="agree-terms" name="agree-terms" required>
+                        <label for="agree-terms">이용약관에 동의합니다</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="login-button" id="register-button">
+                    <div class="spinner"></div>
+                    <span class="button-text">회원가입</span>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>이미 계정이 있으신가요? <a href="login.html" id="login-link">로그인</a></p>
+                <div class="security-badge">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>보안이 강화된 회원가입 시스템</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/register.js"></script>
+</body>
+</html>

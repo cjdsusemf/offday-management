@@ -1,0 +1,265 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연차관리 시스템 - 설정</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/settings.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-calendar-alt"></i>
+                <h1>연차관리 시스템</h1>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-home"></i> 대시보드
+                </a>
+                <a href="leave-request.html" class="nav-link">
+                    <i class="fas fa-calendar-plus"></i> 연차신청
+                </a>
+                <a href="employee-management.html" class="nav-link">
+                    <i class="fas fa-users"></i> 직원관리
+                </a>
+                <a href="statistics.html" class="nav-link">
+                    <i class="fas fa-chart-bar"></i> 통계
+                </a>
+                <a href="settings.html" class="nav-link active">
+                    <i class="fas fa-cog"></i> 설정
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="page-header">
+                <h2><i class="fas fa-cog"></i> 시스템 설정</h2>
+                <p>연차관리 시스템의 설정을 관리하세요</p>
+            </div>
+
+            <div class="settings-container">
+                <!-- 일반 설정 -->
+                <div class="settings-section">
+                    <div class="settings-header">
+                        <div class="icon general">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div>
+                            <h3>일반 설정</h3>
+                            <p>시스템의 기본 설정을 관리합니다</p>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>자동 저장</h4>
+                                <p>변경사항을 자동으로 저장합니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="auto-save" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>알림 표시</h4>
+                                <p>시스템 알림을 표시합니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-notifications" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>다크 모드</h4>
+                                <p>어두운 테마를 사용합니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="dark-mode">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 연차 설정 -->
+                <div class="settings-section">
+                    <div class="settings-header">
+                        <div class="icon leave">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <h3>연차 설정</h3>
+                            <p>연차 관련 기본 설정을 관리합니다</p>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>기본 연차 일수</h4>
+                                <p>신규 직원의 기본 연차 일수입니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="number" id="default-leave-days" value="15" min="1" max="30">
+                                <span>일</span>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>연차 신청 제한</h4>
+                                <p>한 번에 신청할 수 있는 최대 연차 일수입니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="number" id="max-leave-days" value="10" min="1" max="30">
+                                <span>일</span>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>사전 신청 기간</h4>
+                                <p>연차 사용 전 최소 신청 기간입니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="number" id="advance-notice" value="3" min="0" max="30">
+                                <span>일</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 회사 정보 -->
+                <div class="settings-section">
+                    <div class="settings-header">
+                        <div class="icon company">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div>
+                            <h3>회사 정보</h3>
+                            <p>회사 기본 정보를 설정합니다</p>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>회사명</h4>
+                                <p>연차관리 시스템에 표시될 회사명입니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="company-name" value="우리회사" placeholder="회사명을 입력하세요">
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>근무 시간</h4>
+                                <p>기본 근무 시간을 설정합니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="work-hours" value="09:00 - 18:00" placeholder="근무 시간">
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>근무일</h4>
+                                <p>주간 근무일을 선택합니다</p>
+                            </div>
+                            <div class="setting-control">
+                                <select id="work-days">
+                                    <option value="월-금">월요일 - 금요일</option>
+                                    <option value="월-토">월요일 - 토요일</option>
+                                    <option value="화-토">화요일 - 토요일</option>
+                                    <option value="월-일">월요일 - 일요일</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 데이터 관리 -->
+                <div class="settings-section">
+                    <div class="settings-header">
+                        <div class="icon data">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div>
+                            <h3>데이터 관리</h3>
+                            <p>시스템 데이터를 백업하고 복원합니다</p>
+                        </div>
+                    </div>
+
+                    <div class="data-management">
+                        <div class="data-card">
+                            <div class="icon">
+                                <i class="fas fa-download"></i>
+                            </div>
+                            <h4>데이터 내보내기</h4>
+                            <p>모든 데이터를 JSON 파일로 내보냅니다</p>
+                            <button class="btn btn-primary" onclick="exportAllData()">
+                                <i class="fas fa-download"></i> 내보내기
+                            </button>
+                        </div>
+
+                        <div class="data-card">
+                            <div class="icon">
+                                <i class="fas fa-upload"></i>
+                            </div>
+                            <h4>데이터 가져오기</h4>
+                            <p>JSON 파일에서 데이터를 가져옵니다</p>
+                            <button class="btn btn-secondary" onclick="importData()">
+                                <i class="fas fa-upload"></i> 가져오기
+                            </button>
+                        </div>
+
+                        <div class="data-card">
+                            <div class="icon">
+                                <i class="fas fa-trash-alt"></i>
+                            </div>
+                            <h4>데이터 초기화</h4>
+                            <p>모든 데이터를 삭제하고 초기화합니다</p>
+                            <button class="btn btn-danger" onclick="resetAllData()">
+                                <i class="fas fa-trash-alt"></i> 초기화
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 저장 버튼 -->
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="saveSettings()">
+                        <i class="fas fa-save"></i> 설정 저장
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetSettings()">
+                        <i class="fas fa-undo"></i> 기본값으로 복원
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 파일 입력 (숨김) -->
+    <input type="file" id="file-input" accept=".json" style="display: none;">
+
+    <script src="js/data-manager.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+</html>
