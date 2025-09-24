@@ -1,0 +1,51 @@
+﻿// 인증 가드 클래스
+class AuthGuard {
+    // 인증 상태 확인
+    static checkAuth() {
+        if (!window.authManager) {
+            console.error('AuthManager가 로드되지 않았습니다.');
+            return false;
+        }
+        
+        const isAuthenticated = window.authManager.checkAuth();
+        
+        if (!isAuthenticated) {
+            // 인증되지 않은 경우 로그인 페이지로 리다이렉트
+            window.location.href = 'login.html';
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // 로그아웃 처리
+    static logout() {
+        if (!window.authManager) {
+            console.error('AuthManager가 로드되지 않았습니다.');
+            return false;
+        }
+        
+        const result = window.authManager.logout();
+        
+        if (result.success) {
+            // 로그아웃 성공 시 로그인 페이지로 리다이렉트
+            window.location.href = 'login.html';
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // 현재 사용자 정보 가져오기
+    static getCurrentUser() {
+        if (!window.authManager) {
+            console.error('AuthManager가 로드되지 않았습니다.');
+            return null;
+        }
+        
+        return window.authManager.getCurrentUser();
+    }
+}
+
+// 전역 AuthGuard 인스턴스 생성
+window.AuthGuard = AuthGuard;
