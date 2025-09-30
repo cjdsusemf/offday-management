@@ -18,7 +18,10 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeMyPage() {
     const currentUser = getCurrentUser();
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name || '사용자';
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement) {
+            userNameElement.textContent = currentUser.name || '사용자';
+        }
     }
 }
 
@@ -438,4 +441,5 @@ window.removeProfileImage = removeProfileImage;
 window.toggleEditMode = toggleEditMode;
 window.cancelEdit = cancelEdit;
 window.hideNotification = hideNotification;
+
 
