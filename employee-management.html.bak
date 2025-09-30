@@ -28,17 +28,18 @@
                 <a href="statistics.html" class="nav-link">
                     <i class="fas fa-chart-bar"></i> 통계
                 </a>
-                <a href="settings.html" class="nav-link">
-                    <i class="fas fa-cog"></i> 설정
                 </a>
-                <div class="user-dropdown">
-                    <a href="mypage.html" id="profile-link">
-                        <i class="fas fa-user"></i> 마이페이지
-                    </a>
-                    <a href="#" id="logout-link">
-                        <i class="fas fa-sign-out-alt"></i> 로그아웃
-                    </a>
-                </div>
+                <a href="settings.html" class="nav-link">
+                    <i class="fas fa-cog"></i> ????
+                </a>
+                    <div class="user-dropdown">
+                        <a href="mypage.html" id="profile-link">
+                            <i class="fas fa-user"></i> ??????????
+                            <i class="fas fa-user"></i> 마이페이지
+                        <a href="#" id="logout-link">
+                            <i class="fas fa-sign-out-alt"></i> ?��???
+                        </a>
+                    </div>
             </nav>
         </div>
     </header>
@@ -46,32 +47,33 @@
     <main class="main">
         <div class="container">
             <div class="page-header">
-                <h2><i class="fas fa-users"></i> 직원관리</h2>
+                <h2><i class="fas fa-users"></i> ???? ????</h2>
+                <p>???? ?????? ?????? ?????????</p>
                 <p>직원 정보를 관리하고 연차 현황을 확인하세요</p>
-            </div>
 
-            <!-- 직원 추가 폼 -->
+            <!-- ???? ??? ?? -->
             <div class="form-container">
-                <h3><i class="fas fa-user-plus"></i> 새 직원 추가</h3>
+                <h3><i class="fas fa-user-plus"></i> ?? ???? ???</h3>
                 <form id="employee-form" class="employee-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="employee-name">
-                                <i class="fas fa-user"></i> 이름
+                                <i class="fas fa-user"></i> ???
                             </label>
-                            <input type="text" id="employee-name" name="name" required placeholder="직원 이름을 입력하세요">
-                        </div>
+                            <input type="text" id="employee-name" name="name" required placeholder="???? ????? ????????">
+                        <input type="text" id="employee-name" name="name" required placeholder="직원 이름을 입력하세요">
                         <div class="form-group">
                             <label for="employee-department">
-                                <i class="fas fa-building"></i> 부서
+                                <i class="fas fa-building"></i> ?��?
                             </label>
                             <select id="employee-department" name="department" required>
-                                <option value="">부서를 선택하세요</option>
-                                <option value="개발팀">개발팀</option>
-                                <option value="마케팅팀">마케팅팀</option>
-                                <option value="인사팀">인사팀</option>
-                                <option value="영업팀">영업팀</option>
-                                <option value="디자인팀">디자인팀</option>
+                                <option value="">?��??? ?????????</option>
+                            <option value="">부서를 선택하세요</option>
+                            <option value="개발팀">개발팀</option>
+                            <option value="마케팅팀">마케팅팀</option>
+                            <option value="인사팀">인사팀</option>
+                                <option value="?ͨ??">?ͨ??</option>
+                                <option value="?????">?????</option>
                             </select>
                         </div>
                     </div>
@@ -79,35 +81,35 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="employee-position">
-                                <i class="fas fa-briefcase"></i> 직급
+                                <i class="fas fa-briefcase"></i> ????
                             </label>
                             <select id="employee-position" name="position" required>
-                                <option value="">직급을 선택하세요</option>
-                                <option value="사원">사원</option>
-                                <option value="대리">대리</option>
-                                <option value="과장">과장</option>
-                                <option value="차장">차장</option>
-                                <option value="부장">부장</option>
+                                <option value="">?????? ?????????</option>
+                            <option value="">직급을 선택하세요</option>
+                                <option value="?��">?��</option>
+                                <option value="????">????</option>
+                                <option value="????">????</option>
+                                <option value="???">???</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="employee-email">
-                                <i class="fas fa-envelope"></i> 이메일
+                                <i class="fas fa-envelope"></i> ?????
                             </label>
-                            <input type="email" id="employee-email" name="email" required placeholder="이메일 주소를 입력하세요">
-                        </div>
+                            <input type="email" id="employee-email" name="email" required placeholder="??????? ????????">
+                        <input type="email" id="employee-email" name="email" required placeholder="이메일 주소를 입력하세요">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
                             <label for="employee-phone">
-                                <i class="fas fa-phone"></i> 전화번호
-                            </label>
-                            <input type="tel" id="employee-phone" name="phone" required placeholder="전화번호를 입력하세요">
-                        </div>
+                                <i class="fas fa-phone"></i> ??????
+                            <i class="fas fa-phone"></i> 전화번호
+                            <input type="tel" id="employee-phone" name="phone" required placeholder="???????? ????????">
+                        <input type="tel" id="employee-phone" name="phone" required placeholder="전화번호를 입력하세요">
                         <div class="form-group">
                             <label for="employee-hire-date">
-                                <i class="fas fa-calendar-day"></i> 입사일
+                                <i class="fas fa-calendar-day"></i> ?????
                             </label>
                             <input type="date" id="employee-hire-date" name="hireDate" required>
                         </div>
@@ -115,56 +117,56 @@
 
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="location.href='index.html'">
-                            <i class="fas fa-times"></i> 취소
+                            <i class="fas fa-times"></i> ???
                         </button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> 직원 추가
+                            <i class="fas fa-save"></i> ???? ???
                         </button>
                     </div>
                 </form>
             </div>
 
-            <!-- 직원 목록 -->
+            <!-- ???? ??? -->
             <div class="employee-list-container">
                 <div class="list-header">
-                    <h3><i class="fas fa-list"></i> 직원 목록</h3>
+                    <h3><i class="fas fa-list"></i> ???? ???</h3>
                     <div class="list-actions">
                         <button class="btn btn-secondary" onclick="exportEmployees()">
+                            <i class="fas fa-download"></i> ????????
                             <i class="fas fa-download"></i> 엑셀 내보내기
-                        </button>
                     </div>
                 </div>
 
-                <!-- 검색 및 필터 -->
+                <!-- ??? ?? ???? -->
                 <div class="search-filter">
                     <div class="search-box">
-                        <input type="text" id="search-input" placeholder="직원 이름으로 검색...">
-                        <i class="fas fa-search"></i>
-                    </div>
+                        <input type="text" id="search-input" placeholder="???? ??????? ???...">
+                    <input type="text" id="search-input" placeholder="직원 이름으로 검색...">
                     <div class="filter-select">
                         <select id="department-filter">
-                            <option value="">부서 선택</option>
-                            <option value="개발팀">개발팀</option>
-                            <option value="마케팅팀">마케팅팀</option>
-                            <option value="인사팀">인사팀</option>
-                            <option value="영업팀">영업팀</option>
-                            <option value="디자인팀">디자인팀</option>
+                            <option value="">??? ?��?</option>
+                            <option value="??????">??????</option>
+                        <option value="개발팀">개발팀</option>
+                        <option value="마케팅팀">마케팅팀</option>
+                        <option value="인사팀">인사팀</option>
+                            <option value="?ͨ??">?ͨ??</option>
+                            <option value="?????">?????</option>
                         </select>
                     </div>
                 </div>
                 
                 <div id="employee-list" class="employee-list">
+                    <!-- ???? ????? ???? ???????? ??????? -->
                     <!-- 직원 목록이 여기에 표시됩니다 -->
-                </div>
             </div>
         </div>
     </main>
 
-    <!-- 직원 수정 모달 -->
+    <!-- ???? ???? ??? -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>직원 정보 수정</h3>
+                <h3>???? ???? ????</h3>
                 <span class="close" onclick="closeEditModal()">&times;</span>
             </div>
             <div class="modal-body">
@@ -173,55 +175,56 @@
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="edit-employee-name">이름</label>
+                            <label for="edit-employee-name">???</label>
                             <input type="text" id="edit-employee-name" name="name" required>
                         </div>
                         <div class="form-group">
-                            <label for="edit-employee-department">부서</label>
+                            <label for="edit-employee-department">?��?</label>
                             <select id="edit-employee-department" name="department" required>
-                                <option value="개발팀">개발팀</option>
-                                <option value="마케팅팀">마케팅팀</option>
-                                <option value="인사팀">인사팀</option>
-                                <option value="영업팀">영업팀</option>
-                                <option value="디자인팀">디자인팀</option>
+                                <option value="??????">??????</option>
+                        <option value="개발팀">개발팀</option>
+                        <option value="마케팅팀">마케팅팀</option>
+                        <option value="인사팀">인사팀</option>
+                                <option value="?ͨ??">?ͨ??</option>
+                                <option value="?????">?????</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="edit-employee-position">직급</label>
+                            <label for="edit-employee-position">????</label>
                             <select id="edit-employee-position" name="position" required>
-                                <option value="사원">사원</option>
-                                <option value="대리">대리</option>
-                                <option value="과장">과장</option>
-                                <option value="차장">차장</option>
-                                <option value="부장">부장</option>
+                                <option value="???">???</option>
+                                <option value="?��">?��</option>
+                                <option value="????">????</option>
+                                <option value="????">????</option>
+                                <option value="???">???</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="edit-employee-email">이메일</label>
+                            <label for="edit-employee-email">?????</label>
                             <input type="email" id="edit-employee-email" name="email" required>
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="edit-employee-phone">전화번호</label>
-                            <input type="tel" id="edit-employee-phone" name="phone" required>
+                            <label for="edit-employee-phone">??????</label>
+                    <label for="edit-employee-phone">전화번호</label>
                         </div>
                         <div class="form-group">
-                            <label for="edit-employee-hire-date">입사일</label>
+                            <label for="edit-employee-hire-date">?????</label>
                             <input type="date" id="edit-employee-hire-date" name="hireDate" required>
                         </div>
                     </div>
 
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="closeEditModal()">
-                            <i class="fas fa-times"></i> 취소
+                            <i class="fas fa-times"></i> ???
                         </button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> 수정 완료
+                            <i class="fas fa-save"></i> ???? ???
                         </button>
                     </div>
                 </form>
@@ -231,6 +234,7 @@
 
     <script src="js/data-manager.js"></script>
     <script src="js/employee-management.js"></script>
+
     <script src="js/auth.js"></script>
     <script src="js/auth-guard.js"></script>
     <script>
@@ -238,7 +242,8 @@
             if (!AuthGuard.checkAuth()) return;
             document.getElementById('logout-link').addEventListener('click', (e) => {
                 e.preventDefault();
-                if (confirm('정말 로그아웃하시겠습니까?')) {
+                if (confirm('?��??? ??��??????')) {
+                if (confirm("정말 삭제하시겠습니까?")) {
                     window.location.href = 'login.html';
                 }
             });
@@ -246,3 +251,6 @@
     </script>
 </body>
 </html>
+
+
+
