@@ -66,6 +66,39 @@
         localStorage.removeItem("offday_current_user"); 
         return { success: true, message: "Logout success" }; 
     }
+    
+    register(userData) {
+        const users = this.getStoredUsers();
+        
+        // 중복 아이디 확인
+        if (users.find(u => u.username === userData.username)) {
+            return { success: false, error: "이미 사용 중인 아이디입니다." };
+        }
+        
+        // 중복 이메일 확인
+        if (users.find(u => u.email === userData.email)) {
+            return { success: false, error: "이미 사용 중인 이메일입니다." };
+        }
+        
+        // 새 사용자 생성
+        const newUser = {
+            id: Date.now().toString(),
+            username: userData.username,
+            password: userData.password,
+            name: userData.name,
+            email: userData.email,
+            birthdate: userData.birthdate,
+            joindate: userData.joindate,
+            branch: userData.branch,
+            department: userData.department,
+            role: "user"
+        };
+        
+        users.push(newUser);
+        this.saveUsers(users);
+        
+        return { success: true, message: "회원가입이 완료되었습니다." };
+    }
 }
 
 window.authManager = new AuthManager();
