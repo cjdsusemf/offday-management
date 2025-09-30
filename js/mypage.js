@@ -399,7 +399,7 @@ function handleLogout(event) {
     event.preventDefault();
     
     if (confirm('로그아웃 하시겠습니까?')) {
-        logout();
+        AuthGuard.logout();
     }
 }
 
