@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연차관리 시스템 - 연차승인</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/approval.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+<header class="header">
+  <div class="container">
+    <div class="logo">
+      <i class="fas fa-calendar-alt"></i>
+      <h1>연차관리 시스템</h1>
+    </div>
+    <nav class="nav">
+      <a href="leave-status.html" class="nav-link"><i class="fas fa-calendar-check"></i> 연차현황</a>
+      <a href="calendar.html" class="nav-link"><i class="fas fa-calendar-alt"></i> 캘린더</a>
+      <a href="main-management.html" class="nav-link"><i class="fas fa-cogs"></i> 메인관리</a>
+      <div class="user-dropdown">
+        <a href="mypage.html" id="profile-link"><i class="fas fa-user"></i> 마이페이지</a>
+        <a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i> 로그아웃</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="main">
+  <div class="container">
+    <div class="page-header">
+      <h2><i class="fas fa-check-circle"></i> 연차 승인</h2>
+      <p>대기/승인/거부 상태를 확인하고 처리하세요</p>
+    </div>
+    <div class="approval-filters">
+      <div class="bulk-actions">
+        <label class="bulk-checkbox">
+          <input type="checkbox" id="selectAll">
+          <span>전체 선택</span>
+        </label>
+        <button id="bulkApprove" class="btn-bulk btn-bulk-approve" disabled>
+          <i class="fas fa-check-double"></i> 일괄 승인
+        </button>
+        <button id="bulkReject" class="btn-bulk btn-bulk-reject" disabled>
+          <i class="fas fa-times-circle"></i> 일괄 거부
+        </button>
+        <span id="selectedCount" class="selected-count">선택된 항목: 0개</span>
+      </div>
+      <div class="filter-group">
+        <input type="text" id="searchInput" class="form-input" placeholder="직원명 검색...">
+        <select id="branchFilter" class="form-select">
+          <option value="all">전체 지점</option>
+          <option value="본사">본사</option>
+          <option value="강남점">강남점</option>
+          <option value="부산점">부산점</option>
+        </select>
+        <select id="statusFilter" class="form-select">
+          <option value="all">전체 상태</option>
+          <option value="pending">대기중</option>
+          <option value="approved">승인됨</option>
+          <option value="rejected">거부됨</option>
+        </select>
+      </div>
+    </div>
+    <div id="approvalList" class="approval-list"></div>
+  </div>
+</main>
+<script src="js/auth.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/data-manager.js"></script>
+<script src="js/approval.js"></script>
+</body>
+</html>

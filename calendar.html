@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연차관리 시스템 - 캘린더</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/calendar.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-calendar-alt"></i>
+                <h1>연차관리 시스템</h1>
+            </div>
+            <nav class="nav">
+                <a href="leave-status.html" class="nav-link">
+                    <i class="fas fa-calendar-check"></i> 연차현황
+                </a>
+                <a href="calendar.html" class="nav-link active">
+                    <i class="fas fa-calendar-alt"></i> 캘린더
+                </a>
+                <a href="main-management.html" class="nav-link">
+                    <i class="fas fa-cogs"></i> 메인관리
+                </a>
+                <div class="user-dropdown">
+                    <a href="mypage.html" id="profile-link">
+                        <i class="fas fa-user"></i> 마이페이지
+                    </a>
+                    <a href="#" id="logout-link">
+                        <i class="fas fa-sign-out-alt"></i> 로그아웃
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="page-header">
+                <h2><i class="fas fa-calendar-alt"></i> 연차 캘린더</h2>
+                <p>전체 지점의 승인된 연차 일정을 한눈에 확인하세요</p>
+            </div>
+
+            <div class="calendar-controls">
+                <div class="control-group">
+                    <button id="prev-month" class="btn btn-secondary">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <h3 id="current-month"></h3>
+                    <button id="next-month" class="btn btn-secondary">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="control-group">
+                    <select id="branch-filter" class="form-select">
+                        <option value="">전체 지점</option>
+                        <option value="본사">본사</option>
+                        <option value="강남점">강남점</option>
+                        <option value="부산점">부산점</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <div class="day-header">일</div>
+                    <div class="day-header">월</div>
+                    <div class="day-header">화</div>
+                    <div class="day-header">수</div>
+                    <div class="day-header">목</div>
+                    <div class="day-header">금</div>
+                    <div class="day-header">토</div>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- 캘린더 날짜들이 여기에 동적으로 생성됩니다 -->
+                </div>
+            </div>
+
+            <div class="calendar-legend">
+                <h4>범례</h4>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-color approved"></span>
+                        <span>승인된 연차</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color pending"></span>
+                        <span>대기 중인 연차</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color today"></span>
+                        <span>오늘</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 연차 상세 정보 모달 -->
+    <div id="leave-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>연차 상세 정보</h3>
+                <span class="close" onclick="closeLeaveDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="leave-detail-content">
+                    <!-- 연차 상세 정보가 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/calendar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!AuthGuard.checkAuth()) return;
+            
+            const user = AuthGuard.getCurrentUser();
+            if (user && document.getElementById('user-name')) {
+                document.getElementById('user-name').textContent = user.name;
+            }
+            
+            const logoutLink = document.getElementById('logout-link');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (confirm('정말 로그아웃하시겠습니까?')) {
+                        window.authManager && window.authManager.logout && window.authManager.logout();
+                        window.location.href = 'login.html';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+﻿브라우저 콘솔에서 다음 명령어를 실행하여 일괄 승인/거부 기능을 직접 테스트하세요:
+
+// 1. 현재 상태 확인
+console.log('=== 현재 상태 확인 ===');
+console.log('dataManager:', window.dataManager);
+console.log('selectedItems:', window.selectedItems || 'undefined');
+
+// 2. 직접 일괄 승인 함수
+function directBulkApprove() {
+    if (!window.dataManager) {
+        console.error('dataManager가 없습니다!');
+        return;
+    }
+    
+    const pendingRequests = window.dataManager.leaveRequests.filter(req => req.status === 'pending');
+    console.log('대기중인 요청:', pendingRequests);
+    
+    if (pendingRequests.length === 0) {
+        console.log('대기중인 요청이 없습니다.');
+        return;
+    }
+    
+    // 모든 대기중인 요청을 승인
+    let approvedCount = 0;
+    pendingRequests.forEach(request => {
+        const result = window.dataManager.updateLeaveRequestStatus(request.id, 'approved');
+        if (result) {
+            approvedCount++;
+            console.log(`승인됨: ${request.employeeName} (${request.startDate} ~ ${request.endDate})`);
+        }
+    });
+    
+    console.log(`총 ${approvedCount}개 요청이 승인되었습니다.`);
+    
+    // 페이지 새로고침
+    setTimeout(() => location.reload(), 1000);
+}
+
+// 3. 직접 일괄 거부 함수
+function directBulkReject() {
+    if (!window.dataManager) {
+        console.error('dataManager가 없습니다!');
+        return;
+    }
+    
+    const pendingRequests = window.dataManager.leaveRequests.filter(req => req.status === 'pending');
+    console.log('대기중인 요청:', pendingRequests);
+    
+    if (pendingRequests.length === 0) {
+        console.log('대기중인 요청이 없습니다.');
+        return;
+    }
+    
+    // 모든 대기중인 요청을 거부
+    let rejectedCount = 0;
+    pendingRequests.forEach(request => {
+        const result = window.dataManager.updateLeaveRequestStatus(request.id, 'rejected');
+        if (result) {
+            rejectedCount++;
+            console.log(`거부됨: ${request.employeeName} (${request.startDate} ~ ${request.endDate})`);
+        }
+    });
+    
+    console.log(`총 ${rejectedCount}개 요청이 거부되었습니다.`);
+    
+    // 페이지 새로고침
+    setTimeout(() => location.reload(), 1000);
+}
+
+// 4. 사용법
+console.log('=== 사용법 ===');
+console.log('directBulkApprove() - 모든 대기중인 요청 승인');
+console.log('directBulkReject() - 모든 대기중인 요청 거부');

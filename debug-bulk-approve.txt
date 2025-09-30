@@ -1,0 +1,45 @@
+﻿브라우저 콘솔에서 다음 코드를 실행하여 일괄승인 버튼 문제를 진단하세요:
+
+// 1. 현재 상태 확인
+console.log('=== 일괄승인 버튼 진단 시작 ===');
+console.log('dataManager 존재 여부:', !!window.dataManager);
+console.log('현재 연차 신청 데이터:', window.dataManager?.leaveRequests);
+console.log('대기중인 요청:', window.dataManager?.leaveRequests?.filter(req => req.status === 'pending'));
+
+// 2. 버튼 요소 확인
+const bulkApproveBtn = document.getElementById('bulkApprove');
+console.log('일괄승인 버튼 요소:', bulkApproveBtn);
+console.log('버튼 disabled 상태:', bulkApproveBtn?.disabled);
+console.log('버튼에 등록된 이벤트 리스너:', getEventListeners?.(bulkApproveBtn));
+
+// 3. 수동으로 일괄승인 함수 실행 테스트
+function testBulkApprove() {
+    console.log('=== 수동 일괄승인 테스트 ===');
+    
+    if (!window.dataManager) {
+        console.error('dataManager가 없습니다!');
+        return;
+    }
+    
+    const allPendingRequests = window.dataManager.leaveRequests.filter(req => req.status === 'pending');
+    console.log('대기중인 요청 수:', allPendingRequests.length);
+    console.log('대기중인 요청 목록:', allPendingRequests);
+    
+    if(allPendingRequests.length === 0) {
+        console.log('처리할 대기중인 요청이 없습니다.');
+        return;
+    }
+    
+    console.log(`모든 대기중인 ${allPendingRequests.length}개 요청을 승인합니다...`);
+    
+    allPendingRequests.forEach(request => {
+        const result = window.dataManager.updateLeaveRequestStatus(request.id, 'approved');
+        console.log(`승인됨: ${request.employeeName} (${request.startDate} ~ ${request.endDate})`, result);
+    });
+    
+    console.log('일괄승인 완료! 페이지를 새로고침합니다...');
+    setTimeout(() => location.reload(), 1000);
+}
+
+// 4. 실행
+testBulkApprove();

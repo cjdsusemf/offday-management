@@ -1,0 +1,6 @@
+﻿// 메인관리 스크립트
+(function(){
+  function openModal(title, body){
+    var modal=document.getElementById('mm-modal');
+    if(!modal) return;
+

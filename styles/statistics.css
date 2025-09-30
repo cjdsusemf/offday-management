@@ -89,13 +89,18 @@
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 
-.chart-filters select {
+.chart-filters select, .chart-filters input {
     padding: 0.5rem 1rem;
     border: 2px solid #e9ecef;
     border-radius: 8px;
     font-size: 0.9rem;
+}
+
+.chart-filters button.btn {
+    padding: 0.5rem 0.9rem;
 }
 
 /* 부서별 통계 */
@@ -111,6 +116,13 @@
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.08);
     padding: 2rem;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.department-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
 }
 
 .department-header {

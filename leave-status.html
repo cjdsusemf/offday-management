@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>연차관리 시스템 - 대시보드</title>
+    <title>연차관리 시스템 - 연차현황</title>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -15,8 +15,8 @@
                 <h1>연차관리 시스템</h1>
             </div>
             <nav class="nav">
-                <a href="index.html" class="nav-link active">
-                    <i class="fas fa-home"></i> 대시보드
+                <a href="leave-status.html" class="nav-link active">
+                    <i class="fas fa-calendar-check"></i> 연차현황
                 </a>
                 <a href="calendar.html" class="nav-link">
                     <i class="fas fa-calendar-alt"></i> 캘린더
@@ -39,7 +39,7 @@
     <main class="main">
         <div class="container">
             <div class="page-header">
-                <h2>대시보드</h2>
+                <h2><i class="fas fa-calendar-check"></i> 연차현황</h2>
             </div>
 
             <div class="stats-grid">
@@ -58,7 +58,7 @@
                     </div>
                     <div class="stat-content">
                         <h3 id="approved-requests">0</h3>
-                        <p>승인된 신청</p>
+                        <p>승인된 연차</p>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -67,7 +67,7 @@
                     </div>
                     <div class="stat-content">
                         <h3 id="remaining-days">0</h3>
-                        <p>이번 달 사용 연차</p>
+                        <p>잔여 연차</p>
                     </div>
                 </div>
             </div>
@@ -115,9 +115,9 @@
                         <i class="fas fa-calendar-plus"></i>
                         <span>연차 신청</span>
                     </button>
-                    <button class="action-btn" onclick="location.href='employee-management.html'">
-                        <i class="fas fa-user-plus"></i>
-                        <span>직원 추가</span>
+                    <button class="action-btn" onclick="location.href='main-management.html'">
+                        <i class="fas fa-cogs"></i>
+                        <span>메인관리</span>
                     </button>
                     <button class="action-btn" onclick="showPendingRequests()">
                         <i class="fas fa-check"></i>
@@ -146,10 +146,10 @@
         </div>
     </div>
 
-    <script>window.location.href = "leave-status.html";</script>\n    <script>window.location.href = "leave-status.html";</script>\n    <script src="js/auth.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/auth-guard.js"></script>
     <script src="js/data-manager.js"></script>
-    <script src="js/dashboard.js"></script>
+    <script src="js/leave-status.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (!AuthGuard.checkAuth()) return;
@@ -173,6 +173,7 @@
     </script>
 </body>
 </html>
+
 
 
 

@@ -3,11 +3,7 @@ class DataManager {
     constructor() {
         this.employees = this.loadData('employees') || [];
         this.leaveRequests = this.loadData('leaveRequests') || [];
-        this.settings = this.loadData('settings') || {
-            annualLeaveDays: 15,
-            companyName: '우리회사',
-            workingDays: ['월', '화', '수', '목', '금']
-        };
+        this.settings = this.loadData('settings') || {};
         
         // 샘플 데이터가 없으면 생성
         if (this.employees.length === 0) {
@@ -44,37 +40,40 @@ class DataManager {
                 id: 1,
                 name: '김철수',
                 department: '개발팀',
+                branch: '본사',
                 position: '대리',
                 email: 'kim@company.com',
                 phone: '010-1234-5678',
                 hireDate: '2022-01-15',
                 annualLeaveDays: 15,
-                usedLeaveDays: 3,
-                remainingLeaveDays: 12
+                usedLeaveDays: 0,
+                remainingLeaveDays: 15
             },
             {
                 id: 2,
                 name: '이영희',
                 department: '마케팅팀',
+                branch: '강남점',
                 position: '과장',
                 email: 'lee@company.com',
                 phone: '010-2345-6789',
                 hireDate: '2021-03-20',
-                annualLeaveDays: 15,
-                usedLeaveDays: 7,
-                remainingLeaveDays: 8
+                annualLeaveDays: 20,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 20
             },
             {
                 id: 3,
                 name: '박민수',
                 department: '영업팀',
-                position: '사원',
+                branch: '부산점',
+                position: '부장',
                 email: 'park@company.com',
                 phone: '010-3456-7890',
-                hireDate: '2023-06-10',
-                annualLeaveDays: 15,
-                usedLeaveDays: 1,
-                remainingLeaveDays: 14
+                hireDate: '2020-06-10',
+                annualLeaveDays: 25,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 25
             }
         ];
 
@@ -83,95 +82,66 @@ class DataManager {
                 id: 1,
                 employeeId: 1,
                 employeeName: '김철수',
-                startDate: '2024-01-15',
-                endDate: '2024-01-17',
+                startDate: '2024-02-01',
+                endDate: '2024-02-03',
                 days: 3,
-                reason: '가족 여행',
-                status: 'approved',
-                requestDate: '2024-01-10',
-                approvedDate: '2024-01-11',
-                approvedBy: '관리자'
+                reason: '개인 휴가',
+                status: 'pending',
+                requestDate: '2024-01-28'
             },
             {
                 id: 2,
                 employeeId: 2,
                 employeeName: '이영희',
-                startDate: '2024-01-20',
-                endDate: '2024-01-20',
+                startDate: '2024-02-05',
+                endDate: '2024-02-05',
                 days: 1,
-                reason: '개인 사정',
+                reason: '의료진료',
                 status: 'pending',
-                requestDate: '2024-01-18'
+                requestDate: '2024-01-30'
             },
             {
                 id: 3,
                 employeeId: 3,
                 employeeName: '박민수',
-                startDate: '2024-01-25',
-                endDate: '2024-01-26',
-                days: 2,
-                reason: '병원 진료',
+                startDate: '2024-02-10',
+                endDate: '2024-02-12',
+                days: 3,
+                reason: '가족 행사',
                 status: 'pending',
-                requestDate: '2024-01-22'
+                requestDate: '2024-02-01'
+            },
+            {
+                id: 4,
+                employeeId: 1,
+                employeeName: '김철수',
+                startDate: '2024-02-15',
+                endDate: '2024-02-16',
+                days: 2,
+                reason: '개인 사정',
+                status: 'pending',
+                requestDate: '2024-02-05'
+            },
+            {
+                id: 5,
+                employeeId: 2,
+                employeeName: '이영희',
+                startDate: '2024-02-20',
+                endDate: '2024-02-22',
+                days: 3,
+                reason: '여행',
+                status: 'pending',
+                requestDate: '2024-02-10'
             }
         ];
 
         this.employees = sampleEmployees;
         this.leaveRequests = sampleRequests;
-        
         this.saveData('employees', this.employees);
         this.saveData('leaveRequests', this.leaveRequests);
     }
 
-    // 직원 추가
-    addEmployee(employee) {
-        const newEmployee = {
-            ...employee,
-            id: this.getNextId('employees'),
-            annualLeaveDays: this.settings.annualLeaveDays,
-            usedLeaveDays: 0,
-            remainingLeaveDays: this.settings.annualLeaveDays
-        };
-        
-        this.employees.push(newEmployee);
-        this.saveData('employees', this.employees);
-        return newEmployee;
-    }
-
-    // 직원 수정
-    updateEmployee(id, employeeData) {
-        const index = this.employees.findIndex(emp => emp.id === id);
-        if (index !== -1) {
-            this.employees[index] = { ...this.employees[index], ...employeeData };
-            this.saveData('employees', this.employees);
-            return this.employees[index];
-        }
-        return null;
-    }
-
-    // 직원 삭제
-    deleteEmployee(id) {
-        this.employees = this.employees.filter(emp => emp.id !== id);
-        this.leaveRequests = this.leaveRequests.filter(req => req.employeeId !== id);
-        this.saveData('employees', this.employees);
-        this.saveData('leaveRequests', this.leaveRequests);
-    }
-
-    // 연차 신청 추가
-    addLeaveRequest(request) {
-        const newRequest = {
-            ...request,
-            id: this.getNextId('leaveRequests'),
-            requestDate: new Date().toISOString().split('T')[0],
-            status: 'pending'
-        };
-        
-        this.leaveRequests.push(newRequest);
-        this.saveData('leaveRequests', this.leaveRequests);
-        return newRequest;
-    }
-
-    // 연차 신청 승인/거부
+    // 연차 신청 상태 업데이트
     updateLeaveRequestStatus(id, status, approvedBy = '관리자') {
         const index = this.leaveRequests.findIndex(req => req.id === id);
         if (index !== -1) {
@@ -196,112 +166,79 @@ class DataManager {
         return null;
     }
 
-    // 다음 ID 생성
-    getNextId(type) {
-        const data = type === 'employees' ? this.employees : this.leaveRequests;
-        return data.length > 0 ? Math.max(...data.map(item => item.id)) + 1 : 1;
+    // 직원 추가
+    addEmployee(employee) {
+        const newEmployee = {
+            ...employee,
+            id: Date.now(),
+            usedLeaveDays: 0,
+            remainingLeaveDays: employee.annualLeaveDays || 15
+        };
+        this.employees.push(newEmployee);
+        this.saveData('employees', this.employees);
+        return newEmployee;
+    }
+
+    // 직원 업데이트
+    updateEmployee(id, employeeData) {
+        const index = this.employees.findIndex(emp => emp.id === id);
+        if (index !== -1) {
+            this.employees[index] = { ...this.employees[index], ...employeeData };
+            this.saveData('employees', this.employees);
+            return this.employees[index];
+        }
+        return null;
+    }
+
+    // 직원 삭제
+    deleteEmployee(id) {
+        const index = this.employees.findIndex(emp => emp.id === id);
+        if (index !== -1) {
+            this.employees.splice(index, 1);
+            this.saveData('employees', this.employees);
+            return true;
+        }
+        return false;
+    }
+
+    // 연차 신청 추가
+    addLeaveRequest(request) {
+        const newRequest = {
+            ...request,
+            id: Date.now(),
+            status: 'pending',
+            requestDate: new Date().toISOString().split('T')[0]
+        };
+        this.leaveRequests.push(newRequest);
+        this.saveData('leaveRequests', this.leaveRequests);
+        return newRequest;
     }
 
     // 통계 데이터 가져오기
     getStatistics() {
         const totalEmployees = this.employees.length;
+        const totalLeaveRequests = this.leaveRequests.length;
         const pendingRequests = this.leaveRequests.filter(req => req.status === 'pending').length;
         const approvedRequests = this.leaveRequests.filter(req => req.status === 'approved').length;
-        const averageRemainingDays = totalEmployees > 0 
-            ? Math.round(this.employees.reduce((sum, emp) => sum + emp.remainingLeaveDays, 0) / totalEmployees)
+        const rejectedRequests = this.leaveRequests.filter(req => req.status === 'rejected').length;
+        
+        const totalUsedDays = this.leaveRequests
+            .filter(req => req.status === 'approved')
+            .reduce((sum, req) => sum + req.days, 0);
+        
+        const averageRemainingDays = this.employees.length > 0 
+            ? this.employees.reduce((sum, emp) => sum + emp.remainingLeaveDays, 0) / this.employees.length 
             : 0;
 
         return {
             totalEmployees,
+            totalLeaveRequests,
             pendingRequests,
             approvedRequests,
+            rejectedRequests,
+            totalUsedDays,
             averageRemainingDays
         };
-    }
-
-    // 이번 달 통계
-    getMonthlyStatistics() {
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        
-        const thisMonthRequests = this.leaveRequests.filter(req => {
-            const requestDate = new Date(req.startDate);
-            return requestDate.getMonth() === currentMonth && requestDate.getFullYear() === currentYear;
-        });
-
-        const usedThisMonth = thisMonthRequests
-            .filter(req => req.status === 'approved')
-            .reduce((sum, req) => sum + req.days, 0);
-            
-        const scheduledThisMonth = thisMonthRequests
-            .filter(req => req.status === 'approved')
-            .reduce((sum, req) => sum + req.days, 0);
-            
-        const pendingThisMonth = thisMonthRequests
-            .filter(req => req.status === 'pending')
-            .reduce((sum, req) => sum + req.days, 0);
-
-        return {
-            usedThisMonth,
-            scheduledThisMonth,
-            pendingThisMonth
-        };
-    }
-
-    // 최근 연차 신청 목록
-    getRecentRequests(limit = 5) {
-        return this.leaveRequests
-            .sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate))
-            .slice(0, limit);
-    }
-
-    // 승인 대기 목록
-    getPendingRequests() {
-        return this.leaveRequests.filter(req => req.status === 'pending');
-    }
-
-    // 데이터 내보내기
-    exportData() {
-        const data = {
-            employees: this.employees,
-            leaveRequests: this.leaveRequests,
-            settings: this.settings,
-            exportDate: new Date().toISOString()
-        };
-        
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `연차관리_데이터_${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    // 데이터 가져오기
-    importData(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    this.employees = data.employees || [];
-                    this.leaveRequests = data.leaveRequests || [];
-                    this.settings = data.settings || this.settings;
-                    
-                    this.saveData('employees', this.employees);
-                    this.saveData('leaveRequests', this.leaveRequests);
-                    this.saveData('settings', this.settings);
-                    
-                    resolve(data);
-                } catch (error) {
-                    reject(error);
-                }
-            };
-            reader.readAsText(file);
-        });
     }
 }
 

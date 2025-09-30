@@ -16,20 +16,14 @@
                 <h1>연차관리 시스템</h1>
             </div>
             <nav class="nav">
-                <a href="index.html" class="nav-link">
-                    <i class="fas fa-home"></i> 대시보드
+                <a href="leave-status.html" class="nav-link">
+                    <i class="fas fa-calendar-check"></i> 연차현황
                 </a>
-                <a href="leave-request.html" class="nav-link">
-                    <i class="fas fa-calendar-plus"></i> 연차신청
+                <a href="calendar.html" class="nav-link">
+                    <i class="fas fa-calendar-alt"></i> 캘린더
                 </a>
-                <a href="employee-management.html" class="nav-link">
-                    <i class="fas fa-users"></i> 직원관리
-                </a>
-                <a href="statistics.html" class="nav-link active">
-                    <i class="fas fa-chart-bar"></i> 통계
-                </a>
-                <a href="settings.html" class="nav-link">
-                    <i class="fas fa-cog"></i> 설정
+                <a href="main-management.html" class="nav-link">
+                    <i class="fas fa-cogs"></i> 메인관리
                 </a>
                 <div class="user-dropdown">
                     <a href="mypage.html" id="profile-link">
@@ -97,87 +91,23 @@
                             <option value="2024">2024년</option>
                             <option value="2023">2023년</option>
                         </select>
-                    </div>
-                </div>
-                <div class="monthly-chart" id="monthly-chart">
-                    <!-- 월별 차트가 여기에 표시됩니다 -->
-                </div>
-            </div>
-
-            <div class="chart-container">
-                <div class="chart-header">
-                    <h3><i class="fas fa-building"></i> 부서별 연차 현황</h3>
-                </div>
-                <div class="department-stats" id="department-stats">
-                    <!-- 부서별 통계가 여기에 표시됩니다 -->
-                </div>
-            </div>
-
-            <div class="chart-container">
-                <div class="chart-header">
-                    <h3><i class="fas fa-chart-pie"></i> 연차 패턴 분석</h3>
-                </div>
-                <div class="leave-pattern">
-                    <div class="pattern-item">
-                        <div class="icon">
-                            <i class="fas fa-calendar-day"></i>
-                        </div>
-                        <div class="value" id="single-day-leaves">0</div>
-                        <div class="label">1일 연차</div>
-                    </div>
-                    <div class="pattern-item">
-                        <div class="icon">
-                            <i class="fas fa-calendar-week"></i>
-                        </div>
-                        <div class="value" id="multi-day-leaves">0</div>
-                        <div class="label">2일 이상 연차</div>
-                    </div>
-                    <div class="pattern-item">
-                        <div class="icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="value" id="pending-leaves">0</div>
-                        <div class="label">대기 중</div>
-                    </div>
-                    <div class="pattern-item">
-                        <div class="icon">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="value" id="approved-leaves">0</div>
-                        <div class="label">승인 완료</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <script src="js/data-manager.js"></script>
-    <script src="js/statistics.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/auth-guard.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!AuthGuard.checkAuth()) return;
-            document.getElementById('logout-link').addEventListener('click', (e) => {
-                e.preventDefault();
-                if (confirm('정말 로그아웃하시겠습니까?')) {
-                    window.authManager.logout();
-                    window.location.href = 'login.html';
-                }
-            });
-        });
-    </script>
-</body>
-</html>
-
-            <div class="chart-container">
-                <div class="chart-header">
-                    <h3><i class="fas fa-chart-line"></i> 월별 연차 사용 현황</h3>
-                    <div class="chart-filters">
-                        <select id="year-filter">
-                            <option value="2024">2024년</option>
-                            <option value="2023">2023년</option>
+                        <select id="branch-filter">
+                            <option value="all">전체 지점</option>
+                            <option value="본사">본사</option>
+                            <option value="강남점">강남점</option>
+                            <option value="부산점">부산점</option>
                         </select>
+                        <select id="department-filter">
+                            <option value="all">전체 부서</option>
+                            <option value="개발팀">개발팀</option>
+                            <option value="마케팅팀">마케팅팀</option>
+                            <option value="영업팀">영업팀</option>
+                            <option value="인사팀">인사팀</option>
+                            <option value="경영지원">경영지원</option>
+                        </select>
+                        <input type="date" id="start-date" placeholder="시작일" class="form-input">
+                        <input type="date" id="end-date" placeholder="종료일" class="form-input">
+                        <button id="exportCsvBtn" class="btn btn-secondary"><i class="fas fa-file-csv"></i> CSV 내보내기</button>
                     </div>
                 </div>
                 <div class="monthly-chart" id="monthly-chart">
@@ -232,20 +162,23 @@
         </div>
     </main>
 
-    <script src="js/data-manager.js"></script>
-    <script src="js/statistics.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/auth-guard.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/statistics.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (!AuthGuard.checkAuth()) return;
-            document.getElementById('logout-link').addEventListener('click', (e) => {
-                e.preventDefault();
-                if (confirm('정말 로그아웃하시겠습니까?')) {
-                    window.authManager.logout();
-                    window.location.href = 'login.html';
-                }
-            });
+            const logout = document.getElementById('logout-link');
+            if (logout) {
+                logout.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (confirm('정말 로그아웃하시겠습니까?')) {
+                        window.authManager && window.authManager.logout && window.authManager.logout();
+                        window.location.href = 'login.html';
+                    }
+                });
+            }
         });
     </script>
 </body>

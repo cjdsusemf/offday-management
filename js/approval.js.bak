@@ -1,0 +1,208 @@
+﻿// 연차승인 스크립트 - 일괄선택 기능 추가
+(function(){
+  let dm;
+  let selectedItems = new Set();
+  
+  function render(list){
+    const wrap=document.getElementById('approvalList');
+    if(!wrap) return;
+    if(list.length===0){ 
+      wrap.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>검색 조건에 맞는 신청이 없습니다.</p></div>'; 
+      return; 
+    }
+    wrap.innerHTML = list.map(r=>{
+      const employee = dm.employees.find(emp => emp.id === r.employeeId);
+      const branch = employee ? employee.branch : '알 수 없음';
+      const isSelected = selectedItems.has(r.id);
+      return `
+        <div class="approval-item ${isSelected ? 'selected' : ''}" data-id="${r.id}">
+          <input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} data-id="${r.id}">
+          <div>
+            <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch">${branch}</span></div>
+            <div class="approval-meta">기간: ${r.startDate} ~ ${r.endDate} (${r.days}일)  신청일: ${r.requestDate || '-'}</div>
+            <div class="approval-meta">사유: ${r.reason || '-'}</div>
+          </div>
+          <div class="approval-actions">
+            ${r.status==='pending' ? `
+              <button class="btn-small btn-approve" data-act="approve" data-id="${r.id}"><i class="fas fa-check"></i> 승인</button>
+              <button class="btn-small btn-reject" data-act="reject" data-id="${r.id}"><i class="fas fa-times"></i> 거부</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+    updateBulkButtons();
+  }
+  
+  function statusText(s){return s==='pending'?'대기중':s==='approved'?'승인됨':s==='rejected'?'거부됨':s}
+  
+  function getFiltered(){
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const branchFilter = document.getElementById('branchFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const reqs = dm.leaveRequests || [];
+    
+    return reqs.filter(r => {
+      const employee = dm.employees.find(emp => emp.id === r.employeeId);
+      const branch = employee ? employee.branch : '';
+      
+      const matchesSearch = !searchTerm || r.employeeName.toLowerCase().includes(searchTerm);
+      const matchesBranch = branchFilter === 'all' || branch === branchFilter;
+      const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+      
+      return matchesSearch && matchesBranch && matchesStatus;
+    });
+  }
+  
+  function updateBulkButtons(){
+    console.log('updateBulkButtons 호출됨');
+    console.log('selectedItems:', selectedItems);
+    console.log('dm.leaveRequests:', dm.leaveRequests);
+    console.log('updateBulkButtons 호출됨');
+    console.log('selectedItems:', selectedItems);
+    console.log('dm.leaveRequests:', dm.leaveRequests);
+    const pendingSelected = Array.from(selectedItems).filter(id => {
+      const req = dm.leaveRequests.find(r => r.id === id);
+      return req && req.status === 'pending';
+    });
+    
+    document.getElementById('bulkApprove').disabled = pendingSelected.length === 0;
+    document.getElementById('bulkReject').disabled = pendingSelected.length === 0;
+    document.getElementById('selectedCount').textContent = `선택된 항목: ${selectedItems.size}개`;
+    
+    // 전체 선택 체크박스 상태 업데이트
+    const filteredList = getFiltered();
+    const pendingList = filteredList.filter(r => r.status === 'pending');
+    const selectedPending = pendingList.filter(r => selectedItems.has(r.id));
+    
+    const selectAllCheckbox = document.getElementById('selectAll');
+    selectAllCheckbox.disabled = pendingList.length === 0;
+    if(pendingList.length === 0){
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+    } else if(selectedPending.length === 0){
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+    } else if(selectedPending.length === pendingList.length){
+      selectAllCheckbox.checked = true;
+      selectAllCheckbox.indeterminate = false;
+    } else {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = true;
+    }
+  }
+  
+  function refresh(){ render(getFiltered()); }
+  
+  function onClick(e){
+    const t=e.target.closest('button'); 
+    if(t){
+      const id=Number(t.getAttribute('data-id')); 
+      const act=t.getAttribute('data-act');
+      if(act==='approve' && confirm('승인하시겠습니까?')){ 
+        dm.updateLeaveRequestStatus(id,'approved'); 
+        selectedItems.delete(id);
+        refresh(); 
+      }
+      if(act==='reject' && confirm('거부하시겠습니까?')){ 
+        dm.updateLeaveRequestStatus(id,'rejected'); 
+        selectedItems.delete(id);
+        refresh(); 
+      }
+      return;
+    }
+    
+    // 체크박스 클릭 처리
+    const checkbox = e.target.closest('.item-checkbox');
+    if(checkbox){
+      const id = Number(checkbox.getAttribute('data-id'));
+      if(checkbox.checked){
+        selectedItems.add(id);
+      } else {
+        selectedItems.delete(id);
+      }
+      updateBulkButtons();
+      refresh();
+      return;
+    }
+    
+    // 전체 선택 체크박스 처리
+    if(e.target.id === 'selectAll'){
+      const filteredList = getFiltered();
+      const pendingList = filteredList.filter(r => r.status === 'pending');
+      
+      if(e.target.checked){
+        pendingList.forEach(r => selectedItems.add(r.id));
+      } else {
+        pendingList.forEach(r => selectedItems.delete(r.id));
+      }
+      updateBulkButtons();
+      refresh();
+      return;
+    }
+    
+    // 일괄 승인/거부 처리
+      console.log('일괄 처리 버튼 클릭됨:', e.target.id);
+      console.log('dm 객체:', dm);
+      console.log('selectedItems:', selectedItems);
+      console.log('일괄 처리 버튼 클릭됨:', e.target.id);
+      console.log('dm 객체:', dm);
+      console.log('selectedItems:', selectedItems);
+    if(e.target.id === 'bulkApprove' || e.target.id === 'bulkReject'){
+      const pendingSelected = Array.from(selectedItems).filter(id => {
+        const req = dm.leaveRequests.find(r => r.id === id);
+        return req && req.status === 'pending';
+      });
+      
+      if(pendingSelected.length === 0) return;
+      
+      const action = e.target.id === 'bulkApprove' ? '승인' : '거부';
+      const status = e.target.id === 'bulkApprove' ? 'approved' : 'rejected';
+      
+      if(confirm(`선택된 ${pendingSelected.length}개 항목을 ${action}하시겠습니까?`)){
+        pendingSelected.forEach(id => {
+          dm.updateLeaveRequestStatus(id, status);
+          selectedItems.delete(id);
+        });
+        refresh();
+      }
+    }
+  }
+  
+  window.addEventListener('DOMContentLoaded', function(){
+    if(!window.AuthGuard || !AuthGuard.checkAuth()) return;
+    dm = window.dataManager || new DataManager(); 
+    window.dataManager = dm;
+    
+    // 이벤트 리스너 설정
+    document.getElementById('searchInput').addEventListener('input', refresh);
+    document.getElementById('branchFilter').addEventListener('change', refresh);
+    document.getElementById('statusFilter').addEventListener('change', refresh);
+    document.getElementById('approvalList').addEventListener('click', onClick);
+    document.getElementById('selectAll').addEventListener('change', onClick);
+    document.getElementById('bulkApprove').addEventListener('click', onClick);
+    document.getElementById('bulkReject').addEventListener('click', onClick);
+    
+    const logout=document.getElementById('logout-link');
+    if(logout){ 
+      logout.addEventListener('click', function(e){ 
+        e.preventDefault(); 
+        if(confirm('정말 로그아웃하시겠습니까?')){ 
+          window.authManager.logout(); 
+          location.href='login.html'; 
+        } 
+      }); 
+    }
+    refresh();
+  });
+})();
+
+
+
+
+
+
+
+
+
+

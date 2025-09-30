@@ -1,0 +1,63 @@
+﻿브라우저 콘솔에서 다음 명령어를 실행하여 일괄 승인/거부 기능을 테스트하세요:
+
+// 1. 현재 상태 확인
+console.log('=== 현재 상태 확인 ===');
+console.log('dataManager:', window.dataManager);
+console.log('selectedItems:', window.selectedItems || 'undefined');
+
+// 2. 일괄 승인 테스트 함수
+function testBulkApprove() {
+    if (!window.dataManager) {
+        console.error('dataManager가 없습니다!');
+        return;
+    }
+    
+    const pendingRequests = window.dataManager.leaveRequests.filter(req => req.status === 'pending');
+    console.log('대기중인 요청:', pendingRequests);
+    
+    if (pendingRequests.length === 0) {
+        console.log('대기중인 요청이 없습니다.');
+        return;
+    }
+    
+    // 첫 번째 대기중인 요청을 승인
+    const firstRequest = pendingRequests[0];
+    console.log('승인할 요청:', firstRequest);
+    
+    const result = window.dataManager.updateLeaveRequestStatus(firstRequest.id, 'approved');
+    console.log('승인 결과:', result);
+    
+    // 페이지 새로고침
+    location.reload();
+}
+
+// 3. 일괄 거부 테스트 함수
+function testBulkReject() {
+    if (!window.dataManager) {
+        console.error('dataManager가 없습니다!');
+        return;
+    }
+    
+    const pendingRequests = window.dataManager.leaveRequests.filter(req => req.status === 'pending');
+    console.log('대기중인 요청:', pendingRequests);
+    
+    if (pendingRequests.length === 0) {
+        console.log('대기중인 요청이 없습니다.');
+        return;
+    }
+    
+    // 첫 번째 대기중인 요청을 거부
+    const firstRequest = pendingRequests[0];
+    console.log('거부할 요청:', firstRequest);
+    
+    const result = window.dataManager.updateLeaveRequestStatus(firstRequest.id, 'rejected');
+    console.log('거부 결과:', result);
+    
+    // 페이지 새로고침
+    location.reload();
+}
+
+// 4. 사용법
+console.log('=== 사용법 ===');
+console.log('testBulkApprove() - 첫 번째 대기중인 요청 승인');
+console.log('testBulkReject() - 첫 번째 대기중인 요청 거부');
