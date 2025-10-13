@@ -18,13 +18,19 @@
             return;
         }
 
-        branchList.innerHTML = branches.map(branch => `
+        branchList.innerHTML = branches.map(branch => {
+            const teamCount = dm.getBranchTeams(branch.name).length;
+            return `
             <div class="branch-card" data-id="${branch.id}">
                 <div class="branch-header">
                     <h3 class="branch-name">${branch.name}</h3>
                     <div class="branch-actions-btns">
                         <button class="btn-icon btn-edit" onclick="editBranch(${branch.id})" title="수정">
                             <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon btn-teams" onclick="manageBranchTeams('${branch.name}')" title="팀 관리">
+                            <i class="fas fa-users"></i>
+                            <span class="team-count-badge">${teamCount}</span>
                         </button>
                         <button class="btn-icon btn-delete" onclick="deleteBranch(${branch.id})" title="삭제">
                             <i class="fas fa-trash"></i>
@@ -55,66 +61,35 @@
                     <div class="branch-description">${branch.description}</div>
                 ` : ''}
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     // 지점 검색
     function searchBranches(searchTerm) {
         const allBranches = dm.branches || [];
-        if (!searchTerm.trim()) {
-            return allBranches;
-        }
+        if (!searchTerm) return allBranches;
         
         return allBranches.filter(branch => 
             branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (branch.address && branch.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (branch.manager && branch.manager.toLowerCase().includes(searchTerm.toLowerCase()))
+            branch.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            branch.manager.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }
-
-    // 모달 열기
-    function openModal(title, branchData = null) {
-        const modal = document.getElementById('branchModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const form = document.getElementById('branchForm');
-        
-        modalTitle.textContent = title;
-        currentEditingId = branchData ? branchData.id : null;
-        
-        // 폼 초기화
-        form.reset();
-        
-        // 수정 모드인 경우 데이터 채우기
-        if (branchData) {
-            document.getElementById('branchName').value = branchData.name || '';
-            document.getElementById('branchAddress').value = branchData.address || '';
-            document.getElementById('branchPhone').value = branchData.phone || '';
-            document.getElementById('branchManager').value = branchData.manager || '';
-            document.getElementById('branchDescription').value = branchData.description || '';
-        }
-        
-        modal.style.display = 'block';
-        document.getElementById('branchName').focus();
-    }
-
-    // 모달 닫기
-    function closeModal() {
-        const modal = document.getElementById('branchModal');
-        modal.style.display = 'none';
-        currentEditingId = null;
     }
 
     // 지점 추가
     function addBranch() {
-        openModal('지점 추가');
+        currentEditingId = null;
+        openModal();
     }
 
     // 지점 수정
     function editBranch(id) {
         const branch = dm.branches.find(b => b.id === id);
-        if (branch) {
-            openModal('지점 수정', branch);
-        }
+        if (!branch) return;
+
+        currentEditingId = id;
+        openModal(branch);
     }
 
     // 지점 삭제
@@ -122,39 +97,74 @@
         const branch = dm.branches.find(b => b.id === id);
         if (!branch) return;
 
-        if (confirm(`"${branch.name}" 지점을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
-            // 해당 지점에 속한 직원이 있는지 확인
-            const employeesInBranch = dm.employees.filter(emp => emp.branch === branch.name);
-            if (employeesInBranch.length > 0) {
-                alert(`이 지점에 ${employeesInBranch.length}명의 직원이 있습니다.\n직원을 다른 지점으로 이동한 후 삭제해주세요.`);
-                return;
-            }
+        if (confirm(`"${branch.name}" 지점을 삭제하시겠습니까?\n\n이 지점에 속한 직원들의 정보가 영향을 받을 수 있습니다.`)) {
+            // 해당 지점의 직원들도 함께 삭제
+            dm.employees = dm.employees.filter(emp => emp.branch !== branch.name);
+            dm.saveData('employees', dm.employees);
 
             // 지점 삭제
             dm.branches = dm.branches.filter(b => b.id !== id);
             dm.saveData('branches', dm.branches);
             
-            // 목록 새로고침
-            refreshBranchList();
+            // 해당 지점의 팀 데이터도 삭제
+            dm.deleteBranchTeams(branch.name);
+
             alert('지점이 삭제되었습니다.');
+            refreshBranchList();
         }
     }
 
-    // 지점 저장
+    // 모달 열기
+    function openModal(branch = null) {
+        const modal = document.getElementById('branchModal');
+        const form = document.getElementById('branchForm');
+        const title = document.getElementById('branchModalTitle');
+        
+        if (!modal || !form || !title) return;
+
+        if (branch) {
+            title.textContent = '지점 수정';
+            form.name.value = branch.name;
+            form.address.value = branch.address || '';
+            form.phone.value = branch.phone || '';
+            form.manager.value = branch.manager || '';
+            form.description.value = branch.description || '';
+        } else {
+            title.textContent = '지점 추가';
+            form.reset();
+        }
+
+        modal.style.display = 'block';
+    }
+
+    // 모달 닫기
+    function closeModal() {
+        const modal = document.getElementById('branchModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // 폼 저장
     function saveBranch(formData) {
         const branchData = {
-            name: formData.name.trim(),
-            address: formData.address.trim(),
-            phone: formData.phone.trim(),
-            manager: formData.manager.trim(),
-            description: formData.description.trim()
+            name: formData.get('name').trim(),
+            address: formData.get('address').trim(),
+            phone: formData.get('phone').trim(),
+            manager: formData.get('manager').trim(),
+            description: formData.get('description').trim()
         };
 
-        // 지점명 중복 확인
+        // 필수 필드 검증
+        if (!branchData.name) {
+            alert('지점명을 입력해주세요.');
+            return false;
+        }
+
+        // 중복 검사 (수정 시에는 현재 지점 제외)
         const existingBranch = dm.branches.find(b => 
             b.name === branchData.name && b.id !== currentEditingId
         );
-        
         if (existingBranch) {
             alert('이미 존재하는 지점명입니다.');
             return false;
@@ -164,34 +174,20 @@
             // 수정
             const index = dm.branches.findIndex(b => b.id === currentEditingId);
             if (index !== -1) {
-                const oldName = dm.branches[index].name;
                 dm.branches[index] = { ...dm.branches[index], ...branchData };
-                
-                // 지점명이 변경된 경우 직원들의 지점 정보도 업데이트
-                if (oldName !== branchData.name) {
-                    dm.employees.forEach(emp => {
-                        if (emp.branch === oldName) {
-                            emp.branch = branchData.name;
-                        }
-                    });
-                    dm.saveData('employees', dm.employees);
-                }
-                
-                dm.saveData('branches', dm.branches);
-                alert('지점 정보가 수정되었습니다.');
             }
         } else {
             // 추가
+            const newId = Math.max(...dm.branches.map(b => b.id), 0) + 1;
             const newBranch = {
-                id: Date.now(),
+                id: newId,
                 ...branchData,
                 createdAt: new Date().toISOString().split('T')[0]
             };
             dm.branches.push(newBranch);
-            dm.saveData('branches', dm.branches);
-            alert('새 지점이 추가되었습니다.');
         }
 
+        dm.saveData('branches', dm.branches);
         closeModal();
         refreshBranchList();
         return true;
@@ -216,72 +212,256 @@
         dm = window.dataManager || new DataManager();
         window.dataManager = dm;
 
-        // 지점 데이터 초기화 (없으면 샘플 데이터 생성)
-        if (!dm.branches || dm.branches.length === 0) {
-            dm.branches = [
-                {
-                    id: 1,
-                    name: '본사',
-                    address: '서울특별시 강남구 테헤란로 123',
-                    phone: '02-1234-5678',
-                    manager: '김대표',
-                    description: '본사 건물입니다.',
-                    createdAt: '2024-01-01'
-                },
-                {
-                    id: 2,
-                    name: '강남점',
-                    address: '서울특별시 강남구 역삼동 456',
-                    phone: '02-2345-6789',
-                    manager: '이지점장',
-                    description: '강남 지점입니다.',
-                    createdAt: '2024-01-15'
-                },
-                {
-                    id: 3,
-                    name: '부산점',
-                    address: '부산광역시 해운대구 우동 789',
-                    phone: '051-3456-7890',
-                    manager: '박지점장',
-                    description: '부산 지점입니다.',
-                    createdAt: '2024-02-01'
-                }
-            ];
-            dm.saveData('branches', dm.branches);
-        }
-
         // 이벤트 리스너 등록
         document.getElementById('addBranchBtn').addEventListener('click', addBranch);
         document.getElementById('searchBranch').addEventListener('input', refreshBranchList);
         document.getElementById('branchForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
-            saveBranch(data);
+            const formData = new FormData(this);
+            if (saveBranch(formData)) {
+                this.reset();
+            }
         });
-        document.getElementById('closeModal').addEventListener('click', closeModal);
-        document.getElementById('cancelBtn').addEventListener('click', closeModal);
 
-        // 모달 외부 클릭 시 닫기
+        // 모달 닫기 이벤트
+        document.getElementById('closeModal').addEventListener('click', closeModal);
         document.getElementById('branchModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
             }
         });
 
-        // 로그아웃 처리
-        const logoutLink = document.getElementById('logout-link');
-        if (logoutLink) {
-            logoutLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (confirm('정말 로그아웃하시겠습니까?')) {
-                    window.authManager.logout();
-                    location.href = 'login.html';
-                }
-            });
-        }
-
         // 초기 목록 렌더링
         refreshBranchList();
+        
+        // 팀 관리 모달 기능 초기화
+        initializeTeamManagementModal();
     });
+
+    // 팀 관리 모달 기능 초기화
+    function initializeTeamManagementModal() {
+        const teamManagementModal = document.getElementById('teamManagementModal');
+        const closeBtn = document.getElementById('closeTeamManagementModal');
+        const addTeamBtn = document.getElementById('addTeamBtn');
+        
+        if (!teamManagementModal || !closeBtn || !addTeamBtn) return;
+
+        // 모달 닫기 이벤트
+        closeBtn.addEventListener('click', closeTeamManagementModal);
+
+        // 모달 외부 클릭 시 닫기
+        teamManagementModal.addEventListener('click', function(e) {
+            if (e.target === teamManagementModal) {
+                closeTeamManagementModal();
+            }
+        });
+
+        // 팀 추가 버튼 이벤트
+        addTeamBtn.addEventListener('click', function() {
+            const currentBranch = document.getElementById('currentBranchName').textContent;
+            openTeamModal('add', currentBranch);
+        });
+
+        // 팀 모달 이벤트
+        setupTeamModalEvents();
+    }
+
+    // 지점별 팀 관리 모달 열기
+    function manageBranchTeams(branchName) {
+        const modal = document.getElementById('teamManagementModal');
+        const branchNameElement = document.getElementById('currentBranchName');
+        const teamList = document.getElementById('teamList');
+        
+        if (!modal || !branchNameElement || !teamList) return;
+
+        // 지점명 설정
+        branchNameElement.textContent = branchName;
+        
+        // 팀 목록 렌더링
+        renderTeamList(branchName);
+        
+        // 모달 표시
+        modal.style.display = 'block';
+    }
+
+    // 팀 관리 모달 닫기
+    function closeTeamManagementModal() {
+        const modal = document.getElementById('teamManagementModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // 팀 목록 렌더링
+    function renderTeamList(branchName) {
+        const teamList = document.getElementById('teamList');
+        if (!teamList) return;
+
+        const teams = dm.getBranchTeams(branchName);
+        
+        if (teams.length === 0) {
+            teamList.innerHTML = `
+                <div class="team-empty-state">
+                    <i class="fas fa-users"></i>
+                    <p>등록된 팀이 없습니다.<br>팀 추가 버튼을 클릭하여 새 팀을 등록하세요.</p>
+                </div>
+            `;
+            return;
+        }
+
+        teamList.innerHTML = teams.map(team => `
+            <div class="team-item" data-team="${team}">
+                <div class="team-info">
+                    <h4>${team}</h4>
+                    <p>${branchName} 소속 팀</p>
+                </div>
+                <div class="team-actions">
+                    <button class="btn btn-edit" onclick="editTeam('${branchName}', '${team}')">
+                        <i class="fas fa-edit"></i> 수정
+                    </button>
+                    <button class="btn btn-delete" onclick="deleteTeam('${branchName}', '${team}')">
+                        <i class="fas fa-trash"></i> 삭제
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 빈 팀 상태 표시
+    function showEmptyTeamState() {
+        const teamList = document.getElementById('teamList');
+        if (!teamList) return;
+
+        teamList.innerHTML = `
+            <div class="team-empty-state">
+                <i class="fas fa-users"></i>
+                <p>지점을 선택하면 해당 지점의 팀 목록이 표시됩니다</p>
+            </div>
+        `;
+    }
+
+    // 팀 모달 열기
+    function openTeamModal(mode, branchName, teamName = '') {
+        const modal = document.getElementById('teamModal');
+        const modalTitle = document.getElementById('teamModalTitle');
+        const teamNameInput = document.getElementById('teamName');
+        const teamDescriptionInput = document.getElementById('teamDescription');
+        
+        if (!modal || !modalTitle || !teamNameInput) return;
+
+        if (mode === 'add') {
+            modalTitle.textContent = '팀 추가';
+            teamNameInput.value = '';
+            teamNameInput.dataset.mode = 'add';
+            teamNameInput.dataset.branch = branchName;
+        } else if (mode === 'edit') {
+            modalTitle.textContent = '팀 수정';
+            teamNameInput.value = teamName;
+            teamNameInput.dataset.mode = 'edit';
+            teamNameInput.dataset.branch = branchName;
+            teamNameInput.dataset.oldName = teamName;
+        }
+
+        if (teamDescriptionInput) {
+            teamDescriptionInput.value = '';
+        }
+
+        modal.style.display = 'block';
+    }
+
+    // 팀 모달 이벤트 설정
+    function setupTeamModalEvents() {
+        const modal = document.getElementById('teamModal');
+        const closeBtn = document.getElementById('closeTeamModal');
+        const cancelBtn = document.getElementById('cancelTeamBtn');
+        const form = document.getElementById('teamForm');
+
+        if (!modal || !closeBtn || !cancelBtn || !form) return;
+
+        // 닫기 이벤트
+        closeBtn.addEventListener('click', closeTeamModal);
+        cancelBtn.addEventListener('click', closeTeamModal);
+
+        // 모달 외부 클릭 시 닫기
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeTeamModal();
+            }
+        });
+
+        // 폼 제출 이벤트
+        form.addEventListener('submit', handleTeamSubmit);
+    }
+
+    // 팀 모달 닫기
+    function closeTeamModal() {
+        const modal = document.getElementById('teamModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // 팀 폼 제출 처리
+    function handleTeamSubmit(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        const teamName = formData.get('name').trim();
+        const teamDescription = formData.get('description').trim();
+        
+        const teamNameInput = document.getElementById('teamName');
+        
+        if (!teamName) {
+            alert('팀명을 입력해주세요.');
+            return;
+        }
+
+        const mode = teamNameInput.dataset.mode;
+        const branchName = teamNameInput.dataset.branch;
+
+        if (mode === 'add') {
+            if (dm.addBranchTeam(branchName, teamName)) {
+                alert('팀이 추가되었습니다.');
+                renderTeamList(branchName);
+                refreshBranchList(); // 지점 카드의 팀 개수 업데이트
+                closeTeamModal();
+            } else {
+                alert('이미 존재하는 팀명입니다.');
+            }
+        } else if (mode === 'edit') {
+            const oldTeamName = teamNameInput.dataset.oldName;
+            if (dm.updateBranchTeam(branchName, oldTeamName, teamName)) {
+                alert('팀이 수정되었습니다.');
+                renderTeamList(branchName);
+                refreshBranchList(); // 지점 카드의 팀 개수 업데이트
+                closeTeamModal();
+            } else {
+                alert('팀 수정에 실패했습니다.');
+            }
+        }
+    }
+
+    // 팀 수정
+    function editTeam(branchName, teamName) {
+        openTeamModal('edit', branchName, teamName);
+    }
+
+    // 팀 삭제
+    function deleteTeam(branchName, teamName) {
+        if (confirm(`"${teamName}" 팀을 삭제하시겠습니까?\n\n이 팀에 속한 직원들의 부서 정보가 영향을 받을 수 있습니다.`)) {
+            if (dm.removeBranchTeam(branchName, teamName)) {
+                alert('팀이 삭제되었습니다.');
+                renderTeamList(branchName);
+                refreshBranchList(); // 지점 카드의 팀 개수 업데이트
+            } else {
+                alert('팀 삭제에 실패했습니다.');
+            }
+        }
+    }
+
+    // 전역 함수로 등록
+    window.editTeam = editTeam;
+    window.deleteTeam = deleteTeam;
+    window.manageBranchTeams = manageBranchTeams;
 })();

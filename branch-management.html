@@ -57,6 +57,7 @@
             <div class="branch-list" id="branchList">
                 <!-- 지점 목록이 여기에 동적으로 생성됩니다 -->
             </div>
+
         </div>
     </main>
 
@@ -64,7 +65,7 @@
     <div id="branchModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle">지점 추가</h3>
+                <h3 id="branchModalTitle">지점 추가</h3>
                 <span class="close" id="closeModal">&times;</span>
             </div>
             <div class="modal-body">
@@ -92,6 +93,62 @@
                     <div class="form-actions">
                         <button type="button" id="cancelBtn" class="btn btn-secondary">취소</button>
                         <button type="submit" id="saveBtn" class="btn btn-primary">저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팀 관리 모달 -->
+    <div id="teamManagementModal" class="modal">
+        <div class="modal-content team-management-modal">
+            <div class="modal-header">
+                <h3 id="teamManagementTitle">팀 관리</h3>
+                <span class="close" id="closeTeamManagementModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="team-management-content">
+                    <div class="current-branch-info">
+                        <h4 id="currentBranchName">지점명</h4>
+                        <p>해당 지점의 팀을 관리할 수 있습니다</p>
+                    </div>
+                    
+                    <div class="team-list-section">
+                        <div class="team-list-header">
+                            <h5>팀 목록</h5>
+                            <button id="addTeamBtn" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> 팀 추가
+                            </button>
+                        </div>
+                        <div class="team-list" id="teamList">
+                            <!-- 팀 목록이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팀 추가/수정 모달 -->
+    <div id="teamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="teamModalTitle">팀 추가</h3>
+                <span class="close" id="closeTeamModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="teamForm">
+                    <div class="form-group">
+                        <label for="teamName">팀명 *</label>
+                        <input type="text" id="teamName" name="name" required class="form-input" placeholder="예: 영업팀, 개발팀">
+                    </div>
+                    <div class="form-group">
+                        <label for="teamDescription">팀 설명</label>
+                        <textarea id="teamDescription" name="description" class="form-textarea" rows="3" placeholder="팀의 역할과 책임을 설명해주세요"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancelTeamBtn" class="btn btn-secondary">취소</button>
+                        <button type="submit" id="saveTeamBtn" class="btn btn-primary">저장</button>
                     </div>
                 </form>
             </div>

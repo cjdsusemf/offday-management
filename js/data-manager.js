@@ -4,11 +4,44 @@ class DataManager {
         this.employees = this.loadData('employees') || [];
         this.leaveRequests = this.loadData('leaveRequests') || [];
         this.settings = this.loadData('settings') || {};
+        this.deletedEmployees = this.loadData('deletedEmployees') || []; // 삭제된 직원 추적
+        this.branchTeams = this.loadData('branchTeams') || {}; // 지점별 팀 관리
+        this.branches = this.loadData('branches') || []; // 지점 데이터
         
         // 샘플 데이터가 없으면 생성
         if (this.employees.length === 0) {
             this.createSampleData();
         }
+        
+        // 지점 데이터가 없으면 샘플 지점 데이터 생성
+        if (this.branches.length === 0) {
+            this.createSampleBranches();
+        }
+        
+        // 지점별 팀 데이터 초기화
+        this.initializeBranchTeams();
+        
+        // 기존 직원 데이터 마이그레이션
+        this.migrateEmployeeDataToBranchTeams();
+    }
+    
+    // 모든 직원 관련 데이터 강제 삭제
+    clearAllEmployeeData() {
+        localStorage.removeItem('employees');
+        localStorage.removeItem('leaveRequests');
+        localStorage.removeItem('deletedEmployees');
+        localStorage.removeItem('deletedUsers'); // 삭제된 사용자 목록도 삭제
+        
+        // 사용자 계정도 함께 삭제 (admin 제외)
+        const users = JSON.parse(localStorage.getItem("offday_users") || "[]");
+        const adminUser = users.find(u => u.role === 'admin');
+        if (adminUser) {
+            localStorage.setItem("offday_users", JSON.stringify([adminUser]));
+            console.log('🗑️ 관리자 계정 제외하고 모든 사용자 계정이 삭제되었습니다.');
+        }
+        
+        console.log('🗑️ 모든 직원 데이터와 삭제된 사용자 목록이 삭제되었습니다.');
+        console.log('✅ 회원가입 시 자동 직원 데이터 추가 기능은 유지됩니다.');
     }
 
     // 로컬 스토리지에서 데이터 로드
@@ -33,49 +66,9 @@ class DataManager {
         }
     }
 
-    // 샘플 데이터 생성
+    // 샘플 데이터 생성 (빈 배열로 시작)
     createSampleData() {
-        const sampleEmployees = [
-            {
-                id: 1,
-                name: '김철수',
-                department: '개발팀',
-                branch: '본사',
-                position: '대리',
-                email: 'kim@company.com',
-                phone: '010-1234-5678',
-                hireDate: '2022-01-15',
-                annualLeaveDays: 15,
-                usedLeaveDays: 0,
-                remainingLeaveDays: 15
-            },
-            {
-                id: 2,
-                name: '이영희',
-                department: '마케팅팀',
-                branch: '강남점',
-                position: '과장',
-                email: 'lee@company.com',
-                phone: '010-2345-6789',
-                hireDate: '2021-03-20',
-                annualLeaveDays: 20,
-                usedLeaveDays: 0,
-                remainingLeaveDays: 20
-            },
-            {
-                id: 3,
-                name: '박민수',
-                department: '영업팀',
-                branch: '부산점',
-                position: '부장',
-                email: 'park@company.com',
-                phone: '010-3456-7890',
-                hireDate: '2020-06-10',
-                annualLeaveDays: 25,
-                usedLeaveDays: 0,
-                remainingLeaveDays: 25
-            }
-        ];
+        const sampleEmployees = [];
 
         const sampleRequests = [
             {
@@ -137,8 +130,120 @@ class DataManager {
 
         this.employees = sampleEmployees;
         this.leaveRequests = sampleRequests;
-        this.saveData('employees', this.employees);
-        this.saveData('leaveRequests', this.leaveRequests);
+        
+        // 기존 데이터가 있으면 삭제하고 빈 배열로 초기화
+        this.saveData('employees', []);
+        this.saveData('leaveRequests', []);
+        this.saveData('deletedEmployees', []);
+        
+        console.log('✅ 모든 직원 데이터와 연차 기록이 초기화되었습니다.');
+    }
+
+    // 샘플 지점 데이터 생성
+    createSampleBranches() {
+        const sampleBranches = [
+            {
+                id: 1,
+                name: '본사',
+                address: '서울특별시 강남구 테헤란로 123',
+                phone: '02-1234-5678',
+                manager: '김대표',
+                description: '본사 건물입니다.',
+                createdAt: '2024-01-01'
+            },
+            {
+                id: 2,
+                name: '강남점',
+                address: '서울특별시 강남구 역삼동 456',
+                phone: '02-2345-6789',
+                manager: '이지점장',
+                description: '강남 지점입니다.',
+                createdAt: '2024-01-15'
+            },
+            {
+                id: 3,
+                name: '부산점',
+                address: '부산광역시 해운대구 우동 789',
+                phone: '051-3456-7890',
+                manager: '박지점장',
+                description: '부산 지점입니다.',
+                createdAt: '2024-02-01'
+            },
+            {
+                id: 4,
+                name: '서초점',
+                address: '서울특별시 서초구 서초동 101',
+                phone: '02-3456-7890',
+                manager: '최지점장',
+                description: '서초 지점입니다.',
+                createdAt: '2024-02-15'
+            },
+            {
+                id: 5,
+                name: '송파점',
+                address: '서울특별시 송파구 잠실동 202',
+                phone: '02-4567-8901',
+                manager: '정지점장',
+                description: '송파 지점입니다.',
+                createdAt: '2024-03-01'
+            },
+            {
+                id: 6,
+                name: '마포점',
+                address: '서울특별시 마포구 홍대입구역 303',
+                phone: '02-5678-9012',
+                manager: '한지점장',
+                description: '마포 지점입니다.',
+                createdAt: '2024-03-15'
+            },
+            {
+                id: 7,
+                name: '용산점',
+                address: '서울특별시 용산구 이태원동 404',
+                phone: '02-6789-0123',
+                manager: '오지점장',
+                description: '용산 지점입니다.',
+                createdAt: '2024-04-01'
+            },
+            {
+                id: 8,
+                name: '영등포점',
+                address: '서울특별시 영등포구 여의도동 505',
+                phone: '02-7890-1234',
+                manager: '강지점장',
+                description: '영등포 지점입니다.',
+                createdAt: '2024-04-15'
+            },
+            {
+                id: 9,
+                name: '구로점',
+                address: '서울특별시 구로구 구로동 606',
+                phone: '02-8901-2345',
+                manager: '윤지점장',
+                description: '구로 지점입니다.',
+                createdAt: '2024-05-01'
+            },
+            {
+                id: 10,
+                name: '금천점',
+                address: '서울특별시 금천구 가산동 707',
+                phone: '02-9012-3456',
+                manager: '임지점장',
+                description: '금천 지점입니다.',
+                createdAt: '2024-05-15'
+            },
+            {
+                id: 11,
+                name: '관악점',
+                address: '서울특별시 관악구 신림동 808',
+                phone: '02-0123-4567',
+                manager: '조지점장',
+                description: '관악 지점입니다.',
+                createdAt: '2024-06-01'
+            }
+        ];
+        this.branches = sampleBranches;
+        this.saveData('branches', this.branches);
     }
 
     // 연차 신청 상태 업데이트
@@ -194,11 +299,216 @@ class DataManager {
     deleteEmployee(id) {
         const index = this.employees.findIndex(emp => emp.id === id);
         if (index !== -1) {
+            const deletedEmployee = this.employees[index];
+            
+            // 삭제된 직원을 추적 목록에 추가
+            this.deletedEmployees.push({
+                email: deletedEmployee.email,
+                deletedAt: new Date().toISOString()
+            });
+            
+            // 직원 목록에서 제거
             this.employees.splice(index, 1);
+            
+            // 사용자 계정도 함께 삭제
+            if (typeof window.authManager !== 'undefined') {
+                window.authManager.deleteUserByEmail(deletedEmployee.email);
+            }
+            
+            // 데이터 저장
+            this.saveData('employees', this.employees);
+            this.saveData('deletedEmployees', this.deletedEmployees);
+            
+            return true;
+        }
+        return false;
+    }
+
+    // 삭제된 직원 목록 조회
+    getDeletedEmployees() {
+        return this.deletedEmployees;
+    }
+
+    // 삭제된 직원 복원
+    restoreEmployee(email) {
+        const deletedIndex = this.deletedEmployees.findIndex(deleted => deleted.email === email);
+        if (deletedIndex !== -1) {
+            // 삭제 목록에서 제거
+            this.deletedEmployees.splice(deletedIndex, 1);
+            this.saveData('deletedEmployees', this.deletedEmployees);
+            return true;
+        }
+        return false;
+    }
+
+    // 삭제된 직원 영구 삭제
+    permanentlyDeleteEmployee(email) {
+        const deletedIndex = this.deletedEmployees.findIndex(deleted => deleted.email === email);
+        if (deletedIndex !== -1) {
+            this.deletedEmployees.splice(deletedIndex, 1);
+            this.saveData('deletedEmployees', this.deletedEmployees);
+            return true;
+        }
+        return false;
+    }
+
+    // 퇴사 처리
+    resignEmployee(id, resignationDate = null) {
+        const employeeIndex = this.employees.findIndex(emp => emp.id === id);
+        if (employeeIndex !== -1) {
+            this.employees[employeeIndex].status = 'resigned';
+            this.employees[employeeIndex].resignationDate = resignationDate || new Date().toISOString().split('T')[0];
             this.saveData('employees', this.employees);
             return true;
         }
         return false;
+    }
+
+    // 재직 처리 (퇴사 취소)
+    reactivateEmployee(id) {
+        const employeeIndex = this.employees.findIndex(emp => emp.id === id);
+        if (employeeIndex !== -1) {
+            this.employees[employeeIndex].status = 'active';
+            delete this.employees[employeeIndex].resignationDate;
+            this.saveData('employees', this.employees);
+            return true;
+        }
+        return false;
+    }
+
+    // 활성 직원 목록 조회
+    getActiveEmployees() {
+        return this.employees.filter(emp => emp.status === 'active');
+    }
+
+    // 퇴사자 목록 조회
+    getResignedEmployees() {
+        return this.employees.filter(emp => emp.status === 'resigned');
+    }
+
+    // 직원이 연차 신청 내역이 있는지 확인
+    hasLeaveRequests(employeeId) {
+        return this.leaveRequests.some(request => request.employeeId === employeeId);
+    }
+
+    // 지점별 팀 데이터 초기화
+    initializeBranchTeams() {
+        const defaultTeams = {
+            "본사": ["경영지원팀", "인사팀", "총무팀", "재무팀", "개발팀", "디자인팀"],
+            "강남점": ["영업팀", "고객서비스팀", "마케팅팀"],
+            "부산점": ["영업팀", "물류팀", "구매팀"],
+            "대구점": ["영업팀", "마케팅팀", "고객서비스팀"],
+            "인천점": ["영업팀", "물류팀"],
+            "광주점": ["영업팀", "고객서비스팀"]
+        };
+
+        // 기존 데이터가 없으면 기본 팀 구조 생성
+        if (Object.keys(this.branchTeams).length === 0) {
+            this.branchTeams = defaultTeams;
+            this.saveData('branchTeams', this.branchTeams);
+        } else {
+            // 새로운 지점이 추가된 경우 기본 팀 추가
+            let updated = false;
+            Object.keys(defaultTeams).forEach(branch => {
+                if (!this.branchTeams[branch]) {
+                    this.branchTeams[branch] = defaultTeams[branch];
+                    updated = true;
+                }
+            });
+            
+            if (updated) {
+                this.saveData('branchTeams', this.branchTeams);
+            }
+        }
+    }
+
+    // 지점별 팀 목록 조회
+    getBranchTeams(branchName) {
+        return this.branchTeams[branchName] || [];
+    }
+
+    // 지점별 팀 추가
+    addBranchTeam(branchName, teamName) {
+        if (!this.branchTeams[branchName]) {
+            this.branchTeams[branchName] = [];
+        }
+        
+        // 중복 팀명 확인
+        if (!this.branchTeams[branchName].includes(teamName)) {
+            this.branchTeams[branchName].push(teamName);
+            this.saveData('branchTeams', this.branchTeams);
+            return true;
+        }
+        return false;
+    }
+
+    // 지점별 팀 삭제
+    removeBranchTeam(branchName, teamName) {
+        if (this.branchTeams[branchName]) {
+            const index = this.branchTeams[branchName].indexOf(teamName);
+            if (index > -1) {
+                this.branchTeams[branchName].splice(index, 1);
+                this.saveData('branchTeams', this.branchTeams);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 지점별 팀 수정
+    updateBranchTeam(branchName, oldTeamName, newTeamName) {
+        if (this.branchTeams[branchName]) {
+            const index = this.branchTeams[branchName].indexOf(oldTeamName);
+            if (index > -1) {
+                this.branchTeams[branchName][index] = newTeamName;
+                this.saveData('branchTeams', this.branchTeams);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 모든 지점의 팀 목록 조회
+    getAllBranchTeams() {
+        return this.branchTeams;
+    }
+
+    // 지점 삭제 시 팀 데이터도 삭제
+    deleteBranchTeams(branchName) {
+        if (this.branchTeams[branchName]) {
+            delete this.branchTeams[branchName];
+            this.saveData('branchTeams', this.branchTeams);
+            return true;
+        }
+        return false;
+    }
+
+    // 기존 직원 데이터 마이그레이션 (지점별 팀 구조에 맞게)
+    migrateEmployeeDataToBranchTeams() {
+        let migrated = false;
+        
+        this.employees.forEach(employee => {
+            const branchName = employee.branch;
+            const departmentName = employee.department;
+            
+            // 해당 지점에 팀이 없으면 추가
+            if (branchName && departmentName) {
+                if (!this.branchTeams[branchName]) {
+                    this.branchTeams[branchName] = [];
+                }
+                
+                // 해당 팀이 지점의 팀 목록에 없으면 추가
+                if (!this.branchTeams[branchName].includes(departmentName)) {
+                    this.branchTeams[branchName].push(departmentName);
+                    migrated = true;
+                }
+            }
+        });
+        
+        if (migrated) {
+            this.saveData('branchTeams', this.branchTeams);
+            console.log('직원 데이터가 지점별 팀 구조로 마이그레이션되었습니다.');
+        }
     }
 
     // 연차 신청 추가

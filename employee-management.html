@@ -49,6 +49,9 @@
                     <button id="addEmployeeBtn" class="btn btn-primary">
                         <i class="fas fa-plus"></i> 직원 추가
                     </button>
+                    <button id="syncUsersBtn" class="btn btn-info">
+                        <i class="fas fa-sync"></i> 회원 동기화
+                    </button>
                     <button id="exportBtn" class="btn btn-secondary">
                         <i class="fas fa-download"></i> 엑셀 내보내기
                     </button>
@@ -58,6 +61,11 @@
                         <input type="text" id="searchEmployee" placeholder="직원명, 이메일, 직급 검색..." class="form-input">
                         <i class="fas fa-search"></i>
                     </div>
+                    <select id="statusFilter" class="form-select">
+                        <option value="all">전체 상태</option>
+                        <option value="active">재직</option>
+                        <option value="resigned">퇴사</option>
+                    </select>
                     <select id="branchFilter" class="form-select">
                         <option value="all">전체 지점</option>
                         <option value="본사">본사</option>
@@ -81,6 +89,10 @@
                         <tr>
                             <th class="sortable" data-sort="name">
                                 <span>이름</span>
+                                <i class="fas fa-sort"></i>
+                            </th>
+                            <th class="sortable" data-sort="status">
+                                <span>상태</span>
                                 <i class="fas fa-sort"></i>
                             </th>
                             <th class="sortable" data-sort="department">
@@ -171,23 +183,18 @@
                         <input type="tel" id="employeePhone" name="phone" class="form-input">
                     </div>
                     <div class="form-group">
-                        <label for="employeeDepartment">부서 *</label>
-                        <select id="employeeDepartment" name="department" required class="form-select">
-                            <option value="">부서를 선택하세요</option>
-                            <option value="개발팀">개발팀</option>
-                            <option value="마케팅팀">마케팅팀</option>
-                            <option value="영업팀">영업팀</option>
-                            <option value="인사팀">인사팀</option>
-                            <option value="경영지원">경영지원</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label for="employeeBranch">지점 *</label>
                         <select id="employeeBranch" name="branch" required class="form-select">
                             <option value="">지점을 선택하세요</option>
                             <option value="본사">본사</option>
                             <option value="강남점">강남점</option>
                             <option value="부산점">부산점</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="employeeDepartment">팀/부서 *</label>
+                        <select id="employeeDepartment" name="department" required class="form-select" disabled>
+                            <option value="">먼저 지점을 선택하세요</option>
                         </select>
                     </div>
                     <div class="form-group">

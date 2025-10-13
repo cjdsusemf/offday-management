@@ -14,7 +14,7 @@
         if (employees.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="12" class="empty-state">
+                    <td colspan="13" class="empty-state">
                         <i class="fas fa-users"></i>
                         <p>검색 조건에 맞는 직원이 없습니다.</p>
                     </td>
@@ -28,9 +28,14 @@
             const usageRate = emp.annualLeaveDays > 0 ? (emp.usedLeaveDays / emp.annualLeaveDays * 100) : 0;
             const usageClass = usageRate < 30 ? 'low' : usageRate < 70 ? 'medium' : 'high';
             
+            const status = emp.status || 'active';
+            const statusText = status === 'active' ? '재직' : '퇴사';
+            const statusClass = status === 'active' ? 'status-active' : 'status-resigned';
+            
             return `
-                <tr>
+                <tr data-id="${emp.id}" class="${status}">
                     <td><strong>${emp.name}</strong></td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>${emp.department}</td>
                     <td>${emp.branch}</td>
                     <td>${emp.position}</td>
@@ -53,9 +58,14 @@
                             <button class="btn-icon btn-edit" onclick="editEmployee(${emp.id})" title="수정">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon btn-delete" onclick="deleteEmployee(${emp.id})" title="삭제">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            ${status === 'active' ? 
+                                `<button class="btn-icon btn-resign" onclick="resignEmployee(${emp.id})" title="퇴사 처리">
+                                    <i class="fas fa-user-times"></i>
+                                </button>` : 
+                                `<button class="btn-icon btn-reactivate" onclick="reactivateEmployee(${emp.id})" title="재직 처리">
+                                    <i class="fas fa-user-check"></i>
+                                </button>`
+                            }
                         </div>
                     </td>
                 </tr>
@@ -72,7 +82,7 @@
         }
     }
 
-    function searchEmployees(searchTerm, branchFilter, departmentFilter) {
+    function searchEmployees(searchTerm, statusFilter, branchFilter, departmentFilter) {
         const employees = dm.employees || [];
         
         return employees.filter(emp => {
@@ -81,10 +91,11 @@
                 emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.position.toLowerCase().includes(searchTerm.toLowerCase());
             
+            const matchesStatus = statusFilter === 'all' || (emp.status || 'active') === statusFilter;
             const matchesBranch = branchFilter === 'all' || emp.branch === branchFilter;
             const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter;
             
-            return matchesSearch && matchesBranch && matchesDepartment;
+            return matchesSearch && matchesStatus && matchesBranch && matchesDepartment;
         });
     }
 
@@ -131,7 +142,8 @@
         const branchFilter = document.getElementById('branchFilter').value;
         const departmentFilter = document.getElementById('departmentFilter').value;
 
-        let filteredEmployees = searchEmployees(searchTerm, branchFilter, departmentFilter);
+        const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+        let filteredEmployees = searchEmployees(searchTerm, statusFilter, branchFilter, departmentFilter);
 
         // 정렬 적용
         if (currentSort.column) {
@@ -201,13 +213,53 @@
         // 연차 신청이 있는 직원은 삭제 불가
         const hasLeaveRequests = dm.leaveRequests.some(req => req.employeeId === id);
         if (hasLeaveRequests) {
-            alert('연차 신청 내역이 있는 직원은 삭제할 수 없습니다.');
+            alert('연차 신청 내역이 있는 직원은 삭제할 수 없습니다.\n대신 퇴사 처리를 사용해주세요.');
             return;
         }
 
-        if (confirm(`"${employee.name}" 직원을 삭제하시겠습니까?`)) {
+        if (confirm(`"${employee.name}" 직원을 완전히 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) {
             dm.deleteEmployee(id);
             refreshEmployeeTable();
+        }
+    }
+
+    // 퇴사 처리
+    function resignEmployee(id) {
+        const employee = dm.employees.find(emp => emp.id === id);
+        if (!employee) return;
+
+        const resignationDate = prompt('퇴사일을 입력해주세요 (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+        if (!resignationDate) return;
+
+        // 날짜 형식 검증
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(resignationDate)) {
+            alert('올바른 날짜 형식을 입력해주세요 (YYYY-MM-DD)');
+            return;
+        }
+
+        if (confirm(`"${employee.name}" 직원을 퇴사 처리하시겠습니까?\n퇴사일: ${resignationDate}\n\n연차 내역은 보존됩니다.`)) {
+            if (dm.resignEmployee(id, resignationDate)) {
+                alert('퇴사 처리되었습니다.');
+                refreshEmployeeTable();
+            } else {
+                alert('퇴사 처리에 실패했습니다.');
+            }
+        }
+    }
+
+    // 재직 처리 (퇴사 취소)
+    function reactivateEmployee(id) {
+        const employee = dm.employees.find(emp => emp.id === id);
+        if (!employee) return;
+
+        if (confirm(`"${employee.name}" 직원을 재직 처리하시겠습니까?\n퇴사 처리를 취소합니다.`)) {
+            if (dm.reactivateEmployee(id)) {
+                alert('재직 처리되었습니다.');
+                refreshEmployeeTable();
+            } else {
+                alert('재직 처리에 실패했습니다.');
+            }
         }
     }
 
@@ -255,6 +307,8 @@
     window.addEmployee = addEmployee;
     window.editEmployee = editEmployee;
     window.deleteEmployee = deleteEmployee;
+    window.resignEmployee = resignEmployee;
+    window.reactivateEmployee = reactivateEmployee;
 
     // 이벤트 핸들러 등록 함수
     function attachEventListeners() {
@@ -271,6 +325,11 @@
         const searchInput = document.getElementById('searchEmployee');
         if (searchInput) {
             searchInput.addEventListener('input', refreshEmployeeTable);
+        }
+
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', refreshEmployeeTable);
         }
 
         const branchFilter = document.getElementById('branchFilter');
@@ -351,6 +410,20 @@
                 alert('엑셀 내보내기 기능은 추후 구현 예정입니다.');
             });
         }
+
+        // 회원 동기화 버튼 이벤트
+        const syncUsersBtn = document.getElementById('syncUsersBtn');
+        if (syncUsersBtn) {
+            syncUsersBtn.addEventListener('click', function() {
+                if (typeof window.authManager !== 'undefined') {
+                    window.authManager.syncUsersToEmployees();
+                    refreshEmployeeTable();
+                    alert('회원 데이터가 직원 목록에 동기화되었습니다.');
+                } else {
+                    alert('인증 관리자가 로드되지 않았습니다.');
+                }
+            });
+        }
     }
 
     window.addEventListener('DOMContentLoaded', function() {
@@ -359,10 +432,68 @@
         dm = window.dataManager || new DataManager();
         window.dataManager = dm;
 
+        // 페이지 로드 시 자동으로 회원 데이터 동기화
+        if (typeof window.authManager !== 'undefined') {
+            console.log('직원관리 페이지에서 자동 동기화 실행');
+            // 기존 삭제된 사용자 정리 (일회성)
+            window.authManager.cleanupDeletedUsers();
+            window.authManager.syncUsersToEmployees();
+        }
+
         // 이벤트 리스너 등록
         attachEventListeners();
 
         // 초기 렌더링
         refreshEmployeeTable();
+        
+        // 지점별 팀 선택 기능 초기화
+        initializeBranchTeamSelection();
     });
+
+    // 지점별 팀 선택 기능 초기화
+    function initializeBranchTeamSelection() {
+        const branchSelect = document.getElementById('employeeBranch');
+        const departmentSelect = document.getElementById('employeeDepartment');
+        
+        if (!branchSelect || !departmentSelect) return;
+
+        // 지점 선택 시 팀 목록 업데이트
+        branchSelect.addEventListener('change', function() {
+            updateDepartmentOptions(this.value, departmentSelect);
+        });
+    }
+
+    // 부서 옵션 업데이트
+    function updateDepartmentOptions(branchName, departmentSelect) {
+        if (!departmentSelect) return;
+
+        // 기존 옵션 제거
+        departmentSelect.innerHTML = '';
+
+        if (!branchName) {
+            departmentSelect.innerHTML = '<option value="">먼저 지점을 선택하세요</option>';
+            departmentSelect.disabled = true;
+            return;
+        }
+
+        // 해당 지점의 팀 목록 가져오기
+        const teams = dm.getBranchTeams(branchName);
+        
+        if (teams.length === 0) {
+            departmentSelect.innerHTML = '<option value="">등록된 팀이 없습니다</option>';
+            departmentSelect.disabled = true;
+            return;
+        }
+
+        // 팀 옵션 추가
+        departmentSelect.innerHTML = '<option value="">팀을 선택하세요</option>';
+        teams.forEach(team => {
+            const option = document.createElement('option');
+            option.value = team;
+            option.textContent = team;
+            departmentSelect.appendChild(option);
+        });
+
+        departmentSelect.disabled = false;
+    }
 })();
