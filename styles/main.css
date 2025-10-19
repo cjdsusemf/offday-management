@@ -220,6 +220,8 @@ body {
     color: #7f8c8d;
 }
 
+/* 연차현황 헤더 정보 스타일 - leave-status.css에서 처리 */
+
 /* 통계 카드 */
 .stats-grid {
     display: grid;

@@ -1,0 +1,709 @@
+/* 연차현황 페이지 전용 스타일 */
+
+/* 개인 연차 현황 대시보드 스타일 - 깔끔한 버전 */
+.personal-leave-dashboard {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 1.8rem;
+    margin-bottom: 1.5rem;
+    color: white;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.personal-leave-dashboard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+    pointer-events: none;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.8rem;
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-header h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.01em;
+}
+
+/* 헤더 정보 스타일 개선 */
+.header-info {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.calculation-criteria {
+    font-size: 0.95rem;
+    color: #ffffff;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+}
+
+.current-year {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 연차 통계 그리드 - 깔끔한 카드 디자인 */
+.leave-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.2rem;
+    margin-bottom: 1.8rem;
+    position: relative;
+    z-index: 1;
+}
+
+.leave-stat-card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(15px enterprise);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    position: relative;
+    overflow: hidden;
+}
+
+.leave-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.leave-stat-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.leave-stat-card:hover::before {
+    opacity: 1;
+}
+
+/* 카드별 색상 테마 */
+.leave-stat-card.earned {
+    border-left: 5px solid #4CAF50;
+}
+
+.leave-stat-card.earned .stat-icon {
+    color: #4CAF50;
+}
+
+.leave-stat-card.used {
+    border-left: 5px solid #FF9800;
+}
+
+.leave-stat-card.used .stat-icon {
+    color: #FF9800;
+}
+
+.leave-stat-card.remaining {
+    border-left: 5px solid #2196F3;
+}
+
+.leave-stat-card.remaining .stat-icon {
+    color: #2196F3;
+}
+
+.leave-stat-card.pending {
+    border-left: 5px solid #FF5722;
+}
+
+.leave-stat-card.pending .stat-icon {
+    color: #FF5722;
+}
+
+.leave-stat-card .stat-icon {
+    font-size: 2.2rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.leave-stat-card .stat-content h3 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin: 0 0 0.6rem 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.01em;
+}
+
+.leave-stat-card .stat-content p {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.4rem 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.leave-stat-card .stat-detail {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+/* 연차 사용률 프로그레스 바 - 깔끔한 디자인 */
+.leave-progress {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+    z-index: 1;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.progress-bar {
+    background: rgba(255, 255, 255, 0.2);
+    height: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39);
+    height: 100%;
+    border-radius: 12px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* 나의 연차 활동 섹션 - 깔끔한 디자인 */
+.leave-activity-section {
+    margin-bottom: 1.8rem;
+}
+
+.leave-activity-section .dashboard-card {
+    border-left: 4px solid #28a745;
+    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.08);
+    overflow: hidden;
+}
+
+.leave-activity-section .card-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 1.2rem 1.5rem;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+}
+
+.leave-activity-section .card-header h3 {
+    color: white;
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 탭 네비게이션 - 깔끔한 디자인 */
+.tab-navigation {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+}
+
+.tab-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid transparent;
+    border-radius: 24px;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #155724;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #155724 0%, #28a745 100%);
+    color: white;
+    border-color: #0d4a1a;
+    box-shadow: 0 4px 12px rgba(21, 87, 36, 0.25);
+    transform: translateY(-2px);
+}
+
+.tab-btn i {
+    font-size: 0.9rem;
+}
+
+/* 탭 콘텐츠 - 깔끔한 애니메이션 */
+.tab-content {
+    display: none;
+    animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 1.5rem;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes slideInUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+/* 연차 신청 섹션 - 깔끔한 디자인 */
+.leave-request-section {
+    margin-bottom: 1.8rem;
+}
+
+.leave-request-section .dashboard-card {
+    border-left: 4px solid #667eea;
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.08);
+    overflow: hidden;
+}
+
+.leave-request-section .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.2rem 1.5rem;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+}
+
+.leave-request-section .card-header h3 {
+    color: white;
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.leave-request-section .view-all-label {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 연차 계획 및 통계 섹션 - 깔끔한 디자인 */
+.leave-planning-section {
+    margin-bottom: 1.8rem;
+}
+
+.planning-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.8rem;
+}
+
+.planning-card {
+    border-left: 4px solid #ff6b6b;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.08);
+    overflow: hidden;
+}
+
+.planning-card .card-header {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+    color: white;
+    padding: 1.2rem 1.5rem;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+}
+
+.planning-card .card-header h3 {
+    color: white;
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.pattern-card {
+    border-left: 4px solid #6c5ce7;
+    background: linear-gradient(135deg, #f8f7ff 0%, #f0edff 100%);
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.08);
+    overflow: hidden;
+}
+
+.pattern-card .card-header {
+    background: linear-gradient(135deg, #6c5ce7 0%, #5f3dc4 100%);
+    color: white;
+    padding: 1.2rem 1.5rem;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+}
+
+.pattern-card .card-header h3 {
+    color: white;
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 연차 신청 폼 - 깔끔한 스타일 */
+.leave-request-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    padding: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+    letter-spacing: -0.01em;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.8rem;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.form-group input[readonly] {
+    background: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover::before {
+    left: 100%;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3);
+}
+
+/* 반응형 디자인 - 깔끔한 모바일 지원 */
+@media (max-width: 768px) {
+    .personal-leave-dashboard {
+        padding: 1.5rem;
+        margin-bottom: 1.2rem;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dashboard-header h3 {
+        font-size: 1.3rem;
+    }
+    
+    .header-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.8rem;
+    }
+    
+    .leave-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .leave-stat-card {
+        padding: 1.2rem;
+    }
+    
+    .leave-stat-card .stat-icon {
+        font-size: 2rem;
+    }
+    
+    .leave-stat-card .stat-content h3 {
+        font-size: 2rem;
+    }
+    
+    .leave-stat-card .stat-content p {
+        font-size: 0.95rem;
+    }
+    
+    .planning-grid {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 1rem 1.5rem;
+    }
+    
+    .tab-navigation {
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+    
+    .tab-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 0.8rem 1.2rem;
+    }
+    
+    .tab-content {
+        padding: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .personal-leave-dashboard {
+        padding: 1.2rem;
+    }
+    
+    .leave-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+    
+    .leave-stat-card {
+        padding: 1rem;
+    }
+    
+    .leave-stat-card .stat-icon {
+        font-size: 1.8rem;
+    }
+    
+    .leave-stat-card .stat-content h3 {
+        font-size: 1.8rem;
+    }
+    
+    .calculation-criteria {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        white-space: nowrap;
+    }
+    
+    .current-year {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+    }
+}
+
+/* 추가 애니메이션 효과 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.leave-stat-card {
+    animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.leave-stat-card:nth-child(1) { animation-delay: 0.1s; }
+.leave-stat-card:nth-child(2) { animation-delay: 0.2s; }
+.leave-stat-card:nth-child(3) { animation-delay: 0.3s; }
+.leave-stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* 호버 효과 개선 */
+.dashboard-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}

@@ -42,6 +42,7 @@
                     <td>${emp.email}</td>
                     <td>${emp.phone || '-'}</td>
                     <td>${emp.hireDate}</td>
+                    <td>${emp.birthDate || '-'}</td>
                     <td>${emp.annualLeaveDays}일</td>
                     <td>${emp.usedLeaveDays}일</td>
                     <td>${emp.remainingLeaveDays}일</td>
@@ -65,6 +66,11 @@
                                 `<button class="btn-icon btn-reactivate" onclick="reactivateEmployee(${emp.id})" title="재직 처리">
                                     <i class="fas fa-user-check"></i>
                                 </button>`
+                            }
+                            ${getCurrentUser() && getCurrentUser().role === 'admin' ? 
+                                `<button class="btn-icon btn-delete" onclick="deleteEmployee(${emp.id})" title="계정 삭제">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>` : ''
                             }
                         </div>
                     </td>
@@ -111,7 +117,7 @@
             }
 
             // 날짜 필드 처리
-            if (column === 'hireDate') {
+            if (column === 'hireDate' || column === 'birthDate') {
                 aVal = new Date(aVal);
                 bVal = new Date(bVal);
             }
@@ -168,15 +174,19 @@
             document.getElementById('employeeName').value = employeeData.name || '';
             document.getElementById('employeeEmail').value = employeeData.email || '';
             document.getElementById('employeePhone').value = employeeData.phone || '';
-            document.getElementById('employeeDepartment').value = employeeData.department || '';
-            document.getElementById('employeeBranch').value = employeeData.branch || '';
             document.getElementById('employeePosition').value = employeeData.position || '';
-            document.getElementById('employeeHireDate').value = employeeData.hireDate || '';
+            document.getElementById('employeeHireDate').value = employeeData.hireDate || employeeData.joindate || '';
+            document.getElementById('employeeBirthDate').value = employeeData.birthDate || '';
             document.getElementById('employeeAnnualLeave').value = employeeData.annualLeaveDays || 15;
+            
+            // 지점과 부서 데이터 로드 및 설정
+            loadBranchAndDepartmentDataWithValues(employeeData);
         } else {
             // 추가 모드 - 폼 초기화
             form.reset();
             document.getElementById('employeeAnnualLeave').value = 15;
+            // 추가 모드에서도 지점 데이터 로드
+            loadBranchAndDepartmentData();
         }
 
         modal.style.display = 'block';
@@ -210,16 +220,50 @@
         const employee = dm.employees.find(emp => emp.id === id);
         if (!employee) return;
 
-        // 연차 신청이 있는 직원은 삭제 불가
-        const hasLeaveRequests = dm.leaveRequests.some(req => req.employeeId === id);
-        if (hasLeaveRequests) {
-            alert('연차 신청 내역이 있는 직원은 삭제할 수 없습니다.\n대신 퇴사 처리를 사용해주세요.');
+        // 현재 사용자가 메인관리자인지 확인
+        const currentUser = getCurrentUser();
+        if (!currentUser || currentUser.role !== 'admin') {
+            alert('계정 삭제 권한이 없습니다.\n메인관리자만 계정을 삭제할 수 있습니다.');
             return;
         }
 
-        if (confirm(`"${employee.name}" 직원을 완전히 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) {
+        // 메인관리자는 연차 신청 내역이 있어도 삭제 가능
+        const hasLeaveRequests = dm.leaveRequests.some(req => req.employeeId === id);
+        if (hasLeaveRequests) {
+            if (!confirm(`"${employee.name}" 직원에게 연차 신청 내역이 있습니다.\n\n메인관리자 권한으로 연차 내역과 함께 완전히 삭제하시겠습니까?\n\n⚠️ 다음 데이터가 모두 삭제됩니다:\n• 직원 데이터\n• 사용자 계정\n• 모든 연차 신청 내역\n• 연차 사용 기록\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+        }
+
+        if (confirm(`"${employee.name}" 직원의 계정을 완전히 삭제하시겠습니까?\n\n⚠️ 다음 데이터가 삭제됩니다:\n• 직원 데이터\n• 사용자 계정 (이메일: ${employee.email})\n• 모든 연차 내역\n\n이 작업은 되돌릴 수 없습니다.`)) {
+            // 1. 연차 신청 내역 삭제 (해당 직원의 모든 연차 신청)
+            if (hasLeaveRequests) {
+                dm.leaveRequests = dm.leaveRequests.filter(req => req.employeeId !== id);
+                dm.saveData();
+                console.log('연차 신청 내역 삭제 완료');
+            }
+
+            // 2. 사용자 계정 삭제 (authManager 사용)
+            if (typeof window.authManager !== 'undefined') {
+                const deleteResult = window.authManager.deleteUserByEmail(employee.email);
+                if (deleteResult.success) {
+                    console.log('사용자 계정 삭제 완료:', employee.email);
+                } else {
+                    console.log('사용자 계정 삭제 실패 또는 계정 없음:', employee.email);
+                }
+            }
+
+            // 3. 직원 데이터 삭제
             dm.deleteEmployee(id);
+            
+            // 4. 테이블 새로고침
             refreshEmployeeTable();
+            
+            const deleteMessage = hasLeaveRequests ? 
+                '계정 삭제가 완료되었습니다.\n직원 데이터, 사용자 계정, 연차 신청 내역이 모두 삭제되었습니다.' :
+                '계정 삭제가 완료되었습니다.\n직원 데이터와 사용자 계정이 모두 삭제되었습니다.';
+            
+            alert(deleteMessage);
         }
     }
 
@@ -272,6 +316,7 @@
             branch: formData.get('branch'),
             position: formData.get('position'),
             hireDate: formData.get('hireDate'),
+            birthDate: formData.get('birthDate'),
             annualLeaveDays: parseInt(formData.get('annualLeaveDays')) || 15
         };
 
@@ -288,6 +333,34 @@
             // 수정
             const updatedEmployee = dm.updateEmployee(currentEditingId, employeeData);
             if (updatedEmployee) {
+                // 사용자 데이터도 동기화
+                if (typeof window.authManager !== 'undefined') {
+                    const user = window.authManager.getStoredUsers().find(u => u.email === employeeData.email);
+                    if (user) {
+                        user.name = employeeData.name;
+                        user.phone = employeeData.phone;
+                        user.branch = employeeData.branch;
+                        user.department = employeeData.department;
+                        user.position = employeeData.position;
+                        // 입사일이 변경되었는지 확인
+                        const hireDateChanged = user.joindate !== employeeData.hireDate;
+                        user.joindate = employeeData.hireDate;
+                        user.birthdate = employeeData.birthDate;
+                        window.authManager.saveUsers(window.authManager.getStoredUsers());
+                        
+                        // 입사일이 변경되었으면 연차 재계산 필요
+                        if (hireDateChanged) {
+                            console.log('입사일 변경됨 - 연차 재계산 필요:', user.email, employeeData.hireDate);
+                            // 연차 재계산 로직이 있다면 여기서 호출
+                            if (window.LeaveCalculation) {
+                                // 연차 계산 시스템이 있으면 재계산
+                                console.log('연차 재계산 시스템 호출');
+                            }
+                        }
+                        
+                        console.log('직원 수정 시 사용자 데이터 동기화 완료:', user.email);
+                    }
+                }
                 alert('직원 정보가 수정되었습니다.');
             }
         } else {
@@ -309,6 +382,127 @@
     window.deleteEmployee = deleteEmployee;
     window.resignEmployee = resignEmployee;
     window.reactivateEmployee = reactivateEmployee;
+
+    // 지점과 부서 데이터 로드 (캐싱 적용)
+    function loadBranchAndDepartmentData() {
+        const branchSelect = document.getElementById('employeeBranch');
+        if (!branchSelect) return;
+
+        // 이미 로드된 경우 재로드하지 않음
+        if (branchSelect.options.length > 1) {
+            return;
+        }
+        
+        if (window.dataManager && window.dataManager.branches && window.dataManager.branches.length > 0) {
+            branchSelect.innerHTML = '<option value="">지점을 선택하세요</option>';
+            window.dataManager.branches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch.name;
+                option.textContent = branch.name;
+                branchSelect.appendChild(option);
+            });
+        } else {
+            branchSelect.innerHTML = '<option value="">지점을 선택하세요</option>';
+        }
+    }
+
+    // 지점과 부서 데이터 로드 및 값 설정 (최적화)
+    function loadBranchAndDepartmentDataWithValues(employeeData) {
+        const branchSelect = document.getElementById('employeeBranch');
+        if (!branchSelect) return;
+
+        // dataManager 로드 확인 및 재시도
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        const loadData = () => {
+            attempts++;
+            
+            if (window.dataManager && window.dataManager.branches && window.dataManager.branches.length > 0) {
+                // 지점 데이터 로드
+                branchSelect.innerHTML = '<option value="">지점을 선택하세요</option>';
+                window.dataManager.branches.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch.name;
+                    option.textContent = branch.name;
+                    branchSelect.appendChild(option);
+                });
+                
+                // 지점 값 설정
+                if (employeeData.branch) {
+                    branchSelect.value = employeeData.branch;
+                    
+                    // 부서 로드 및 설정
+                    loadDepartmentsForBranch(employeeData.branch);
+                    
+                    // 부서 값 설정 (약간의 지연 후)
+                    setTimeout(() => {
+                        if (employeeData.department) {
+                            const departmentSelect = document.getElementById('employeeDepartment');
+                            if (departmentSelect) {
+                                departmentSelect.value = employeeData.department;
+                            }
+                        }
+                    }, 50);
+                }
+            } else if (attempts < maxAttempts) {
+                // dataManager가 아직 로드되지 않았으면 재시도
+                setTimeout(loadData, 50);
+            } else {
+                // 최대 시도 횟수 초과 시 기본 옵션만 표시
+                branchSelect.innerHTML = '<option value="">지점을 선택하세요</option>';
+            }
+        };
+        
+        loadData();
+    }
+
+    // 선택된 지점에 따른 부서 로드 (최적화)
+    function loadDepartmentsForBranch(branchName) {
+        const departmentSelect = document.getElementById('employeeDepartment');
+        if (!departmentSelect) return;
+
+        departmentSelect.innerHTML = '<option value="">팀/부서를 선택하세요</option>';
+        
+        if (!branchName) {
+            departmentSelect.disabled = true;
+            return;
+        }
+
+        // dataManager에서 해당 지점의 부서 데이터 가져오기
+        if (window.dataManager && window.dataManager.getBranchTeams) {
+            const teams = window.dataManager.getBranchTeams(branchName);
+            
+            if (teams && teams.length > 0) {
+                departmentSelect.disabled = false;
+                teams.forEach(team => {
+                    const option = document.createElement('option');
+                    option.value = team;
+                    option.textContent = team;
+                    departmentSelect.appendChild(option);
+                });
+            } else {
+                // 지점별 팀 데이터가 없으면 기본 부서들 사용
+                setDefaultDepartments(departmentSelect);
+            }
+        } else {
+            // dataManager가 없으면 기본 부서들 사용
+            setDefaultDepartments(departmentSelect);
+        }
+    }
+
+    // 기본 부서 설정
+    function setDefaultDepartments(departmentSelect) {
+        const defaultDepartments = ['경영관리팀', '택스팀', '컨설팅팀', '영업팀', '개발팀', '마케팅팀', '인사팀'];
+        departmentSelect.disabled = false;
+        
+        defaultDepartments.forEach(deptName => {
+            const option = document.createElement('option');
+            option.value = deptName;
+            option.textContent = deptName;
+            departmentSelect.appendChild(option);
+        });
+    }
 
     // 이벤트 핸들러 등록 함수
     function attachEventListeners() {
@@ -371,6 +565,14 @@
             });
         }
 
+        // 지점 선택 시 부서 로드
+        const branchSelect = document.getElementById('employeeBranch');
+        if (branchSelect) {
+            branchSelect.addEventListener('change', function() {
+                loadDepartmentsForBranch(this.value);
+            });
+        }
+
         // 모달 닫기
         const closeModalBtn = document.getElementById('closeModal');
         if (closeModalBtn) {
@@ -416,9 +618,27 @@
         if (syncUsersBtn) {
             syncUsersBtn.addEventListener('click', function() {
                 if (typeof window.authManager !== 'undefined') {
-                    window.authManager.syncUsersToEmployees();
+                    console.log('회원 동기화 버튼 클릭 - 데이터 일관성 검증 및 강제 동기화 시작');
+                    
+                    // 1단계: 데이터 일관성 검증 및 수정
+                    const validationResult = window.authManager.validateAndFixDataConsistency();
+                    
+                    // 2단계: 강제 동기화
+                    window.authManager.forceSyncUsersToEmployees();
+                    
+                    // 3단계: 테이블 새로고침
                     refreshEmployeeTable();
-                    alert('회원 데이터가 직원 목록에 동기화되었습니다.');
+                    
+                    // 결과 알림
+                    let message = '데이터 동기화가 완료되었습니다.\n';
+                    if (validationResult && validationResult.issuesFound > 0) {
+                        message += `발견된 문제: ${validationResult.issuesFound}개\n`;
+                        message += `해결된 문제: ${validationResult.issuesFixed}개\n`;
+                    }
+                    message += `현재 사용자: ${validationResult?.usersCount || 0}명\n`;
+                    message += `현재 직원: ${validationResult?.employeesCount || 0}명`;
+                    
+                    alert(message);
                 } else {
                     alert('인증 관리자가 로드되지 않았습니다.');
                 }
@@ -432,12 +652,14 @@
         dm = window.dataManager || new DataManager();
         window.dataManager = dm;
 
-        // 페이지 로드 시 자동으로 회원 데이터 동기화
-        if (typeof window.authManager !== 'undefined') {
+        // 페이지 로드 시 자동으로 회원 데이터 동기화 (한 번만 실행)
+        if (typeof window.authManager !== 'undefined' && !window.employeeManagementInitialized) {
             console.log('직원관리 페이지에서 자동 동기화 실행');
             // 기존 삭제된 사용자 정리 (일회성)
             window.authManager.cleanupDeletedUsers();
-            window.authManager.syncUsersToEmployees();
+            // 강제 동기화로 모든 데이터 일치시키기
+            window.authManager.forceSyncUsersToEmployees();
+            window.employeeManagementInitialized = true;
         }
 
         // 이벤트 리스너 등록

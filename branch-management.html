@@ -27,7 +27,7 @@
                 </a>
                 <div class="user-dropdown">
                     <a href="mypage.html" id="profile-link">
-                        <i class="fas fa-user"></i> 마이페이지
+                        <i class="fas fa-user" id="navAvatarIcon"></i> 마이페이지
                     </a>
                     <a href="#" id="logout-link">
                         <i class="fas fa-sign-out-alt"></i> 로그아웃
@@ -89,6 +89,17 @@
                     <div class="form-group">
                         <label for="branchDescription">설명</label>
                         <textarea id="branchDescription" name="description" class="form-textarea" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="leaveCalculationStandard">연차 계산 기준 *</label>
+                        <select id="leaveCalculationStandard" name="leaveCalculationStandard" required class="form-select">
+                            <option value="hire_date">입사일 기준</option>
+                            <option value="fiscal_year">회계연도 기준</option>
+                        </select>
+                        <div class="form-help">
+                            <small>입사일 기준: 입사일로부터 1년마다 연차 발생<br>
+                            회계연도 기준: 매년 1월 1일 기준으로 연차 발생</small>
+                        </div>
                     </div>
                     <div class="form-actions">
                         <button type="button" id="cancelBtn" class="btn btn-secondary">취소</button>
@@ -159,5 +170,15 @@
     <script src="js/auth-guard.js"></script>
     <script src="js/data-manager.js"></script>
     <script src="js/branch-management.js"></script>
+    <script>
+        // 페이지 로드 후 아바타 아이콘 초기화 (한 번만 실행)
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                if (window.authManager && window.authManager.initializeNavAvatar) {
+                    window.authManager.initializeNavAvatar();
+                }
+            }, 300);
+        });
+    </script>
 </body>
 </html>

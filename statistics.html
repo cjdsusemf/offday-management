@@ -27,7 +27,7 @@
                 </a>
                 <div class="user-dropdown">
                     <a href="mypage.html" id="profile-link">
-                        <i class="fas fa-user"></i> 마이페이지
+                        <i class="fas fa-user" id="navAvatarIcon"></i> 마이페이지
                     </a>
                     <a href="#" id="logout-link">
                         <i class="fas fa-sign-out-alt"></i> 로그아웃
@@ -169,6 +169,31 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (!AuthGuard.checkAuth()) return;
+            
+            // 데이터 동기화 및 통계 초기화
+            const initializeStatistics = () => {
+                if (typeof window.dataManager !== 'undefined' && typeof window.authManager !== 'undefined') {
+                    console.log('통계 페이지 - 데이터 동기화 실행');
+                    
+                    // 데이터 일관성 검증 및 동기화
+                    window.authManager.validateAndFixDataConsistency();
+                    window.authManager.forceSyncUsersToEmployees();
+                    
+                    // 통계 클래스 초기화
+                    if (typeof Statistics !== 'undefined') {
+                        window.statistics = new Statistics();
+                        console.log('통계 페이지 초기화 완료');
+                    } else {
+                        console.error('Statistics 클래스를 찾을 수 없습니다.');
+                    }
+                } else {
+                    console.log('dataManager 또는 authManager 로드 대기 중...');
+                    setTimeout(initializeStatistics, 100);
+                }
+            };
+            
+            initializeStatistics();
+            
             const logout = document.getElementById('logout-link');
             if (logout) {
                 logout.addEventListener('click', (e) => {

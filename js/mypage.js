@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeMyPage();
     loadUserProfile();
     loadLeaveInfo();
+    loadBranches();
     loadLeaveHistory();
     setupEventListeners();
 });
@@ -30,8 +31,11 @@ function loadUserProfile() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
 
+    console.log('현재 사용자 데이터:', currentUser);
+
     // 프로필 정보 표시
     document.getElementById('displayName').textContent = currentUser.name || '-';
+    document.getElementById('displayBranch').textContent = currentUser.branch || '-';
     document.getElementById('displayDepartment').textContent = currentUser.department || '-';
     document.getElementById('displayPosition').textContent = currentUser.position || '-';
     document.getElementById('displayHireDate').textContent = formatDate(currentUser.joindate) || '-';
@@ -56,18 +60,129 @@ function loadProfileImage(imageUrl) {
         profileImg.style.display = 'none';
         defaultAvatar.style.display = 'block';
     }
+    
+    // 메뉴바 아바타 아이콘도 업데이트
+    if (window.authManager) {
+        window.authManager.updateNavAvatarIcon(imageUrl);
+    }
 }
 
 // 편집 폼에 현재 정보 채우기
 function fillEditForm(user) {
+    console.log('폼에 채울 사용자 데이터:', user);
+    
+    // 기본 필드들 먼저 설정
     document.getElementById('editName').value = user.name || '';
     document.getElementById('editEmail').value = user.email || '';
     document.getElementById('editPhone').value = user.phone || '';
-    document.getElementById('editDepartment').value = user.department || '';
     document.getElementById('editPosition').value = user.position || '';
     document.getElementById('editHireDate').value = user.joindate || '';
-    document.getElementById('editAddress').value = user.address || '';
     document.getElementById('editBirthDate').value = user.birthdate || '';
+    
+    // 지점과 부서는 데이터 로드 후 설정
+    loadBranchAndDepartmentData(user);
+    
+    console.log('폼 필드 값들:', {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        branch: user.branch,
+        department: user.department,
+        position: user.position,
+        joindate: user.joindate,
+        birthdate: user.birthdate
+    });
+}
+
+// 지점과 부서 데이터 로드 및 설정
+function loadBranchAndDepartmentData(user) {
+    let attempts = 0;
+    const maxAttempts = 50; // 5초간 시도
+    
+    const checkDataManager = () => {
+        attempts++;
+        console.log(`dataManager 확인 시도 ${attempts}/${maxAttempts}`);
+        
+        if (window.dataManager && window.dataManager.branches && window.dataManager.branches.length > 0) {
+            console.log('dataManager 로드 완료, 지점 데이터 설정 시작');
+            console.log('사용 가능한 지점들:', window.dataManager.branches.map(b => b.name));
+            
+            // 지점 데이터 로드
+            loadBranches();
+            
+            // 지점 값 설정
+            setTimeout(() => {
+                if (user.branch) {
+                    const branchSelect = document.getElementById('editBranch');
+                    if (branchSelect) {
+                        branchSelect.value = user.branch;
+                        console.log('지점 설정 완료:', user.branch);
+                        
+                        // 부서 로드 및 설정
+                        loadDepartmentsForBranch(user.branch);
+                        
+                        setTimeout(() => {
+                            if (user.department) {
+                                const departmentSelect = document.getElementById('editDepartment');
+                                if (departmentSelect) {
+                                    departmentSelect.value = user.department;
+                                    console.log('부서 설정 완료:', user.department);
+                                }
+                            }
+                        }, 200);
+                    }
+                }
+            }, 200);
+        } else if (attempts < maxAttempts) {
+            console.log('dataManager 로드 대기 중...', {
+                dataManager: !!window.dataManager,
+                branches: window.dataManager?.branches?.length || 0
+            });
+            setTimeout(checkDataManager, 100);
+        } else {
+            console.error('dataManager 로드 실패 - 최대 시도 횟수 초과');
+            // 수동으로 지점 데이터 설정
+            setBranchDataManually(user);
+        }
+    };
+    
+    checkDataManager();
+}
+
+// 수동으로 지점 데이터 설정 (dataManager 로드 실패 시)
+function setBranchDataManually(user) {
+    console.log('수동으로 지점 데이터 설정');
+    
+    const branchSelect = document.getElementById('editBranch');
+    if (branchSelect) {
+        // 기본 지점들 수동 추가
+        const defaultBranches = ['본사', '강남점', '영등포점', '부산점'];
+        branchSelect.innerHTML = '<option value="">소속지점을 선택하세요</option>';
+        
+        defaultBranches.forEach(branchName => {
+            const option = document.createElement('option');
+            option.value = branchName;
+            option.textContent = branchName;
+            branchSelect.appendChild(option);
+        });
+        
+        // 사용자 지점 설정
+        if (user.branch) {
+            branchSelect.value = user.branch;
+            console.log('수동 지점 설정 완료:', user.branch);
+            
+            // 부서도 수동 설정
+            const departmentSelect = document.getElementById('editDepartment');
+            if (departmentSelect) {
+                setDefaultDepartments(departmentSelect);
+                
+                if (user.department) {
+                    departmentSelect.value = user.department;
+                    console.log('수동 부서 설정 완료:', user.department);
+                }
+            }
+        }
+    }
 }
 
 // 이벤트 리스너 설정
@@ -84,10 +199,27 @@ function setupEventListeners() {
     const passwordForm = document.getElementById('passwordForm');
     passwordForm.addEventListener('submit', handlePasswordChange);
 
+    // 지점 선택 시 부서 로드
+    const branchSelect = document.getElementById('editBranch');
+    if (branchSelect) {
+        branchSelect.addEventListener('change', function() {
+            loadDepartmentsForBranch(this.value);
+        });
+    }
+
     // 로그아웃 버튼
     const logoutLink = document.getElementById('logout-link');
     if (logoutLink) {
         logoutLink.addEventListener('click', handleLogout);
+    }
+
+    // 페이지 로드 시 데이터 동기화 (마이페이지에서도)
+    if (typeof window.authManager !== 'undefined' && !window.mypageInitialized) {
+        console.log('마이페이지에서 데이터 동기화 실행');
+        // 데이터 일관성 검증 및 동기화
+        window.authManager.validateAndFixDataConsistency();
+        window.authManager.forceSyncUsersToEmployees();
+        window.mypageInitialized = true;
     }
 }
 
@@ -133,6 +265,11 @@ function updateUserProfileImage(imageData) {
     currentUser.profileImage = imageData;
     updateUserInStorage(currentUser);
     
+    // 메뉴바 아바타 아이콘도 업데이트
+    if (window.authManager) {
+        window.authManager.updateNavAvatarIcon(imageData);
+    }
+    
     showNotification('프로필 이미지가 업데이트되었습니다.', 'success');
 }
 
@@ -153,6 +290,11 @@ function removeProfileImage() {
     
     profileImg.style.display = 'none';
     defaultAvatar.style.display = 'block';
+
+    // 메뉴바 아바타 아이콘도 업데이트
+    if (window.authManager) {
+        window.authManager.updateNavAvatarIcon('');
+    }
 
     showNotification('프로필 이미지가 삭제되었습니다.', 'success');
 }
@@ -187,10 +329,29 @@ function handlePersonalInfoSubmit(event) {
     const formData = new FormData(event.target);
     const userData = {};
     
-    // 폼 데이터 수집
+    // 폼 데이터 수집 (disabled 필드 제외)
     for (let [key, value] of formData.entries()) {
+        const field = event.target.querySelector(`[name="${key}"]`);
+        // disabled 필드는 제외 (입사일은 readonly이므로 제외)
+        if (!field || field.disabled) {
+            continue;
+        }
         userData[key] = value;
     }
+
+    // 날짜 필드명 매핑 (HTML name → 사용자 데이터 필드명)
+    if (userData.hireDate) {
+        userData.joindate = userData.hireDate;
+        console.log('입사일 필드 매핑:', userData.hireDate, '→', userData.joindate);
+        delete userData.hireDate; // 원본 필드는 삭제
+    }
+    if (userData.birthDate) {
+        userData.birthdate = userData.birthDate;
+        console.log('생년월일 필드 매핑:', userData.birthDate, '→', userData.birthdate);
+        delete userData.birthDate; // 원본 필드는 삭제
+    }
+
+    console.log('개인정보 수정 - 입력 데이터 (매핑 후):', userData);
 
     // 유효성 검사
     if (!validatePersonalInfo(userData)) {
@@ -199,17 +360,130 @@ function handlePersonalInfoSubmit(event) {
 
     // 사용자 정보 업데이트
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.error('현재 사용자 정보를 찾을 수 없음');
+        return;
+    }
+
+    console.log('개인정보 수정 - 수정 전 사용자 데이터:', currentUser);
 
     // 정보 업데이트
     Object.assign(currentUser, userData);
-    updateUserInStorage(currentUser);
+    
+    console.log('개인정보 수정 - 수정 후 사용자 데이터:', currentUser);
+
+    // 데이터 저장
+    const saveResult = updateUserInStorage(currentUser);
+    console.log('개인정보 수정 - 저장 결과:', saveResult);
+
+    // 직원 데이터도 동기화
+    if (window.dataManager && saveResult) {
+        const employee = window.dataManager.employees.find(emp => emp.email === currentUser.email);
+        if (employee) {
+            // 직원 데이터 업데이트 (입사일은 제외 - 관리자만 변경 가능)
+            employee.name = currentUser.name;
+            employee.phone = currentUser.phone;
+            employee.branch = currentUser.branch;
+            employee.department = currentUser.department;
+            employee.position = currentUser.position;
+            // employee.hireDate = currentUser.joindate; // 입사일은 관리자만 변경 가능
+            employee.birthDate = currentUser.birthdate;
+            
+            window.dataManager.saveData('employees', window.dataManager.employees);
+            console.log('마이페이지 - 직원 데이터 동기화 완료:', employee);
+        } else {
+            // 직원 데이터가 없으면 새로 추가
+            console.log('마이페이지 - 직원 데이터 없음, 새로 추가');
+            if (typeof window.authManager !== 'undefined') {
+                window.authManager.addToEmployeeData(currentUser, currentUser);
+            }
+        }
+    }
 
     // UI 업데이트
     loadUserProfile();
     toggleEditMode();
 
     showNotification('개인정보가 성공적으로 업데이트되었습니다.', 'success');
+}
+
+// 지점 데이터 로드
+function loadBranches() {
+    const branchSelect = document.getElementById('editBranch');
+    if (!branchSelect) return;
+
+    console.log('지점 데이터 로드 시작');
+    console.log('dataManager:', window.dataManager);
+    console.log('branches:', window.dataManager?.branches);
+
+    // dataManager에서 지점 데이터 가져오기
+    if (window.dataManager && window.dataManager.branches && window.dataManager.branches.length > 0) {
+        branchSelect.innerHTML = '<option value="">소속지점을 선택하세요</option>';
+        window.dataManager.branches.forEach(branch => {
+            const option = document.createElement('option');
+            option.value = branch.name;
+            option.textContent = branch.name;
+            branchSelect.appendChild(option);
+        });
+        console.log('지점 옵션 로드 완료:', window.dataManager.branches.length + '개');
+    } else {
+        console.log('지점 데이터가 없음, 기본 옵션만 표시');
+        branchSelect.innerHTML = '<option value="">소속지점을 선택하세요</option>';
+    }
+}
+
+// 선택된 지점에 따른 부서 로드
+function loadDepartmentsForBranch(branchName) {
+    const departmentSelect = document.getElementById('editDepartment');
+    if (!departmentSelect) return;
+
+    console.log('부서 로드 시작:', branchName);
+    departmentSelect.innerHTML = '<option value="">팀/부서를 선택하세요</option>';
+    
+    if (!branchName) {
+        departmentSelect.disabled = true;
+        return;
+    }
+
+    // dataManager에서 해당 지점의 부서 데이터 가져오기
+    if (window.dataManager && window.dataManager.getBranchTeams) {
+        const teams = window.dataManager.getBranchTeams(branchName);
+        console.log('지점별 팀 목록:', teams);
+        
+        if (teams && teams.length > 0) {
+            departmentSelect.disabled = false;
+            console.log('팀 목록 로드:', teams);
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team;
+                option.textContent = team;
+                departmentSelect.appendChild(option);
+            });
+        } else {
+            // 지점별 팀 데이터가 없으면 기본 부서들 사용
+            console.log('지점별 팀 데이터 없음, 기본 부서 사용');
+            setDefaultDepartments(departmentSelect);
+        }
+    } else {
+        // dataManager가 없으면 기본 부서들 사용
+        console.log('dataManager 없음, 기본 부서 사용');
+        setDefaultDepartments(departmentSelect);
+    }
+}
+
+// 기본 부서 설정
+function setDefaultDepartments(departmentSelect) {
+    const defaultDepartments = ['경영관리팀', '택스팀', '컨설팅팀', '영업팀', '개발팀', '마케팅팀', '인사팀'];
+    departmentSelect.disabled = false;
+    
+    defaultDepartments.forEach(deptName => {
+        const option = document.createElement('option');
+        option.value = deptName;
+        option.textContent = deptName;
+        departmentSelect.appendChild(option);
+    });
+    
+    console.log('기본 부서 옵션 추가 완료');
 }
 
 // 개인정보 유효성 검사
@@ -244,10 +518,11 @@ function validatePersonalInfo(data) {
         return false;
     }
 
-    if (!data.hireDate || data.hireDate.trim() === '') {
-        showNotification('입사일을 입력해주세요.', 'error');
-        return false;
-    }
+    // 입사일은 관리자만 변경 가능하므로 유효성 검사에서 제외
+    // if (!data.joindate || data.joindate.trim() === '') {
+    //     showNotification('입사일을 입력해주세요.', 'error');
+    //     return false;
+    // }
 
     return true;
 }
@@ -435,6 +710,7 @@ function hideNotification() {
     const notification = document.getElementById('notification');
     notification.classList.remove('show');
 }
+
 
 // 전역 함수들 (HTML에서 호출)
 window.removeProfileImage = removeProfileImage;

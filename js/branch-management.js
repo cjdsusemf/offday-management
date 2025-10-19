@@ -56,6 +56,10 @@
                             <span>지점장: ${branch.manager}</span>
                         </div>
                     ` : ''}
+                    <div class="branch-info-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>연차기준: ${branch.leaveCalculationStandard === 'fiscal_year' ? '회계연도' : '입사일'}</span>
+                    </div>
                 </div>
                 ${branch.description ? `
                     <div class="branch-description">${branch.description}</div>
@@ -129,9 +133,13 @@
             form.phone.value = branch.phone || '';
             form.manager.value = branch.manager || '';
             form.description.value = branch.description || '';
+            form.leaveCalculationStandard.value = branch.leaveCalculationStandard || 'hire_date';
+            console.log('지점 수정 모달 열기 - 연차 계산 기준:', branch.leaveCalculationStandard);
         } else {
             title.textContent = '지점 추가';
             form.reset();
+            form.leaveCalculationStandard.value = 'hire_date'; // 기본값 설정
+            console.log('지점 추가 모달 열기 - 기본 연차 계산 기준: hire_date');
         }
 
         modal.style.display = 'block';
@@ -152,8 +160,11 @@
             address: formData.get('address').trim(),
             phone: formData.get('phone').trim(),
             manager: formData.get('manager').trim(),
-            description: formData.get('description').trim()
+            description: formData.get('description').trim(),
+            leaveCalculationStandard: formData.get('leaveCalculationStandard')
         };
+        
+        console.log('저장할 지점 데이터:', branchData);
 
         // 필수 필드 검증
         if (!branchData.name) {
@@ -174,7 +185,13 @@
             // 수정
             const index = dm.branches.findIndex(b => b.id === currentEditingId);
             if (index !== -1) {
-                dm.branches[index] = { ...dm.branches[index], ...branchData };
+                // 기존 데이터와 새 데이터 병합 (연차 계산 기준 포함)
+                dm.branches[index] = { 
+                    ...dm.branches[index], 
+                    ...branchData,
+                    leaveCalculationStandard: branchData.leaveCalculationStandard // 확실히 설정
+                };
+                console.log('지점 수정 완료:', dm.branches[index]);
             }
         } else {
             // 추가
@@ -218,6 +235,13 @@
         document.getElementById('branchForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
+            
+            // 폼 데이터 확인
+            console.log('폼 제출 데이터:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+            
             if (saveBranch(formData)) {
                 this.reset();
             }

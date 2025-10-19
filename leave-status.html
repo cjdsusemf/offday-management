@@ -5,6 +5,7 @@
     <title>연차관리 시스템 - 연차현황</title>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/dashboard.css">
+    <link rel="stylesheet" href="styles/leave-status.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
@@ -26,7 +27,7 @@
                 </a>
                 <div class="user-dropdown">
                     <a href="mypage.html" id="profile-link">
-                        <i class="fas fa-user"></i> 마이페이지
+                        <i class="fas fa-user" id="navAvatarIcon"></i> 마이페이지
                     </a>
                     <a href="#" id="logout-link">
                         <i class="fas fa-sign-out-alt"></i> 로그아웃
@@ -46,7 +47,10 @@
             <div class="personal-leave-dashboard">
                 <div class="dashboard-header">
                     <h3><i class="fas fa-user-circle"></i> 나의 연차 현황</h3>
-                    <div class="current-year">2024년 기준</div>
+                    <div class="header-info">
+                        <div class="calculation-criteria" id="calculation-criteria">연차계산 : 입사일 기준</div>
+                        <div class="current-year" id="current-year-display">2024년 기준</div>
+                    </div>
                 </div>
                 
                 <div class="leave-stats-grid">
@@ -333,10 +337,35 @@
     <script src="js/auth.js"></script>
     <script src="js/auth-guard.js"></script>
     <script src="js/data-manager.js"></script>
+    <script src="js/leave-calculation.js"></script>
     <script src="js/leave-status.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (!AuthGuard.checkAuth()) return;
+            
+            // 데이터 동기화 및 연차현황 초기화
+            const initializeLeaveStatus = () => {
+                if (typeof window.dataManager !== 'undefined' && typeof window.authManager !== 'undefined') {
+                    console.log('연차현황 페이지 - 데이터 동기화 실행');
+                    
+                    // 데이터 일관성 검증 및 동기화
+                    window.authManager.validateAndFixDataConsistency();
+                    window.authManager.forceSyncUsersToEmployees();
+                    
+                    // 연차현황 클래스 초기화
+                    if (typeof LeaveStatus !== 'undefined') {
+                        window.leaveStatus = new LeaveStatus();
+                        console.log('연차현황 페이지 초기화 완료');
+                    } else {
+                        console.error('LeaveStatus 클래스를 찾을 수 없습니다.');
+                    }
+                } else {
+                    console.log('dataManager 또는 authManager 로드 대기 중...');
+                    setTimeout(initializeLeaveStatus, 100);
+                }
+            };
+            
+            initializeLeaveStatus();
             
             const user = AuthGuard.getCurrentUser();
             if (user && document.getElementById('user-name')) {

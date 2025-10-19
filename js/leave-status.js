@@ -8,11 +8,61 @@ class LeaveStatus {
 
     init() {
         this.getCurrentUser();
+        this.updateCurrentYear();
+        this.updateCalculationCriteria();
         this.loadPersonalLeaveStats();
         this.loadMyRequests();
         this.loadMonthlyChart();
         this.loadPlanningStats();
         this.setupEventListeners();
+    }
+
+    // 현재 연도 표시 업데이트
+    updateCurrentYear() {
+        const currentYear = new Date().getFullYear();
+        const yearDisplay = document.getElementById('current-year-display');
+        if (yearDisplay) {
+            yearDisplay.textContent = `${currentYear}년 기준`;
+        }
+    }
+
+    // 계산 기준 정보 업데이트
+    updateCalculationCriteria() {
+        if (!this.currentUser) return;
+
+        const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
+        if (!employee) return;
+
+        // 지점의 연차 계산 기준 확인
+        const branch = this.dataManager.branches.find(b => b.name === employee.branch);
+        const calculationStandard = branch?.leaveCalculationStandard || 'hire_date';
+        
+        // 간단한 계산 기준 정보 생성
+        let criteriaText = '';
+        
+        if (calculationStandard === 'hire_date') {
+            criteriaText = '입사일 기준';
+        } else if (calculationStandard === 'fiscal_year') {
+            criteriaText = '회계연도 기준';
+        } else {
+            criteriaText = '입사일 기준';
+        }
+        
+        // 앞에 "연차계산 : " 접두사 추가
+        criteriaText = `연차계산 : ${criteriaText}`;
+
+        // 계산 기준 정보 표시
+        const criteriaElement = document.getElementById('calculation-criteria');
+        if (criteriaElement) {
+            criteriaElement.textContent = criteriaText;
+        }
+
+        console.log('연차 계산 기준 정보 업데이트:', {
+            employee: employee.name,
+            branch: employee.branch,
+            calculationStandard,
+            criteriaText
+        });
     }
 
     // 현재 사용자 정보 가져오기
@@ -46,13 +96,18 @@ class LeaveStatus {
     // 사용자별 연차 데이터 계산
     getUserLeaveData(userId) {
         const currentYear = new Date().getFullYear();
+        
+        // 사용자 정보를 통해 직원 ID 찾기
+        const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
+        const employeeId = employee ? employee.id : userId;
+        
         const userRequests = this.dataManager.leaveRequests.filter(
-            request => request.employeeId === userId && 
+            request => request.employeeId === employeeId && 
             new Date(request.startDate).getFullYear() === currentYear
         );
 
-        // 발생 연차 (기본 15일, 근속년수에 따라 증가)
-        const earned = this.calculateEarnedDays(userId);
+        // 발생 연차 (지점별 계산 기준 적용)
+        const earned = this.calculateEarnedDays(employeeId);
         
         // 사용한 연차 (승인된 연차)
         const used = userRequests
@@ -67,30 +122,22 @@ class LeaveStatus {
         // 남은 연차
         const remaining = earned - used - pending;
 
+        console.log(`연차 현황 - 발생: ${earned}, 사용: ${used}, 대기: ${pending}, 남은: ${remaining}`);
+
         return { earned, used, pending, remaining };
     }
 
-    // 발생 연차 계산 (근속년수 기반)
+    // 발생 연차 계산 - 지점별 연차 계산 기준 적용
     calculateEarnedDays(userId) {
-        const employee = this.dataManager.employees.find(emp => emp.id === userId);
-        if (!employee) return 15; // 기본 15일
-
-        const joinDate = new Date(employee.joinDate);
-        const currentDate = new Date();
-        const yearsOfService = currentDate.getFullYear() - joinDate.getFullYear();
-        
-        // 근속년수에 따른 연차 발생
-        if (yearsOfService < 1) return 11; // 1년 미만
-        if (yearsOfService < 2) return 15; // 1년 이상 2년 미만
-        if (yearsOfService < 3) return 16; // 2년 이상 3년 미만
-        if (yearsOfService < 4) return 17; // 3년 이상 4년 미만
-        if (yearsOfService < 5) return 18; // 4년 이상 5년 미만
-        if (yearsOfService < 6) return 19; // 5년 이상 6년 미만
-        if (yearsOfService < 7) return 20; // 6년 이상 7년 미만
-        if (yearsOfService < 8) return 21; // 7년 이상 8년 미만
-        if (yearsOfService < 9) return 22; // 8년 이상 9년 미만
-        if (yearsOfService < 10) return 23; // 9년 이상 10년 미만
-        return 24; // 10년 이상
+        if (window.LeaveCalculation) {
+            // 새로운 연차 계산 시스템 사용
+            const earnedDays = window.LeaveCalculation.calculateLeaveByBranchStandard(userId);
+            return earnedDays;
+        } else {
+            // 기존 계산 방식 (폴백)
+            console.log('LeaveCalculation이 로드되지 않음, 기존 방식 사용');
+            return 15; // 기본 15일
+        }
     }
 
     // 나의 연차 신청 목록 로드

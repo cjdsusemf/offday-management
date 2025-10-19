@@ -27,7 +27,7 @@
                 </a>
                 <div class="user-dropdown">
                     <a href="mypage.html" id="profile-link">
-                        <i class="fas fa-user"></i> 마이페이지
+                        <i class="fas fa-user" id="navAvatarIcon"></i> 마이페이지
                     </a>
                     <a href="#" id="logout-link">
                         <i class="fas fa-sign-out-alt"></i> 로그아웃
@@ -119,6 +119,10 @@
                                 <span>입사일</span>
                                 <i class="fas fa-sort"></i>
                             </th>
+                            <th class="sortable" data-sort="birthDate">
+                                <span>생년월일</span>
+                                <i class="fas fa-sort"></i>
+                            </th>
                             <th class="sortable" data-sort="annualLeaveDays">
                                 <span>총 연차</span>
                                 <i class="fas fa-sort"></i>
@@ -201,16 +205,28 @@
                         <label for="employeePosition">직급 *</label>
                         <select id="employeePosition" name="position" required class="form-select">
                             <option value="">직급을 선택하세요</option>
-                            <option value="사원">사원</option>
+                            <option value="매니저">매니저</option>
+                            <option value="주임">주임</option>
                             <option value="대리">대리</option>
                             <option value="과장">과장</option>
+                            <option value="차장">차장</option>
                             <option value="부장">부장</option>
+                            <option value="팀장">팀장</option>
+                            <option value="실장">실장</option>
                             <option value="이사">이사</option>
+                            <option value="상무">상무</option>
+                            <option value="전무">전무</option>
+                            <option value="대표이사">대표이사</option>
+                            <option value="사장">사장</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="employeeHireDate">입사일 *</label>
                         <input type="date" id="employeeHireDate" name="hireDate" required class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="employeeBirthDate">생년월일</label>
+                        <input type="date" id="employeeBirthDate" name="birthDate" class="form-input">
                     </div>
                     <div class="form-group">
                         <label for="employeeAnnualLeave">연차일수</label>
@@ -229,5 +245,15 @@
     <script src="js/auth-guard.js"></script>
     <script src="js/data-manager.js"></script>
     <script src="js/employee-management.js"></script>
+    <script>
+        // 페이지 로드 후 아바타 아이콘 초기화 (한 번만 실행)
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                if (window.authManager && window.authManager.initializeNavAvatar) {
+                    window.authManager.initializeNavAvatar();
+                }
+            }, 300);
+        });
+    </script>
 </body>
 </html>

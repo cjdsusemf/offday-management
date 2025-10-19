@@ -68,75 +68,17 @@ class DataManager {
 
     // 샘플 데이터 생성 (빈 배열로 시작)
     createSampleData() {
-        const sampleEmployees = [];
-
-        const sampleRequests = [
-            {
-                id: 1,
-                employeeId: 1,
-                employeeName: '김철수',
-                startDate: '2024-02-01',
-                endDate: '2024-02-03',
-                days: 3,
-                reason: '개인 휴가',
-                status: 'pending',
-                requestDate: '2024-01-28'
-            },
-            {
-                id: 2,
-                employeeId: 2,
-                employeeName: '이영희',
-                startDate: '2024-02-05',
-                endDate: '2024-02-05',
-                days: 1,
-                reason: '의료진료',
-                status: 'pending',
-                requestDate: '2024-01-30'
-            },
-            {
-                id: 3,
-                employeeId: 3,
-                employeeName: '박민수',
-                startDate: '2024-02-10',
-                endDate: '2024-02-12',
-                days: 3,
-                reason: '가족 행사',
-                status: 'pending',
-                requestDate: '2024-02-01'
-            },
-            {
-                id: 4,
-                employeeId: 1,
-                employeeName: '김철수',
-                startDate: '2024-02-15',
-                endDate: '2024-02-16',
-                days: 2,
-                reason: '개인 사정',
-                status: 'pending',
-                requestDate: '2024-02-05'
-            },
-            {
-                id: 5,
-                employeeId: 2,
-                employeeName: '이영희',
-                startDate: '2024-02-20',
-                endDate: '2024-02-22',
-                days: 3,
-                reason: '여행',
-                status: 'pending',
-                requestDate: '2024-02-10'
-            }
-        ];
-
-        this.employees = sampleEmployees;
-        this.leaveRequests = sampleRequests;
+        // 빈 배열로 초기화
+        this.employees = [];
+        this.leaveRequests = [];
+        this.deletedEmployees = [];
         
-        // 기존 데이터가 있으면 삭제하고 빈 배열로 초기화
+        // localStorage에 빈 데이터 저장
         this.saveData('employees', []);
         this.saveData('leaveRequests', []);
         this.saveData('deletedEmployees', []);
         
-        console.log('✅ 모든 직원 데이터와 연차 기록이 초기화되었습니다.');
+        console.log('✅ 직원 데이터가 빈 상태로 초기화되었습니다.');
     }
 
     // 샘플 지점 데이터 생성
@@ -149,7 +91,9 @@ class DataManager {
                 phone: '02-1234-5678',
                 manager: '김대표',
                 description: '본사 건물입니다.',
-                createdAt: '2024-01-01'
+                createdAt: '2024-01-01',
+                departments: ['경영관리팀', '개발팀', '마케팅팀', '인사팀'],
+                leaveCalculationStandard: 'hire_date' // 입사일 기준
             },
             {
                 id: 2,
@@ -158,25 +102,42 @@ class DataManager {
                 phone: '02-2345-6789',
                 manager: '이지점장',
                 description: '강남 지점입니다.',
-                createdAt: '2024-01-15'
+                createdAt: '2024-01-15',
+                departments: ['영업팀', '컨설팅팀', '지원팀'],
+                leaveCalculationStandard: 'fiscal_year' // 회계연도 기준
             },
             {
                 id: 3,
+                name: '영등포점',
+                address: '서울특별시 영등포구 영등포동 123',
+                phone: '02-3456-7890',
+                manager: '최지점장',
+                description: '영등포 지점입니다.',
+                createdAt: '2024-02-01',
+                departments: ['경영관리팀', '택스팀', '컨설팅팀'],
+                leaveCalculationStandard: 'hire_date' // 입사일 기준
+            },
+            {
+                id: 4,
                 name: '부산점',
                 address: '부산광역시 해운대구 우동 789',
                 phone: '051-3456-7890',
                 manager: '박지점장',
                 description: '부산 지점입니다.',
-                createdAt: '2024-02-01'
+                createdAt: '2024-02-01',
+                departments: ['영업팀', '마케팅팀'],
+                leaveCalculationStandard: 'fiscal_year' // 회계연도 기준
             },
             {
-                id: 4,
+                id: 5,
                 name: '서초점',
                 address: '서울특별시 서초구 서초동 101',
                 phone: '02-3456-7890',
                 manager: '최지점장',
                 description: '서초 지점입니다.',
-                createdAt: '2024-02-15'
+                createdAt: '2024-02-15',
+                departments: ['개발팀', '인사팀'],
+                leaveCalculationStandard: 'hire_date' // 입사일 기준
             },
             {
                 id: 5,
