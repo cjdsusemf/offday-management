@@ -59,6 +59,14 @@ class DataManager {
     saveData(key, data) {
         try {
             localStorage.setItem(key, JSON.stringify(data));
+            // 동일 탭에서도 변화를 감지할 수 있도록 커스텀 이벤트 디스패치
+            if (typeof window !== 'undefined' && window.dispatchEvent) {
+                try {
+                    window.dispatchEvent(new CustomEvent('dm:updated', { detail: { key } }));
+                } catch (e) {
+                    // 이벤트 디스패치는 실패해도 동작에 영향 없음
+                }
+            }
             return true;
         } catch (error) {
             console.error('데이터 저장 오류:', error);

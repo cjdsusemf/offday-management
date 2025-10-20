@@ -130,7 +130,12 @@
                         <div id="requests-tab" class="tab-content active">
                             <div id="my-requests" class="my-requests-list">
                                 <!-- 내 연차 신청 목록이 여기에 표시됩니다 -->
+                                <div class="empty-state">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    <p>연차 신청 내역이 없습니다.</p>
+                                </div>
                             </div>
+                            <!-- 필요 없어진 단일 신청 버튼 제거 -->
                         </div>
                         
                         <!-- 월별 현황 탭 -->
@@ -140,6 +145,7 @@
                                     <h4>월별 연차 사용 현황</h4>
                                     <div class="year-selector">
                                         <select id="year-selector">
+                                            <option value="2025">2025년</option>
                                             <option value="2024">2024년</option>
                                             <option value="2023">2023년</option>
                                         </select>
@@ -149,6 +155,16 @@
                                     <div class="chart-container">
                                         <div id="monthly-chart" class="monthly-bars">
                                             <!-- 월별 연차 사용량 차트가 여기에 표시됩니다 -->
+                                        </div>
+                                    </div>
+                                    <!-- 새 월별 상세 모달 -->
+                                    <div id="month-modal" class="lm-modal" aria-hidden="true">
+                                        <div class="lm-modal-dialog" role="dialog" aria-modal="true">
+                                            <div class="lm-modal-header">
+                                                <h3 id="month-modal-title">월별 상세</h3>
+                                                <button type="button" id="month-modal-close" class="lm-close" aria-label="닫기">&times;</button>
+                                            </div>
+                                            <div class="lm-modal-body" id="month-modal-body"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -263,23 +279,23 @@
                             <div class="pattern-item">
                                 <div class="pattern-label">휴가</div>
                                 <div class="pattern-bar">
-                                    <div class="pattern-fill vacation" style="width: 60%"></div>
+                                    <div class="pattern-fill vacation" id="bar-vacation" style="width: 0%"></div>
                                 </div>
-                                <div class="pattern-value">60%</div>
+                                <div class="pattern-value" id="bar-vacation-val">0%</div>
                             </div>
                             <div class="pattern-item">
                                 <div class="pattern-label">개인사정</div>
                                 <div class="pattern-bar">
-                                    <div class="pattern-fill personal" style="width: 25%"></div>
+                                    <div class="pattern-fill personal" id="bar-personal" style="width: 0%"></div>
                                 </div>
-                                <div class="pattern-value">25%</div>
+                                <div class="pattern-value" id="bar-personal-val">0%</div>
                             </div>
                             <div class="pattern-item">
                                 <div class="pattern-label">기타</div>
                                 <div class="pattern-bar">
-                                    <div class="pattern-fill other" style="width: 15%"></div>
+                                    <div class="pattern-fill other" id="bar-other" style="width: 0%"></div>
                                 </div>
-                                <div class="pattern-value">15%</div>
+                                <div class="pattern-value" id="bar-other-val">0%</div>
                             </div>
                         </div>
                     </div>

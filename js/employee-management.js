@@ -25,17 +25,28 @@
         }
 
         tbody.innerHTML = employees.map(emp => {
-            const usageRate = emp.annualLeaveDays > 0 ? (emp.usedLeaveDays / emp.annualLeaveDays * 100) : 0;
-            const usageClass = usageRate < 30 ? 'low' : usageRate < 70 ? 'medium' : 'high';
             
             const status = emp.status || 'active';
             const statusText = status === 'active' ? '재직' : '퇴사';
             const statusClass = status === 'active' ? 'status-active' : 'status-resigned';
             
+            // 지점별 연차 계산 기준 표시
+            let leaveStandard = '-';
+            try {
+                const branch = (emp.branch || '').toString();
+                const branchInfo = (dm.branches || []).find(b => b.name === branch);
+                const std = branchInfo?.leaveCalculationStandard || 'hire_date';
+                leaveStandard = std === 'fiscal_year' ? '회계연도' : '입사일';
+            } catch(_) {}
+
+            const stats = getComputedLeaveStats(emp);
+            const usageRate = stats.total > 0 ? (stats.used / stats.total * 100) : 0;
+            const usageClass = usageRate < 30 ? 'low' : usageRate < 70 ? 'medium' : 'high';
             return `
                 <tr data-id="${emp.id}" class="${status}">
                     <td><strong>${emp.name}</strong></td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td><span class="badge ${leaveStandard === '회계연도' ? 'badge-std-fiscal' : 'badge-std-hire'}">${leaveStandard}</span></td>
                     <td>${emp.department}</td>
                     <td>${emp.branch}</td>
                     <td>${emp.position}</td>
@@ -43,13 +54,14 @@
                     <td>${emp.phone || '-'}</td>
                     <td>${emp.hireDate}</td>
                     <td>${emp.birthDate || '-'}</td>
-                    <td>${emp.annualLeaveDays}일</td>
-                    <td>${emp.usedLeaveDays}일</td>
-                    <td>${emp.remainingLeaveDays}일</td>
+                    <td>${stats.total}일</td>
+                    <td>${stats.used}일</td>
+                    <td>${stats.remaining}일</td>
+                    <td><span class="badge ${leaveStandard === '회계연도' ? 'badge-std-fiscal' : 'badge-std-hire'}">${leaveStandard}</span></td>
                     <td>
                         <div class="usage-rate">
                             <div class="usage-bar">
-                                <div class="usage-fill ${usageClass}" style="width: ${usageRate}%"></div>
+                                <div class="usage-fill ${usageClass}" style="width: ${usageRate.toFixed(0)}%"></div>
                             </div>
                             <span class="usage-text">${usageRate.toFixed(0)}%</span>
                         </div>
@@ -85,6 +97,40 @@
         const countElement = document.getElementById('employeeCount');
         if (countElement) {
             countElement.textContent = `총 ${total}명의 직원`;
+        }
+    }
+
+    // 직원 연차 현황 산출(실제 leaveRequests 기준)
+    function getComputedLeaveStats(employee) {
+        try {
+            const currentYear = new Date().getFullYear();
+            // employeeId 혼재 대응(user.id/employee.id)
+            const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+            const users = dm?.users || JSON.parse(usersStorage);
+            const user = users.find(u => u.email === employee.email);
+            const identifiers = new Set([employee.id]);
+            if (user) identifiers.add(user.id);
+
+            const requests = (dm.leaveRequests || []).filter(r =>
+                identifiers.has(r.employeeId) &&
+                new Date(r.startDate).getFullYear() === currentYear
+            );
+
+            const used = requests
+                .filter(r => r.status === 'approved')
+                .reduce((sum, r) => sum + (r.days || 0), 0);
+
+            // 총 연차는 지점 기준 계산 우선 (직원 지점 기준 + 현재 날짜 기준)
+            let total = employee.annualLeaveDays || 15;
+            if (window.LeaveCalculation && typeof window.LeaveCalculation.calculateLeaveByBranchStandard === 'function') {
+                try {
+                    total = Math.round(window.LeaveCalculation.calculateLeaveByBranchStandard(employee.id));
+                } catch (_) {}
+            }
+            const remaining = Math.max(total - used, 0);
+            return { total, used, remaining };
+        } catch (e) {
+            return { total: employee.annualLeaveDays || 15, used: employee.usedLeaveDays || 0, remaining: employee.remainingLeaveDays || 0 };
         }
     }
 
@@ -177,14 +223,14 @@
             document.getElementById('employeePosition').value = employeeData.position || '';
             document.getElementById('employeeHireDate').value = employeeData.hireDate || employeeData.joindate || '';
             document.getElementById('employeeBirthDate').value = employeeData.birthDate || '';
-            document.getElementById('employeeAnnualLeave').value = employeeData.annualLeaveDays || 15;
+            // annualLeaveDays는 지점 기준 계산을 사용하므로 편집 제외
             
             // 지점과 부서 데이터 로드 및 설정
             loadBranchAndDepartmentDataWithValues(employeeData);
         } else {
             // 추가 모드 - 폼 초기화
             form.reset();
-            document.getElementById('employeeAnnualLeave').value = 15;
+            // annualLeaveDays 입력 제거
             // 추가 모드에서도 지점 데이터 로드
             loadBranchAndDepartmentData();
         }
@@ -316,8 +362,7 @@
             branch: formData.get('branch'),
             position: formData.get('position'),
             hireDate: formData.get('hireDate'),
-            birthDate: formData.get('birthDate'),
-            annualLeaveDays: parseInt(formData.get('annualLeaveDays')) || 15
+            birthDate: formData.get('birthDate')
         };
 
         // 이메일 중복 체크
@@ -593,17 +638,7 @@
             });
         }
 
-        // 로그아웃 처리
-        const logoutLink = document.getElementById('logout-link');
-        if (logoutLink) {
-            logoutLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (confirm('정말 로그아웃하시겠습니까?')) {
-                    window.authManager && window.authManager.logout && window.authManager.logout();
-                    window.location.href = 'login.html';
-                }
-            });
-        }
+        // 로그아웃 처리는 auth.js에서 전역으로 처리됨
 
         // 엑셀 내보내기
         const exportBtn = document.getElementById('exportBtn');

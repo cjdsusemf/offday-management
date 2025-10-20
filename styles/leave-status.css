@@ -246,6 +246,17 @@
     overflow: hidden;
 }
 
+/* 새 모달 컴포넌트 */
+.lm-modal { display:none; position: fixed; inset:0; background: rgba(0,0,0,0.45); z-index: 1000; }
+.lm-modal-dialog { background:#fff; width: 560px; max-width: 92vw; margin: 12vh auto; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+.lm-modal-header { display:flex; justify-content: space-between; align-items:center; padding: 14px 18px; background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+.lm-modal-body { padding: 16px 18px; max-height: 62vh; overflow:auto; }
+.lm-close { background: transparent; border: 0; color:#fff; font-size: 22px; cursor: pointer; }
+.lm-list { display:flex; flex-direction: column; gap: 10px; }
+.lm-item { border:1px solid #eee; border-left:4px solid #667eea; border-radius: 8px; padding: 10px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.lm-item .period { font-weight:600; margin-bottom: 4px; }
+.lm-summary { padding: 8px 10px; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc; margin-bottom: 12px; font-weight: 600; color:#334155; }
+
 .leave-activity-section .card-header {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     color: white;

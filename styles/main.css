@@ -393,6 +393,8 @@ body {
     border-radius: 15px;
     width: 90%;
     max-width: 600px;
+    max-height: 85vh; /* 공통 모달 최대 높이 제한 */
+    overflow-y: auto; /* 공통 모달 스크롤 활성화 */
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     animation: slideIn 0.3s ease;
 }

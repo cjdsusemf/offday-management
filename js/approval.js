@@ -11,14 +11,15 @@
       return; 
     }
     wrap.innerHTML = list.map(r=>{
-      const employee = dm.employees.find(emp => emp.id === r.employeeId);
-      const branch = employee ? employee.branch : '알 수 없음';
+      const employee = resolveEmployee(r);
+      const branch = employee ? (employee.branch || '-') : '-';
+      const department = employee ? (employee.department || '-') : '-';
       const isSelected = selectedItems.has(r.id); // 현재 항목이 선택되었는지 확인
       return `
         <div class="approval-item ${isSelected ? 'selected' : ''}" data-id="${r.id}">
           <input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} data-id="${r.id}">
           <div>
-            <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch">${branch}</span></div>
+            <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch">${branch}</span> <span class="approval-dept">${department}</span></div>
             <div class="approval-meta">기간: ${r.startDate} ~ ${r.endDate} (${r.days}일)  신청일: ${r.requestDate || '-'}</div>
             <div class="approval-meta">사유: ${r.reason || '-'}</div>
           </div>
@@ -43,8 +44,8 @@
     const reqs = dm.leaveRequests || [];
     
     return reqs.filter(r => {
-      const employee = dm.employees.find(emp => emp.id === r.employeeId);
-      const branch = employee ? employee.branch : '';
+      const employee = resolveEmployee(r);
+      const branch = employee ? (employee.branch || '') : '';
       
       const matchesSearch = !searchTerm || r.employeeName.toLowerCase().includes(searchTerm);
       const matchesBranch = branchFilter === 'all' || branch === branchFilter;
@@ -52,6 +53,25 @@
       
       return matchesSearch && matchesBranch && matchesStatus;
     });
+  }
+
+  // 직원 정보 해석 (employeeId/userId/이름 기준 모두 시도)
+  function resolveEmployee(request){
+    if (!dm) return null;
+    // 1) employeeId가 직원 ID인 경우
+    let emp = dm.employees.find(e => e.id === request.employeeId);
+    if (emp) return emp;
+    // 2) employeeId가 사용자 ID인 경우 -> 사용자 이메일로 직원 찾기
+    if (dm.users) {
+      const user = dm.users.find(u => u.id === request.employeeId || u.email === request.employeeName);
+      if (user) {
+        emp = dm.employees.find(e => e.email === user.email);
+        if (emp) return emp;
+      }
+    }
+    // 3) 이름으로 매칭 (동명이인 가능하므로 마지막 수단)
+    emp = dm.employees.find(e => e.name === request.employeeName);
+    return emp || null;
   }
   
   function updateBulkButtons(){
@@ -87,6 +107,62 @@
   }
   
   function refresh(){ render(getFiltered()); }
+
+  // 템플릿 다운로드(CSV)
+  function downloadTemplate(){
+    const header = ['email','startDate','endDate','days','type','reason'];
+    const example = ['user@example.com','2025-01-10','2025-01-12','3','vacation','가족 행사'];
+    const csv = [header.join(','), example.join(',')].join('\n');
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'leave_template.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // 엑셀/CSV 업로드 파서(간단 CSV 지원)
+  function parseCSV(text){
+    const lines = text.trim().split(/\r?\n/);
+    const header = lines.shift().split(',').map(h=>h.trim());
+    return lines.map(line => {
+      const cols = line.split(',').map(c=>c.trim());
+      const row = {}; header.forEach((h,i)=>row[h]=cols[i]||'');
+      return row;
+    });
+  }
+
+  function handleExcelUpload(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result;
+      const rows = parseCSV(text);
+      let added = 0; let skipped = 0;
+      rows.forEach(row => {
+        const email = row.email; const employee = dm.employees.find(e=>e.email===email);
+        if(!employee){ skipped++; return; }
+        // 기본 검증
+        if(!row.startDate || !row.endDate || !row.days || !row.type){ skipped++; return; }
+        const req = {
+          id: Date.now()+Math.floor(Math.random()*10000),
+          employeeId: employee.id,
+          employeeName: employee.name || email,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          days: parseFloat(row.days),
+          type: row.type,
+          reason: row.reason || '',
+          status: 'pending',
+          requestDate: new Date().toISOString().split('T')[0]
+        };
+        dm.leaveRequests.push(req); added++;
+      });
+      dm.saveData('leaveRequests', dm.leaveRequests);
+      alert(`업로드 완료: 추가 ${added}건, 건너뜀 ${skipped}건`);
+      refresh();
+    };
+    reader.readAsText(file, 'utf-8');
+  }
   
   // 개별 항목 클릭 처리 (승인/거부 버튼, 체크박스)
   function handleItemClick(e){
@@ -226,16 +302,73 @@
     document.getElementById('bulkApprove').addEventListener('click', handleBulkApprove);
     document.getElementById('bulkReject').addEventListener('click', handleBulkReject);
 
-    const logout=document.getElementById('logout-link');
-    if(logout){
-      logout.addEventListener('click', function(e){
+    // 템플릿 다운로드
+    const btnTpl = document.getElementById('btnDownloadTemplate');
+    if(btnTpl) btnTpl.addEventListener('click', downloadTemplate);
+
+    // 엑셀 업로드
+    const excelInput = document.getElementById('excelUpload');
+    if(excelInput) excelInput.addEventListener('change', (e)=>{ if(e.target.files[0]) handleExcelUpload(e.target.files[0]); });
+
+    // 연차 등록 모달
+    const btnAdd = document.getElementById('btnAddRequest');
+    const modal = document.getElementById('adminAddModal');
+    const closeBtn = document.getElementById('adminAddClose');
+    const cancelBtn = document.getElementById('adminAddCancel');
+    const form = document.getElementById('adminAddForm');
+
+    function closeModal(){ if(modal){ modal.style.display='none'; document.body.style.overflow='auto'; } }
+
+    if(btnAdd && modal){
+      btnAdd.addEventListener('click', ()=>{ modal.style.display='block'; document.body.style.overflow='hidden'; });
+    }
+    if(closeBtn) closeBtn.addEventListener('click', closeModal);
+    if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // 모달 내 일수 자동 계산 및 사유 토글
+    const admStart = document.getElementById('adm-start');
+    const admEnd = document.getElementById('adm-end');
+    const admDays = document.getElementById('adm-days');
+    const admType = document.getElementById('adm-type');
+    const admReason = document.getElementById('adm-reason');
+    const admReasonGroup = document.getElementById('adm-reason-group');
+
+    function calcAdmDays(){
+      if(!admStart.value || !admEnd.value) return;
+      const s=new Date(admStart.value); const e=new Date(admEnd.value);
+      if(s>e) return; const diff=(e-s)/(1000*60*60*24)+1; admDays.value = diff;
+    }
+    if(admStart) admStart.addEventListener('change', calcAdmDays);
+    if(admEnd) admEnd.addEventListener('change', calcAdmDays);
+    function toggleAdmReason(){ const isOther = admType.value==='other'; admReasonGroup.style.display=isOther?'':'none'; admReason.disabled=!isOther; if(!isOther) admReason.value=''; }
+    if(admType){ toggleAdmReason(); admType.addEventListener('change', toggleAdmReason); }
+
+    if(form){
+      form.addEventListener('submit', (e)=>{
         e.preventDefault();
-        if(confirm('정말 로그아웃하시겠습니까?')){
-          window.authManager.logout();
-          location.href='login.html';
-        }
+        const email = document.getElementById('adm-email').value.trim();
+        const emp = dm.employees.find(emp=>emp.email===email);
+        if(!emp){ alert('직원 이메일을 찾을 수 없습니다.'); return; }
+        if(!admStart.value || !admEnd.value || !admDays.value){ alert('날짜/일수 입력을 확인해주세요.'); return; }
+        const req = {
+          id: Date.now()+Math.floor(Math.random()*10000),
+          employeeId: emp.id,
+          employeeName: emp.name || email,
+          startDate: admStart.value,
+          endDate: admEnd.value,
+          days: parseFloat(admDays.value),
+          type: admType.value,
+          reason: admType.value==='other' ? (admReason.value || '') : '',
+          status: 'pending',
+          requestDate: new Date().toISOString().split('T')[0]
+        };
+        dm.leaveRequests.push(req); dm.saveData('leaveRequests', dm.leaveRequests);
+        alert('연차 신청이 등록되었습니다.');
+        closeModal(); refresh();
       });
     }
+
+    // 로그아웃 처리는 auth.js에서 전역으로 처리됨
     refresh();
   });
 })();

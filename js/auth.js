@@ -3,6 +3,8 @@
         this.initializeDefaultUsers();
         // dataManager가 로드된 후 자동 동기화 실행
         this.setupAutoSync();
+        // 중복 초기화 방지
+        this.isInitialized = false;
     }
     
     getStoredUsers() { 
@@ -699,15 +701,20 @@
             }
         };
         
-        // DOM이 로드된 후 동기화 실행
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
+        // DOM이 로드된 후 동기화 실행 (중복 방지)
+        if (!this.isInitialized) {
+            this.isInitialized = true;
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    checkDataManager();
+                    this.initializeNavAvatar();
+                    this.setupLogoutListener();
+                });
+            } else {
                 checkDataManager();
                 this.initializeNavAvatar();
-            });
-        } else {
-            checkDataManager();
-            this.initializeNavAvatar();
+                this.setupLogoutListener();
+            }
         }
     }
     
@@ -717,6 +724,44 @@
         if (currentUser) {
             this.updateNavAvatarIcon(currentUser.profileImage);
         }
+    }
+    
+    // 로그아웃 이벤트 리스너 설정
+    setupLogoutListener() {
+        // 전역 로그아웃 핸들러가 이미 등록되었는지 확인
+        if (window.globalLogoutHandler) {
+            return;
+        }
+        
+        const logoutLink = document.getElementById('logout-link');
+        if (logoutLink) {
+            // 전역 로그아웃 핸들러 등록
+            window.globalLogoutHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                console.log('로그아웃 버튼 클릭됨');
+                this.showLogoutConfirmation();
+            };
+            
+            logoutLink.addEventListener('click', window.globalLogoutHandler, true);
+            logoutLink.setAttribute('data-logout-listener', 'true');
+            console.log('전역 로그아웃 리스너 설정 완료');
+        }
+    }
+    
+    
+    
+    // 로그아웃 확인 팝업 표시
+    showLogoutConfirmation() {
+        console.log('로그아웃 확인 팝업 표시');
+        const confirmed = confirm('정말 로그아웃하시겠습니까?');
+        console.log('사용자 선택:', confirmed ? '확인' : '취소');
+        if (confirmed) {
+            this.logout();
+            window.location.href = 'login.html';
+        }
+        // 취소를 누르면 아무것도 하지 않음 (팝업만 닫힘)
     }
 }
 

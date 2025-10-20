@@ -208,81 +208,76 @@
 /* 컬럼별 너비 설정 */
 .employee-table th:nth-child(1), /* 이름 */
 .employee-table td:nth-child(1) {
-    width: 100px;
-    min-width: 100px;
+    width: 120px;
+    min-width: 110px;
 }
 
 .employee-table th:nth-child(2), /* 상태 */
-.employee-table td:nth-child(2) {
-    width: 80px;
-    min-width: 80px;
+.employee-table td:nth-child(2) { width: 70px; min-width: 70px; }
+
+/* 연차 기준 배지 */
+.badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.badge-std {
+    background: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #c7d2fe;
 }
 
-.employee-table th:nth-child(3), /* 부서 */
-.employee-table td:nth-child(3) {
-    width: 100px;
-    min-width: 100px;
+/* 연차 기준 배지 - 입사일/회계연도 구분 */
+/* 고대비/상보 색상 조합 */
+.badge-std-hire {
+    background: #dbeafe;   /* blue-100 */
+    color: #1d4ed8;        /* blue-700 */
+    border: 1px solid #93c5fd; /* blue-300 */
+}
+.badge-std-fiscal {
+    background: #fff1e6;   /* orange-100 */
+    color: #c2410c;        /* orange-700 */
+    border: 1px solid #fdba74; /* orange-300 */
 }
 
-.employee-table th:nth-child(4), /* 지점 */
-.employee-table td:nth-child(4) {
-    width: 80px;
-    min-width: 80px;
-}
+.employee-table th:nth-child(3), /* 연차 기준 */
+.employee-table td:nth-child(3) { width: 95px; min-width: 90px; }
 
-.employee-table th:nth-child(5), /* 직급 */
-.employee-table td:nth-child(5) {
-    width: 80px;
-    min-width: 80px;
-}
+.employee-table th:nth-child(4), /* 부서 */
+.employee-table td:nth-child(4) { width: 120px; min-width: 110px; }
 
-.employee-table th:nth-child(6), /* 이메일 */
-.employee-table td:nth-child(6) {
-    width: 180px;
-    min-width: 180px;
-}
+.employee-table th:nth-child(5), /* 지점 */
+.employee-table td:nth-child(5) { width: 100px; min-width: 90px; }
 
-.employee-table th:nth-child(7), /* 전화번호 */
-.employee-table td:nth-child(7) {
-    width: 120px;
-    min-width: 120px;
-}
+.employee-table th:nth-child(6), /* 직급 */
+.employee-table td:nth-child(6) { width: 70px; min-width: 70px; }
 
-.employee-table th:nth-child(8), /* 입사일 */
-.employee-table td:nth-child(8) {
-    width: 100px;
-    min-width: 100px;
-}
+.employee-table th:nth-child(7), /* 이메일 */
+.employee-table td:nth-child(7) { width: 220px; min-width: 210px; }
 
-.employee-table th:nth-child(9), /* 총 연차 */
-.employee-table td:nth-child(9) {
-    width: 80px;
-    min-width: 80px;
-}
+.employee-table th:nth-child(8), /* 전화번호 */
+.employee-table td:nth-child(8) { width: 130px; min-width: 120px; }
 
-.employee-table th:nth-child(10), /* 사용 */
-.employee-table td:nth-child(10) {
-    width: 60px;
-    min-width: 60px;
-}
+.employee-table th:nth-child(9), /* 입사일 */
+.employee-table td:nth-child(9) { width: 100px; min-width: 90px; }
 
-.employee-table th:nth-child(11), /* 잔여 */
-.employee-table td:nth-child(11) {
-    width: 60px;
-    min-width: 60px;
-}
+.employee-table th:nth-child(10), /* 총 연차 */
+.employee-table td:nth-child(10) { width: 70px; min-width: 70px; }
 
-.employee-table th:nth-child(12), /* 사용률 */
-.employee-table td:nth-child(12) {
-    width: 100px;
-    min-width: 100px;
-}
+.employee-table th:nth-child(11), /* 사용 */
+.employee-table td:nth-child(11) { width: 60px; min-width: 60px; }
 
-.employee-table th:nth-child(13), /* 작업 */
-.employee-table td:nth-child(13) {
-    width: 120px;
-    min-width: 120px;
-}
+.employee-table th:nth-child(12), /* 잔여 */
+.employee-table td:nth-child(12) { width: 60px; min-width: 60px; }
+
+.employee-table th:nth-child(13), /* 사용률 */
+.employee-table td:nth-child(13) { width: 120px; min-width: 110px; }
+
+.employee-table th:nth-child(14), /* 작업 */
+.employee-table td:nth-child(14) { width: 110px; min-width: 100px; }
 
 .employee-actions-btns {
     display: flex;

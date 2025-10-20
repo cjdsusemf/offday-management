@@ -14,16 +14,7 @@
   window.addEventListener('DOMContentLoaded', function(){
     if (!window.AuthGuard || !AuthGuard.checkAuth()) return;
 
-    var logoutLink=document.getElementById('logout-link');
-    if(logoutLink){
-      logoutLink.addEventListener('click', function(e){
-        e.preventDefault();
-        if(confirm('정말 로그아웃하시겠습니까?')){
-          window.authManager && window.authManager.logout && window.authManager.logout();
-          window.location.href='login.html';
-        }
-      });
-    }
+    // 로그아웃 처리는 auth.js에서 전역으로 처리됨
 
     // 지점관리 링크는 이제 branch-management.html로 직접 이동하므로 모달 제거
 

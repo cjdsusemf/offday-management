@@ -2,6 +2,8 @@
 (function(){
     let dm;
     let currentEditingId = null;
+    // 수정 모달에서 기존 연차 계산 기준을 보관하여 변경 여부를 알림으로 안내
+    let originalLeaveCalculationStandard = null;
 
     // 지점 목록 렌더링
     function renderBranchList(branches) {
@@ -134,11 +136,14 @@
             form.manager.value = branch.manager || '';
             form.description.value = branch.description || '';
             form.leaveCalculationStandard.value = branch.leaveCalculationStandard || 'hire_date';
+            // 기존 값을 저장하여 저장 시 변경 여부를 확인
+            originalLeaveCalculationStandard = branch.leaveCalculationStandard || 'hire_date';
             console.log('지점 수정 모달 열기 - 연차 계산 기준:', branch.leaveCalculationStandard);
         } else {
             title.textContent = '지점 추가';
             form.reset();
             form.leaveCalculationStandard.value = 'hire_date'; // 기본값 설정
+            originalLeaveCalculationStandard = 'hire_date';
             console.log('지점 추가 모달 열기 - 기본 연차 계산 기준: hire_date');
         }
 
@@ -192,6 +197,10 @@
                     leaveCalculationStandard: branchData.leaveCalculationStandard // 확실히 설정
                 };
                 console.log('지점 수정 완료:', dm.branches[index]);
+                // 연차 계산 기준 변경 시 알림
+                if (originalLeaveCalculationStandard && originalLeaveCalculationStandard !== branchData.leaveCalculationStandard) {
+                    alert('연차 계산 기준이 변경되었습니다. 변경 내용이 저장되었습니다.');
+                }
             }
         } else {
             // 추가
@@ -249,6 +258,13 @@
 
         // 모달 닫기 이벤트
         document.getElementById('closeModal').addEventListener('click', closeModal);
+        // 취소 버튼으로 모달 닫기
+        const cancelBtn = document.getElementById('cancelBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function(){
+                closeModal();
+            });
+        }
         document.getElementById('branchModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();

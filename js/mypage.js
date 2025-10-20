@@ -10,6 +10,13 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeMyPage();
     loadUserProfile();
     loadLeaveInfo();
+    // 데이터 변경 시 휴가 정보와 신청 내역도 즉시 동기화
+    window.addEventListener('dm:updated', (e) => {
+        if (['leaveRequests','employees','branches','settings'].includes(e.detail?.key)) {
+            loadLeaveInfo();
+            loadLeaveHistory();
+        }
+    });
     loadBranches();
     loadLeaveHistory();
     setupEventListeners();
@@ -207,11 +214,7 @@ function setupEventListeners() {
         });
     }
 
-    // 로그아웃 버튼
-    const logoutLink = document.getElementById('logout-link');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', handleLogout);
-    }
+    // 로그아웃 처리는 auth.js에서 전역으로 처리됨
 
     // 페이지 로드 시 데이터 동기화 (마이페이지에서도)
     if (typeof window.authManager !== 'undefined' && !window.mypageInitialized) {
@@ -595,32 +598,77 @@ function loadLeaveInfo() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
 
-    // 연차 계산 (입사일 기준)
-    const hireDate = new Date(currentUser.joindate);
-    const currentDate = new Date();
-    const yearsWorked = Math.floor((currentDate - hireDate) / (365.25 * 24 * 60 * 60 * 1000));
-    
-    // 기본 연차 (1년차: 15일, 2년차 이상: 15일 + (근속년수-1)일, 최대 25일)
-    const totalLeave = Math.min(15 + Math.max(0, yearsWorked - 1), 25);
-    
-    // 사용한 연차 (실제 데이터가 없으므로 임시로 0)
-    const usedLeave = currentUser.usedLeave || 0;
-    const remainingLeave = totalLeave - usedLeave;
+    // LeaveStatus와 동일 로직으로 계산해 동기화
+    const dm = window.dataManager || new DataManager();
+
+    // 직원/사용자 ID 혼재 대응 - 연차현황과 동일한 방식 사용
+    const employee = dm.employees.find(emp => emp.email === currentUser.email);
+    const employeeId = employee ? employee.id : null;
+    const userIdForRequests = currentUser.id;
+
+    // 총 연차 (지점별 기준 활용) - 연차현황과 동일하게 employeeId 또는 userIdForRequests 사용
+    let totalLeave = 15;
+    if (window.LeaveCalculation) {
+        // 연차현황과 동일: employeeId가 있으면 사용, 없으면 userIdForRequests 사용
+        const idForCalculation = employeeId || userIdForRequests;
+        totalLeave = window.LeaveCalculation.calculateLeaveByBranchStandard(idForCalculation);
+        console.log(`마이페이지 - 계산 ID: ${idForCalculation}, 계산된 총 연차: ${totalLeave}`);
+    } else {
+        console.log(`마이페이지 - LeaveCalculation이 없음, 기본값 15일 사용`);
+    }
+
+    // 사용한 연차 (승인된 요청 합)
+    const currentYear = new Date().getFullYear();
+    const approvedUsed = dm.leaveRequests
+        .filter(req => (req.employeeId === userIdForRequests || (employeeId !== null && req.employeeId === employeeId))
+            && new Date(req.startDate).getFullYear() === currentYear
+            && req.status === 'approved')
+        .reduce((sum, r) => sum + (r.days || 0), 0);
+
+    // 대기 중인 연차 (연차현황과 동일하게 계산)
+    const pendingUsed = dm.leaveRequests
+        .filter(req => (req.employeeId === userIdForRequests || (employeeId !== null && req.employeeId === employeeId))
+            && new Date(req.startDate).getFullYear() === currentYear
+            && req.status === 'pending')
+        .reduce((sum, r) => sum + (r.days || 0), 0);
+
+    // 남은 연차 = 총 연차 - 사용 연차 - 대기 중인 연차 (연차현황과 동일)
+    const remainingLeave = Math.max(totalLeave - approvedUsed - pendingUsed, 0);
 
     // UI 업데이트
     document.getElementById('totalLeave').textContent = totalLeave + '일';
-    document.getElementById('usedLeave').textContent = usedLeave + '일';
+    document.getElementById('usedLeave').textContent = approvedUsed + '일';
     document.getElementById('remainingLeave').textContent = remainingLeave + '일';
+
+    // 헤더 배지에 연차계산 기준 표시 (입사일/회계연도)
+    const criteriaEl = document.getElementById('leaveCriteriaText');
+    if (criteriaEl) {
+        let criteria = '입사일 기준';
+        if (employee) {
+            const branch = dm.branches.find(b => b.name === employee.branch);
+            const standard = branch?.leaveCalculationStandard || 'hire_date';
+            criteria = standard === 'fiscal_year' ? '회계연도 기준' : '입사일 기준';
+        }
+        criteriaEl.textContent = criteria;
+    }
 }
 
-// 휴가 신청 내역 로드
+// 휴가 신청 내역 로드 - 연차현황과 동일한 방식으로 수정
 function loadLeaveHistory() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
 
-    // 로컬 스토리지에서 휴가 신청 내역 가져오기
-    const leaveRequests = JSON.parse(localStorage.getItem('leaveRequests') || '[]');
-    const userLeaveRequests = leaveRequests.filter(request => request.employeeId === currentUser.id);
+    // dataManager 사용 (연차현황과 동일)
+    const dm = window.dataManager || new DataManager();
+    
+    // 혼재된 employeeId 값(사용자 id 또는 직원 id) 모두 수용 (연차현황과 동일)
+    const employee = dm.employees.find(emp => emp.email === currentUser.email);
+    const employeeId = employee ? employee.id : null;
+    
+    const userLeaveRequests = dm.leaveRequests
+        .filter(request => request.employeeId === currentUser.id || (employeeId !== null && request.employeeId === employeeId))
+        .sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate))
+        .slice(0, 5);
 
     const leaveHistoryContainer = document.getElementById('leaveHistory');
     
@@ -628,23 +676,21 @@ function loadLeaveHistory() {
         leaveHistoryContainer.innerHTML = '<div class="no-data">휴가 신청 내역이 없습니다.</div>';
         return;
     }
-
-    // 최근 5개만 표시
-    const recentRequests = userLeaveRequests.slice(-5).reverse();
     
+    // 연차현황과 동일한 HTML 구조로 표시
     let historyHTML = '';
-    recentRequests.forEach(request => {
+    userLeaveRequests.forEach(request => {
         const statusClass = getStatusClass(request.status);
         const statusText = getStatusText(request.status);
         
         historyHTML += `
             <div class="leave-history-item">
                 <div class="leave-info">
-                    <div class="leave-type"></div>
-                    <div class="leave-dates"> ~ </div>
-                    <div class="leave-days">일</div>
+                    <div class="leave-type">연차</div>
+                    <div class="leave-dates">${request.startDate} ~ ${request.endDate}</div>
+                    <div class="leave-days">${request.days}일</div>
                 </div>
-                <div class="leave-status "></div>
+                <div class="leave-status ${statusClass}">${statusText}</div>
             </div>
         `;
     });
@@ -672,14 +718,7 @@ function getStatusText(status) {
     }
 }
 
-// 로그아웃 처리
-function handleLogout(event) {
-    event.preventDefault();
-    
-    if (confirm('로그아웃 하시겠습니까?')) {
-        AuthGuard.logout();
-    }
-}
+// 로그아웃 처리는 auth.js에서 전역으로 처리됨
 
 // 유틸리티 함수들
 function isValidEmail(email) {

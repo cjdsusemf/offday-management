@@ -2,7 +2,81 @@
 class Statistics {
     constructor() {
         this.dataManager = window.dataManager;
+        this.currentUser = getCurrentUser();
+        
+        // 데이터 변경 시 통계 자동 새로고침
+        window.addEventListener('dm:updated', (e) => {
+            if (['leaveRequests','employees','branches','settings'].includes(e.detail?.key)) {
+                console.log('통계 페이지 - 데이터 변경 감지, 통계 새로고침');
+                this.refresh();
+            }
+        });
+        
         this.init();
+    }
+
+    // 공통: 현재 필터에 맞는 직원/연차신청 목록 반환
+    getFilteredData(options = {}) {
+        const year = document.getElementById('year-filter')?.value || new Date().getFullYear().toString();
+        const branch = document.getElementById('branch-filter')?.value || 'all';
+        const department = document.getElementById('department-filter')?.value || 'all';
+        let startDate = document.getElementById('start-date')?.value || '';
+        let endDate = document.getElementById('end-date')?.value || '';
+
+        // 연도 전체 집계를 강제하고 싶은 경우(부서별 섹션)
+        if (options.yearOnly === true) {
+            startDate = `${year}-01-01`;
+            endDate = `${year}-12-31`;
+        }
+
+        const employees = this.dataManager.employees;
+        const normalize = (v) => (v || '').toString().trim().toLowerCase();
+        const selBranch = normalize(branch);
+        const selDept = normalize(department);
+
+        // 직원 필터
+        const filteredEmployees = employees.filter(emp => {
+            const b = normalize(emp.branch);
+            const d = normalize(emp.department);
+            if (branch !== 'all' && b !== selBranch) return false;
+            if (department !== 'all' && d !== selDept) return false;
+            return true;
+        });
+
+        // 신청 필터 + employeeId/userId 혼재 매핑
+        const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+        const users = this.dataManager?.users || JSON.parse(usersStorage);
+        const employeeById = new Map(this.dataManager.employees.map(e => [e.id, e]));
+        const employeeByEmail = new Map(this.dataManager.employees.map(e => [normalize(e.email), e]));
+        const userById = new Map(users.map(u => [u.id, u]));
+
+        const filteredRequests = this.dataManager.leaveRequests.filter(req => {
+            // 직원 매핑
+            let emp = employeeById.get(req.employeeId);
+            if (!emp) {
+                const user = userById.get(req.employeeId);
+                if (user) emp = employeeByEmail.get(normalize(user.email));
+            }
+            // 지점/부서 필터
+            if (emp) {
+                const b = normalize(emp.branch);
+                const d = normalize(emp.department);
+                if (branch !== 'all' && b !== selBranch) return false;
+                if (department !== 'all' && d !== selDept) return false;
+            } else {
+                // 직원 매핑 실패 시 전체가 아니면 제외
+                if (branch !== 'all' || department !== 'all') return false;
+            }
+
+            // 연/기간 필터
+            const reqDate = new Date((req.startDate || '').toString());
+            if (reqDate.getFullYear() != year) return false;
+            if (startDate && reqDate < new Date(startDate)) return false;
+            if (endDate && reqDate > new Date(endDate)) return false;
+            return true;
+        });
+
+        return { year, branch, department, startDate, endDate, employees: filteredEmployees, requests: filteredRequests };
     }
 
     init() {
@@ -17,29 +91,50 @@ class Statistics {
     // 필터 옵션 로드
     loadFilterOptions() {
         const employees = this.dataManager.employees;
-        const branches = [...new Set(employees.map(emp => emp.branch).filter(Boolean))];
-        const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+        const norm = (v) => (v || '').toString().trim();
+        const branches = [...new Set(employees.map(emp => norm(emp.branch)).filter(Boolean))];
+        const departments = [...new Set(employees.map(emp => norm(emp.department)).filter(Boolean))];
 
         console.log('필터 옵션 로드:', { branches, departments });
 
         // 지점 필터 옵션 로드
         const branchFilter = document.getElementById('branch-filter');
         if (branchFilter) {
+            const current = branchFilter.value;
             branchFilter.innerHTML = '<option value="all">전체 지점</option>' + 
                 branches.map(branch => `<option value="${branch}">${branch}</option>`).join('');
+            if (current && current !== 'all') {
+                branchFilter.value = current;
+            }
         }
 
         // 부서 필터 옵션 로드
         const departmentFilter = document.getElementById('department-filter');
         if (departmentFilter) {
+            const currentDept = departmentFilter.value;
             departmentFilter.innerHTML = '<option value="all">전체 부서</option>' + 
                 departments.map(dept => `<option value="${dept}">${dept}</option>`).join('');
+            if (currentDept && currentDept !== 'all') {
+                departmentFilter.value = currentDept;
+            }
         }
 
-        // 연도 필터 기본값 설정
+        // 연도 필터 기본값 설정 (현재 연도)
         const yearFilter = document.getElementById('year-filter');
-        if (yearFilter && !yearFilter.value) {
+        if (yearFilter) {
             yearFilter.value = new Date().getFullYear().toString();
+        }
+        
+        // 날짜 필터 기본값 설정 (현재 날짜 기준)
+        const startDateFilter = document.getElementById('start-date');
+        const endDateFilter = document.getElementById('end-date');
+        if (startDateFilter && !startDateFilter.value) {
+            const currentYear = new Date().getFullYear();
+            startDateFilter.value = `${currentYear}-01-01`;
+        }
+        if (endDateFilter && !endDateFilter.value) {
+            const today = new Date();
+            endDateFilter.value = today.toISOString().split('T')[0];
         }
     }
 
@@ -68,6 +163,11 @@ class Statistics {
             const deptCard = e.target.closest('.department-card');
             if (deptCard) {
                 const deptName = deptCard.querySelector('.department-name').textContent;
+                // 이미 열린 모달이 있으면 먼저 제거하여 중복 방지
+                const existing = document.querySelector('.modal');
+                if (existing) {
+                    try { document.body.removeChild(existing); } catch (_) {}
+                }
                 this.showDepartmentDetail(deptName);
             }
         });
@@ -87,8 +187,18 @@ class Statistics {
 
         const totalEmployees = employees.length;
         
-        // 총 연차 일수 계산 (각 직원의 연차 일수 합계)
-        const totalLeaveDays = employees.reduce((sum, emp) => sum + (emp.annualLeaveDays || 0), 0);
+        // 총 연차 일수 계산 (지점별 연차 계산 기준 적용)
+        let totalLeaveDays = 0;
+        if (window.LeaveCalculation) {
+            // 각 직원의 실제 연차 일수를 지점별 기준으로 계산
+            totalLeaveDays = employees.reduce((sum, emp) => {
+                const calculatedDays = window.LeaveCalculation.calculateLeaveByBranchStandard(emp.id);
+                return sum + calculatedDays;
+            }, 0);
+        } else {
+            // 폴백: 기존 방식 사용
+            totalLeaveDays = employees.reduce((sum, emp) => sum + (emp.annualLeaveDays || 15), 0);
+        }
         
         // 실제 사용된 연차 일수 계산 (승인된 연차 신청의 일수 합계)
         const usedLeaveDays = leaveRequests
@@ -132,21 +242,34 @@ class Statistics {
             department,
             startDate,
             endDate,
-            leaveRequestsCount: leaveRequests.length
+            leaveRequestsCount: leaveRequests.length,
+            container: container
         });
 
         const monthlyData = this.calculateMonthlyData(leaveRequests, year, branch, department, startDate, endDate);
         
         console.log('월별 데이터:', monthlyData);
+        console.log('컨테이너 존재 여부:', !!container);
         
         const maxVal = Math.max(1, ...monthlyData.map(d => d.days));
         
         if (container) {
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth(); // 0-11
+            const isCurrentYear = parseInt(year) === currentYear;
+            
             container.innerHTML = monthlyData.map((data, index) => {
                 const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
                 const height = Math.max((data.days / maxVal) * 200, 4);
+                
+                // 현재 연도이고 현재 월 이후인 경우 스타일 변경
+                const isFutureMonth = isCurrentYear && index > currentMonth;
+                const opacity = isFutureMonth ? 0.3 : 1;
+                const cursorStyle = isFutureMonth ? 'not-allowed' : 'default';
+                
                 return `
-                    <div class="month-bar" style="height: ${height}px;">
+                    <div class="month-bar" style="height: ${height}px; opacity: ${opacity}; cursor: ${cursorStyle};" 
+                         title="${isFutureMonth ? '미래 월 (데이터 없음)' : ''}">
                         <div class="month-value">${data.days}일</div>
                         <div class="month-label">${monthNames[index]}</div>
                     </div>
@@ -180,22 +303,43 @@ class Statistics {
             }
             approvedRequests++;
 
-            const employee = employees.find(emp => emp.id === request.employeeId);
+            // 직원 매핑: employee.id 또는 user.id 기반 혼재 데이터 대응
+            let employee = employees.find(emp => emp.id === request.employeeId);
+            if (!employee) {
+                // 사용자 테이블에서 조회 후 이메일로 직원 매핑
+                const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+                const users = this.dataManager?.users || JSON.parse(usersStorage);
+                const user = users.find(u => u.id === request.employeeId);
+                if (user) {
+                    employee = employees.find(emp => emp.email === user.email);
+                }
+            }
             if (!employee) {
                 console.log(`요청 ${processedRequests}: 직원을 찾을 수 없음 - employeeId: ${request.employeeId}`);
-                return;
+                // 지점/부서 필터가 전체일 때는 포함(과거 데이터 호환)
+                if (branch !== 'all' || department !== 'all') {
+                    return;
+                }
             }
 
-            if (branch !== 'all' && employee.branch !== branch) {
+            // 지점/부서 이름 정규화 비교 (공백/대소문자 차이 보정)
+            const normalize = (v) => (v || '').toString().trim().toLowerCase();
+            const employeeBranch = employee ? normalize(employee.branch) : '';
+            const employeeDept = employee ? normalize(employee.department) : '';
+            const selectedBranch = normalize(branch);
+            const selectedDept = normalize(department);
+
+            if (employee && branch !== 'all' && employeeBranch !== selectedBranch) {
                 console.log(`요청 ${processedRequests}: 지점 필터 불일치 - ${employee.branch} vs ${branch}`);
                 return;
             }
-            if (department !== 'all' && employee.department !== department) {
+            if (employee && department !== 'all' && employeeDept !== selectedDept) {
                 console.log(`요청 ${processedRequests}: 부서 필터 불일치 - ${employee.department} vs ${department}`);
                 return;
             }
 
-            const requestDate = new Date(request.startDate);
+            // 날짜는 시작일 기준, 문자열 안정화
+            const requestDate = new Date((request.startDate || '').toString());
             if (requestDate.getFullYear() != year) {
                 console.log(`요청 ${processedRequests}: 연도 불일치 - ${requestDate.getFullYear()} vs ${year}`);
                 return;
@@ -227,15 +371,16 @@ class Statistics {
         return monthlyData;
     }
 
-    // 부서별 통계 로드
+    // 부서별 통계 로드 (필터 적용)
     loadDepartmentStats() {
-        const employees = this.dataManager.employees;
-        const leaveRequests = this.dataManager.leaveRequests;
+        // 연도 필터 기준으로 해당 연도 전체(1~12월) 집계
+        const { year, employees, requests } = this.getFilteredData({ yearOnly: true });
         const container = document.getElementById('department-stats');
 
         console.log('부서별 통계 로드:', {
             employeesCount: employees.length,
-            leaveRequestsCount: leaveRequests.length
+            leaveRequestsCount: requests.length,
+            year
         });
 
         // 부서별 데이터 그룹화
@@ -251,19 +396,34 @@ class Statistics {
                 };
             }
             departmentData[employee.department].employees.push(employee);
-            departmentData[employee.department].totalLeaveDays += (employee.annualLeaveDays || 0);
+            // 지점 기준 연차 계산 사용 (가능하면)
+            if (window.LeaveCalculation) {
+                departmentData[employee.department].totalLeaveDays += window.LeaveCalculation.calculateLeaveByBranchStandard(employee.id);
+            } else {
+                departmentData[employee.department].totalLeaveDays += (employee.annualLeaveDays || 15);
+            }
         });
 
-        // 실제 연차 신청 데이터로 사용된 연차 일수 계산
-        leaveRequests.forEach(request => {
-            const employee = employees.find(emp => emp.id === request.employeeId);
-            if (employee && departmentData[employee.department]) {
-                if (request.status === 'approved') {
-                    departmentData[employee.department].usedLeaveDays += request.days;
-                } else if (request.status === 'pending') {
-                    departmentData[employee.department].pendingRequests++;
-                }
+        // 실제 연차 신청 데이터(필터된)로 사용/대기 집계
+        const normalize = (v) => (v || '').toString().trim().toLowerCase();
+        const empById = new Map(employees.map(e => [e.id, e]));
+        const empByEmail = new Map(employees.map(e => [normalize(e.email), e]));
+        const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+        const users = this.dataManager?.users || JSON.parse(usersStorage);
+        const userById = new Map(users.map(u => [u.id, u]));
+
+        requests.forEach(request => {
+            // 요청이 어떤 부서 소속인지 찾기 (필터된 직원 목록에서, user.id 호환)
+            let emp = empById.get(request.employeeId);
+            if (!emp) {
+                const user = userById.get(request.employeeId);
+                if (user) emp = empByEmail.get(normalize(user.email));
             }
+            if (!emp) return;
+            const bucket = departmentData[emp.department];
+            if (!bucket) return;
+            if (request.status === 'approved') bucket.usedLeaveDays += (request.days || 0);
+            else if (request.status === 'pending') bucket.pendingRequests += 1;
         });
 
         console.log('부서별 데이터:', departmentData);
@@ -304,14 +464,13 @@ class Statistics {
         }).join('');
     }
 
-    // 연차 사용 패턴 로드
+    // 연차 사용 패턴 로드 (필터 적용)
     loadLeavePatterns() {
-        const leaveRequests = this.dataManager.leaveRequests;
-        
-        const singleDayLeaves = leaveRequests.filter(req => req.days === 1 && req.status === 'approved').length;
-        const multiDayLeaves = leaveRequests.filter(req => req.days > 1 && req.status === 'approved').length;
-        const pendingLeaves = leaveRequests.filter(req => req.status === 'pending').length;
-        const approvedLeaves = leaveRequests.filter(req => req.status === 'approved').length;
+        const { requests } = this.getFilteredData();
+        const singleDayLeaves = requests.filter(req => req.days === 1 && req.status === 'approved').length;
+        const multiDayLeaves = requests.filter(req => req.days > 1 && req.status === 'approved').length;
+        const pendingLeaves = requests.filter(req => req.status === 'pending').length;
+        const approvedLeaves = requests.filter(req => req.status === 'approved').length;
 
         document.getElementById('single-day-leaves').textContent = singleDayLeaves;
         document.getElementById('multi-day-leaves').textContent = multiDayLeaves;
@@ -343,8 +502,9 @@ class Statistics {
 
     // 부서 상세 모달 표시
     showDepartmentDetail(departmentName) {
-        const employees = this.dataManager.employees.filter(emp => emp.department === departmentName);
-        const leaveRequests = this.dataManager.leaveRequests;
+        const { year, employees: filteredEmployees, requests } = this.getFilteredData({ yearOnly: true });
+        const employees = filteredEmployees.filter(emp => emp.department === departmentName);
+        const leaveRequests = requests;
         
         const modal = document.createElement('div');
         modal.className = 'modal';
@@ -357,24 +517,40 @@ class Statistics {
                 </div>
                 <div class="modal-body">
                     <div class="employee-detail-list">
-                        ${employees.map(emp => {
-                            const empRequests = leaveRequests.filter(req => req.employeeId === emp.id);
-                            const pendingCount = empRequests.filter(req => req.status === 'pending').length;
-                            return `
-                                <div class="employee-detail-item">
-                                    <div class="emp-info">
-                                        <strong>${emp.name}</strong> (${emp.position})
-                                        <span class="emp-branch">${emp.branch}</span>
+                        ${(() => {
+                            const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+                            const users = this.dataManager?.users || JSON.parse(usersStorage);
+                            const normalize = (v) => (v || '').toString().trim().toLowerCase();
+                            const userByEmail = new Map(users.map(u => [normalize(u.email), u]));
+                            return employees.map(emp => {
+                                // 총 연차(지점 기준)
+                                let totalDays = 15;
+                                if (window.LeaveCalculation) totalDays = window.LeaveCalculation.calculateLeaveByBranchStandard(emp.id);
+
+                                // employeeId/userId 혼재 대응
+                                const user = userByEmail.get(normalize(emp.email));
+                                const idSet = new Set([emp.id]);
+                                if (user) idSet.add(user.id);
+                                const empRequests = leaveRequests.filter(r => idSet.has(r.employeeId));
+                                const approvedDays = empRequests.filter(r => r.status === 'approved').reduce((s, r) => s + (r.days || 0), 0);
+                                const pendingCount = empRequests.filter(r => r.status === 'pending').length;
+                                const remaining = Math.max(totalDays - approvedDays, 0);
+                                return `
+                                    <div class="employee-detail-item">
+                                        <div class="emp-info">
+                                            <strong>${emp.name}</strong> (${emp.position})
+                                            <span class="emp-branch">${emp.branch}</span>
+                                        </div>
+                                        <div class="emp-stats">
+                                            <span>총: ${totalDays}일</span>
+                                            <span>사용: ${approvedDays}일</span>
+                                            <span>잔여: ${remaining}일</span>
+                                            <span class="pending-count">대기: ${pendingCount}건</span>
+                                        </div>
                                     </div>
-                                    <div class="emp-stats">
-                                        <span>총: ${emp.annualLeaveDays}일</span>
-                                        <span>사용: ${emp.usedLeaveDays}일</span>
-                                        <span>잔여: ${emp.remainingLeaveDays}일</span>
-                                        <span class="pending-count">대기: ${pendingCount}건</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
+                                `;
+                            }).join('');
+                        })()}
                     </div>
                 </div>
             </div>
@@ -382,14 +558,32 @@ class Statistics {
         
         document.body.appendChild(modal);
         
-        // 모달 닫기 이벤트
-        modal.querySelector('.close').addEventListener('click', () => {
-            document.body.removeChild(modal);
-        });
-        
+        // 단일 위임형 닫기 핸들러 (중복리스너 방지)
+        const content = modal.querySelector('.modal-content');
+        const closeBtn = modal.querySelector('.close');
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                if (document.body.contains(modal)) document.body.removeChild(modal);
+                window.removeEventListener('keydown', escHandler);
+            }
+        };
+        window.addEventListener('keydown', escHandler);
+
+        // X 버튼 한 번 클릭으로 즉시 닫기 (직접 핸들러)
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (document.body.contains(modal)) document.body.removeChild(modal);
+                window.removeEventListener('keydown', escHandler);
+            }, { once: true });
+        }
+
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                document.body.removeChild(modal);
+            const isCloseClick = closeBtn && (e.target === closeBtn || closeBtn.contains(e.target));
+            const clickedOutside = content && !content.contains(e.target);
+            if (isCloseClick || clickedOutside) {
+                if (document.body.contains(modal)) document.body.removeChild(modal);
+                window.removeEventListener('keydown', escHandler);
             }
         });
     }

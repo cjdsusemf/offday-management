@@ -13,6 +13,11 @@ class Calendar {
         this.setupEventListeners();
         this.renderCalendar();
         this.loadLeaveData();
+        // 데이터 변경 시 자동 동기화
+        window.addEventListener('dm:updated', () => {
+            this.renderCalendar();
+            this.loadLeaveData();
+        });
     }
 
     setupEventListeners() {
@@ -37,11 +42,16 @@ class Calendar {
             this.loadLeaveData();
         });
 
-        // 지점 필터
-        document.getElementById('branch-filter').addEventListener('change', (e) => {
-            this.selectedBranch = e.target.value;
-            this.loadLeaveData();
-        });
+        // 지점 필터 (실제 데이터 기반 옵션 채움 + 변경 시 동기화)
+        const branchSelect = document.getElementById('branch-filter');
+        if (branchSelect) {
+            this.populateBranchOptions();
+            branchSelect.addEventListener('change', (e) => {
+                this.selectedBranch = e.target.value === 'all' ? '' : e.target.value;
+                this.renderCalendar();
+                this.loadLeaveData();
+            });
+        }
 
         // 연차 신청 버튼
         document.getElementById('leave-request-btn').addEventListener('click', () => {
@@ -145,12 +155,30 @@ class Calendar {
         // DataManager에서 실제 연차 데이터 가져오기
         const leaveRequests = this.dataManager.leaveRequests || [];
         const employees = this.dataManager.employees || [];
+        // 사용자-직원 매핑 지원 (user.id / employee.id 혼재 대응)
+        const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+        const users = this.dataManager?.users || JSON.parse(usersStorage);
+        const userById = new Map(users.map(u => [u.id, u]));
+        const employeeById = new Map(employees.map(e => [e.id, e]));
+        const norm = (v) => (v || '').toString().trim().toLowerCase();
+        const employeeByEmail = new Map(employees.map(e => [norm(e.email), e]));
+
+        // 기존 표시 초기화
+        document.querySelectorAll('.leave-indicator').forEach(el => el.innerHTML = '');
+        document.querySelectorAll('.calendar-day').forEach(el => {
+            el.classList.remove('has-leave', 'has-pending');
+        });
         
         // 각 날짜에 연차 정보 표시
         leaveRequests.forEach(request => {
             const startDate = new Date(request.startDate);
             const endDate = new Date(request.endDate);
-            const employee = employees.find(emp => emp.id === request.employeeId);
+            // employeeId가 user.id인 경우 이메일로 직원 매핑
+            let employee = employeeById.get(request.employeeId);
+            if (!employee) {
+                const user = userById.get(request.employeeId);
+                if (user) employee = employeeByEmail.get(norm(user.email));
+            }
             
             if (!employee) return;
             
@@ -195,11 +223,28 @@ class Calendar {
     }
 
     shouldShowLeave(request, employee) {
-        // 지점 필터 적용
-        if (this.selectedBranch && employee.branch !== this.selectedBranch) {
-            return false;
+        // 지점 필터 적용 (공백/대소문자 정규화)
+        if (this.selectedBranch) {
+            const norm = (v) => (v || '').toString().trim().toLowerCase();
+            if (norm(employee.branch) !== norm(this.selectedBranch)) {
+                return false;
+            }
         }
         return true;
+    }
+
+    // 지점 옵션을 실제 직원 데이터로 채움
+    populateBranchOptions() {
+        const branchSelect = document.getElementById('branch-filter');
+        if (!branchSelect || !this.dataManager) return;
+        const employees = this.dataManager.employees || [];
+        const branches = Array.from(new Set(
+            employees.map(e => (e.branch || '').toString().trim()).filter(Boolean)
+        ));
+        const current = branchSelect.value;
+        branchSelect.innerHTML = '<option value="all">전체 지점</option>' +
+            branches.map(b => `<option value="${b}">${b}</option>`).join('');
+        if (current && current !== 'all') branchSelect.value = current;
     }
 
     showLeaveDetails(date) {
@@ -282,8 +327,11 @@ class Calendar {
         const form = document.getElementById('quick-leave-form');
         
         dateInput.value = dateStr;
-        document.getElementById('quick-type').value = '연차';
-        document.getElementById('quick-reason').value = '';
+        document.getElementById('quick-type').value = 'vacation';
+        const reasonInput = document.getElementById('quick-reason');
+        const reasonGroup = reasonInput ? reasonInput.closest('.form-group') : null;
+        if (reasonGroup) reasonGroup.style.display = 'none';
+        if (reasonInput) { reasonInput.value = ''; reasonInput.disabled = true; reasonInput.required = false; }
         
         form.onsubmit = (e) => {
             e.preventDefault();
@@ -295,7 +343,8 @@ class Calendar {
         // 연차 신청 처리
         submitQuickLeaveRequest(dateStr) {
             const type = document.getElementById('quick-type').value;
-            const reason = document.getElementById('quick-reason').value;
+            const reasonInput = document.getElementById('quick-reason');
+            const reason = type === 'other' && reasonInput ? reasonInput.value : '';
             const currentUser = window.AuthGuard.getCurrentUser();
             
             if (!currentUser) {
@@ -343,6 +392,9 @@ class Calendar {
         const title = document.getElementById('modal-title');
         const startDateInput = document.getElementById('start-date');
         const endDateInput = document.getElementById('end-date');
+        const leaveTypeSelect = document.getElementById('leave-type');
+        const reasonTextarea = document.getElementById('reason');
+        const reasonGroup = document.getElementById('reason-group');
 
         // 모달 제목 설정
         if (selectedDate) {
@@ -376,6 +428,18 @@ class Calendar {
                 totalDaysInput.value = daysDiff;
             }
         }, 100);
+
+        // 사유 입력창 토글(기타일 때만 표시)
+        const toggleReason = () => {
+            if (!leaveTypeSelect || !reasonTextarea || !reasonGroup) return;
+            const isOther = leaveTypeSelect.value === 'other';
+            reasonGroup.style.display = isOther ? '' : 'none';
+            reasonTextarea.disabled = !isOther;
+            reasonTextarea.required = isOther;
+            if (!isOther) reasonTextarea.value = '';
+        };
+        toggleReason();
+        if (leaveTypeSelect) leaveTypeSelect.addEventListener('change', toggleReason);
     }
 
     // 연차 신청 모달 닫기

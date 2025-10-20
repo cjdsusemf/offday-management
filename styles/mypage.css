@@ -44,6 +44,20 @@ section:hover {
     align-items: center;
 }
 
+/* 휴가정보 헤더 우측 툴 배지 */
+.section-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #fff;
+    background: rgba(255,255,255,0.12);
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    border: 1px solid rgba(255,255,255,0.25);
+}
+.section-tools i { font-size: 0.9rem; }
+
 .section-header h3 {
     margin: 0;
     font-size: 1.25rem;
