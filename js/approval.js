@@ -3,6 +3,46 @@
   let dm;
   let selectedItems = new Set(); // 선택된 항목 ID를 저장하는 Set
   
+  // 지점별 색상 캐시 (동적 생성)
+  const branchColorCache = {};
+
+  function generateBranchColor(branch) {
+    // 이미 캐시된 색상이 있으면 반환
+    if (branchColorCache[branch]) {
+      return branchColorCache[branch];
+    }
+
+    // 지점명을 해시하여 일관된 색상 생성
+    let hash = 0;
+    for (let i = 0; i < branch.length; i++) {
+      hash = branch.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // 해시값을 기반으로 HSL 색상 생성
+    const hue = Math.abs(hash) % 360;
+    const saturation = 70 + (Math.abs(hash) % 20); // 70-90%
+    const lightness = 85 + (Math.abs(hash) % 10); // 85-95% (연한 배경)
+    
+    const bgColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    const textColor = `hsl(${hue}, ${saturation}%, 30%)`; // 진한 텍스트
+    const borderColor = `hsl(${hue}, ${saturation}%, 60%)`; // 중간 톤 테두리
+
+    const colorScheme = {
+      bg: bgColor,
+      color: textColor,
+      border: borderColor
+    };
+
+    // 캐시에 저장
+    branchColorCache[branch] = colorScheme;
+    return colorScheme;
+  }
+
+  function getBranchStyle(branch) {
+    const colorScheme = generateBranchColor(branch);
+    return `background: ${colorScheme.bg}; color: ${colorScheme.color}; border: 1px solid ${colorScheme.border};`;
+  }
+
   function render(list){
     const wrap=document.getElementById('approvalList');
     if(!wrap) return;
@@ -15,11 +55,12 @@
       const branch = employee ? (employee.branch || '-') : '-';
       const department = employee ? (employee.department || '-') : '-';
       const isSelected = selectedItems.has(r.id); // 현재 항목이 선택되었는지 확인
+      const branchStyle = getBranchStyle(branch);
       return `
         <div class="approval-item ${isSelected ? 'selected' : ''}" data-id="${r.id}">
           <input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} data-id="${r.id}">
           <div>
-            <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch">${branch}</span> <span class="approval-dept">${department}</span></div>
+            <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch" style="${branchStyle}">${branch}</span> <span class="approval-dept">${department}</span></div>
             <div class="approval-meta">기간: ${r.startDate} ~ ${r.endDate} (${r.days}일)  신청일: ${r.requestDate || '-'}</div>
             <div class="approval-meta">사유: ${r.reason || '-'}</div>
           </div>
@@ -108,60 +149,229 @@
   
   function refresh(){ render(getFiltered()); }
 
-  // 템플릿 다운로드(CSV)
+  // 템플릿 다운로드(Excel) - 한국어 헤더
   function downloadTemplate(){
-    const header = ['email','startDate','endDate','days','type','reason'];
-    const example = ['user@example.com','2025-01-10','2025-01-12','3','vacation','가족 행사'];
-    const csv = [header.join(','), example.join(',')].join('\n');
-    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'leave_template.csv';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // SheetJS 라이브러리가 로드되었는지 확인
+    if (typeof XLSX === 'undefined') {
+      alert('엑셀 라이브러리를 로드하는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    
+    const header = ['이메일','시작일','종료일','일수','유형','사유'];
+    const examples = [
+      ['user1@company.com','2025-01-15','2025-01-17','3','휴가','가족 행사'],
+      ['user2@company.com','2025-01-20','2025-01-20','1','개인사정','개인 용무'],
+      ['user3@company.com','2025-01-25','2025-01-25','1','병가','감기로 인한 휴가'],
+      ['user4@company.com','2025-02-01','2025-02-03','3','기타','결혼식 참석']
+    ];
+    
+    // 워크북 생성
+    const wb = XLSX.utils.book_new();
+    
+    // 데이터 시트 생성
+    const ws_data = [header, ...examples];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    
+    // 컬럼 너비 설정
+    ws['!cols'] = [
+      { wch: 25 }, // 이메일
+      { wch: 12 }, // 시작일
+      { wch: 12 }, // 종료일
+      { wch: 8 },  // 일수
+      { wch: 12 }, // 유형
+      { wch: 20 }  // 사유
+    ];
+    
+    // 시트를 워크북에 추가
+    XLSX.utils.book_append_sheet(wb, ws, '연차등록');
+    
+    // 파일 다운로드
+    XLSX.writeFile(wb, '연차등록_양식.xlsx');
   }
 
-  // 엑셀/CSV 업로드 파서(간단 CSV 지원)
+  // 엑셀/CSV 업로드 파서(간단 CSV 지원) - 한국어/영어 헤더 모두 지원
   function parseCSV(text){
     const lines = text.trim().split(/\r?\n/);
     const header = lines.shift().split(',').map(h=>h.trim());
+    
+    // 한국어 헤더를 영어로 매핑
+    const headerMapping = {
+      '이메일': 'email',
+      '시작일': 'startDate', 
+      '종료일': 'endDate',
+      '일수': 'days',
+      '유형': 'type',
+      '사유': 'reason'
+    };
+    
+    // 헤더를 영어로 변환
+    const normalizedHeader = header.map(h => headerMapping[h] || h);
+    
     return lines.map(line => {
       const cols = line.split(',').map(c=>c.trim());
-      const row = {}; header.forEach((h,i)=>row[h]=cols[i]||'');
+      const row = {}; 
+      normalizedHeader.forEach((h,i)=>row[h]=cols[i]||'');
       return row;
     });
   }
 
   function handleExcelUpload(file){
     const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result;
-      const rows = parseCSV(text);
-      let added = 0; let skipped = 0;
-      rows.forEach(row => {
-        const email = row.email; const employee = dm.employees.find(e=>e.email===email);
-        if(!employee){ skipped++; return; }
-        // 기본 검증
-        if(!row.startDate || !row.endDate || !row.days || !row.type){ skipped++; return; }
-        const req = {
-          id: Date.now()+Math.floor(Math.random()*10000),
-          employeeId: employee.id,
-          employeeName: employee.name || email,
-          startDate: row.startDate,
-          endDate: row.endDate,
-          days: parseFloat(row.days),
-          type: row.type,
-          reason: row.reason || '',
-          status: 'pending',
-          requestDate: new Date().toISOString().split('T')[0]
+    reader.onload = (e) => {
+      try {
+        let rows = [];
+        
+        // 파일 확장자에 따라 처리 방식 결정
+        const fileName = file.name.toLowerCase();
+        if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+          // 엑셀 파일 처리
+          if (typeof XLSX === 'undefined') {
+            alert('엑셀 라이브러리가 로드되지 않았습니다. CSV 파일을 사용해주세요.');
+            return;
+          }
+          
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          if (jsonData.length < 2) {
+            alert('엑셀 파일에 데이터가 없습니다.');
+            return;
+          }
+          
+          // 헤더와 데이터 분리
+          const header = jsonData[0];
+          const dataRows = jsonData.slice(1);
+          
+          // 한국어 헤더를 영어로 매핑
+          const headerMapping = {
+            '이메일': 'email',
+            '시작일': 'startDate', 
+            '종료일': 'endDate',
+            '일수': 'days',
+            '유형': 'type',
+            '사유': 'reason'
+          };
+          
+          // 헤더를 영어로 변환
+          const normalizedHeader = header.map(h => headerMapping[h] || h);
+          
+          // 데이터를 객체 배열로 변환
+          rows = dataRows.map(row => {
+            const obj = {};
+            normalizedHeader.forEach((h, i) => {
+              let value = row[i] || '';
+              
+              // 날짜 필드인 경우 엑셀 날짜 일련번호를 실제 날짜로 변환
+              if ((h === 'startDate' || h === 'endDate') && typeof value === 'number') {
+                // 엑셀 날짜 일련번호를 JavaScript Date로 변환
+                // 엑셀은 1900년 1월 1일을 기준으로 하므로 정확한 계산
+                const excelEpoch = new Date(1900, 0, 1);
+                const jsDate = new Date(excelEpoch.getTime() + (value - 1) * 86400000);
+                value = jsDate.toISOString().split('T')[0]; // YYYY-MM-DD 형식으로 변환
+              }
+              
+              obj[h] = value;
+            });
+            return obj;
+          });
+          
+        } else if (fileName.endsWith('.csv')) {
+          // CSV 파일 처리
+          const text = e.target.result;
+          rows = parseCSV(text);
+        } else {
+          alert('지원하지 않는 파일 형식입니다. .xlsx, .xls, .csv 파일만 지원됩니다.');
+          return;
+        }
+        
+        let added = 0; let skipped = 0;
+        let skippedReasons = [];
+        
+        // 한국어 유형을 영어로 매핑
+        const typeMapping = {
+          '휴가': 'vacation',
+          '개인사정': 'personal', 
+          '병가': 'sick',
+          '기타': 'other'
         };
-        dm.leaveRequests.push(req); added++;
-      });
-      dm.saveData('leaveRequests', dm.leaveRequests);
-      alert(`업로드 완료: 추가 ${added}건, 건너뜀 ${skipped}건`);
-      refresh();
+        
+        console.log('엑셀 업로드 시작:', { 
+          totalRows: rows.length, 
+          employeesCount: dm.employees.length,
+          employees: dm.employees.map(e => ({ email: e.email, name: e.name }))
+        });
+        
+        rows.forEach((row, index) => {
+          console.log(`행 ${index + 1} 처리:`, row);
+          
+          const email = row.email; 
+          const employee = dm.employees.find(e => e.email === email);
+          
+          if(!employee){ 
+            skipped++; 
+            skippedReasons.push(`행 ${index + 1}: 이메일 '${email}'에 해당하는 직원을 찾을 수 없습니다.`);
+            console.log(`건너뜀 - 직원 없음: ${email}`);
+            return; 
+          }
+          
+          // 기본 검증
+          if(!row.startDate || !row.endDate || !row.days || !row.type){ 
+            skipped++; 
+            skippedReasons.push(`행 ${index + 1}: 필수 필드 누락 (시작일: ${row.startDate}, 종료일: ${row.endDate}, 일수: ${row.days}, 유형: ${row.type})`);
+            console.log(`건너뜀 - 필수 필드 누락:`, { startDate: row.startDate, endDate: row.endDate, days: row.days, type: row.type });
+            return; 
+          }
+          
+          // 유형을 영어로 변환 (한국어인 경우)
+          const normalizedType = typeMapping[row.type] || row.type;
+          
+          const req = {
+            id: Date.now()+Math.floor(Math.random()*10000),
+            employeeId: employee.id,
+            employeeName: employee.name || email,
+            startDate: row.startDate,
+            endDate: row.endDate,
+            days: parseFloat(row.days),
+            type: normalizedType,
+            reason: row.reason || '',
+            status: 'pending',
+            requestDate: new Date().toISOString().split('T')[0]
+          };
+          
+          dm.leaveRequests.push(req); 
+          added++;
+          console.log(`추가됨: ${employee.name} (${email})`);
+        });
+        
+        dm.saveData('leaveRequests', dm.leaveRequests);
+        
+        // 상세한 결과 메시지 생성
+        let message = `업로드 완료: 추가 ${added}건, 건너뜀 ${skipped}건`;
+        if(skippedReasons.length > 0 && skippedReasons.length <= 5) {
+          message += '\n\n건너뜀 사유:\n' + skippedReasons.join('\n');
+        } else if(skippedReasons.length > 5) {
+          message += '\n\n건너뜀 사유 (처음 5개):\n' + skippedReasons.slice(0, 5).join('\n') + `\n... 외 ${skippedReasons.length - 5}개`;
+        }
+        
+        alert(message);
+        refresh();
+        
+      } catch (error) {
+        console.error('파일 처리 오류:', error);
+        alert('파일 처리 중 오류가 발생했습니다. 파일 형식을 확인해주세요.');
+      }
     };
-    reader.readAsText(file, 'utf-8');
+    
+    // 파일 타입에 따라 읽기 방식 결정
+    const fileName = file.name.toLowerCase();
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file, 'utf-8');
+    }
   }
   
   // 개별 항목 클릭 처리 (승인/거부 버튼, 체크박스)
@@ -306,6 +516,77 @@
     const btnTpl = document.getElementById('btnDownloadTemplate');
     if(btnTpl) btnTpl.addEventListener('click', downloadTemplate);
 
+    // 디버깅: 현재 등록된 직원 목록 확인
+    const debugEmployees = () => {
+      console.log('=== 현재 등록된 직원 목록 ===');
+      console.log('총 직원 수:', dm.employees.length);
+      dm.employees.forEach((emp, index) => {
+        console.log(`${index + 1}. ${emp.name} (${emp.email}) - ${emp.department || '부서미정'}`);
+      });
+      
+      if(dm.employees.length === 0) {
+        alert('등록된 직원이 없습니다. 먼저 직원을 등록해주세요.');
+      } else {
+        const employeeList = dm.employees.map(emp => `${emp.name} (${emp.email})`).join('\n');
+        alert(`현재 등록된 직원 목록:\n\n${employeeList}`);
+      }
+    };
+
+    // 잘못된 날짜 형식 데이터 수정
+    const fixDateFormats = () => {
+      if (!dm.leaveRequests) return;
+      
+      let fixedCount = 0;
+      const fixedRequests = dm.leaveRequests.map(req => {
+        // 숫자로 된 날짜를 실제 날짜로 변환
+        if (typeof req.startDate === 'number' && req.startDate > 40000) {
+          const excelEpoch = new Date(1900, 0, 1);
+          const jsDate = new Date(excelEpoch.getTime() + (req.startDate - 1) * 86400000);
+          req.startDate = jsDate.toISOString().split('T')[0];
+          fixedCount++;
+        }
+        
+        if (typeof req.endDate === 'number' && req.endDate > 40000) {
+          const excelEpoch = new Date(1900, 0, 1);
+          const jsDate = new Date(excelEpoch.getTime() + (req.endDate - 1) * 86400000);
+          req.endDate = jsDate.toISOString().split('T')[0];
+          fixedCount++;
+        }
+        
+        return req;
+      });
+      
+      if (fixedCount > 0) {
+        dm.leaveRequests = fixedRequests;
+        dm.saveData('leaveRequests', dm.leaveRequests);
+        alert(`날짜 형식을 수정했습니다. 수정된 항목: ${fixedCount}개`);
+        refresh();
+      } else {
+        alert('수정할 날짜 형식이 없습니다.');
+      }
+    };
+
+    // 디버깅 버튼 추가 (개발용)
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '직원 목록 확인';
+    debugBtn.className = 'btn-bulk btn-admin';
+    debugBtn.style.marginLeft = '0.5rem';
+    debugBtn.addEventListener('click', debugEmployees);
+    
+    // 날짜 수정 버튼 추가
+    const fixDateBtn = document.createElement('button');
+    fixDateBtn.textContent = '날짜 형식 수정';
+    fixDateBtn.className = 'btn-bulk btn-admin';
+    fixDateBtn.style.marginLeft = '0.5rem';
+    fixDateBtn.style.backgroundColor = '#ff6b6b';
+    fixDateBtn.addEventListener('click', fixDateFormats);
+    
+    const rightActions = document.querySelector('.right-actions');
+    if(rightActions) {
+      rightActions.appendChild(debugBtn);
+      rightActions.appendChild(fixDateBtn);
+    }
+
     // 엑셀 업로드
     const excelInput = document.getElementById('excelUpload');
     if(excelInput) excelInput.addEventListener('change', (e)=>{ if(e.target.files[0]) handleExcelUpload(e.target.files[0]); });
@@ -317,7 +598,38 @@
     const cancelBtn = document.getElementById('adminAddCancel');
     const form = document.getElementById('adminAddForm');
 
-    function closeModal(){ if(modal){ modal.style.display='none'; document.body.style.overflow='auto'; } }
+    function closeModal(){ 
+      if(modal){ 
+        modal.style.display='none'; 
+        document.body.style.overflow='auto';
+        
+        // 폼 완전 초기화
+        if(form) {
+          form.reset();
+        }
+        
+        // 검색 필드 초기화
+        if(admEmployeeSearch) {
+          admEmployeeSearch.value = '';
+          selectedEmployee = null;
+        }
+        if(admEmployeeList) {
+          admEmployeeList.style.display = 'none';
+        }
+        
+        // 날짜 필드 초기화
+        if(admStart) admStart.value = '';
+        if(admEnd) admEnd.value = '';
+        if(admDays) admDays.value = '';
+        
+        // 유형 초기화
+        if(admType) admType.value = 'vacation';
+        
+        // 사유 초기화
+        if(admReason) admReason.value = '';
+        if(admReasonGroup) admReasonGroup.style.display = 'none';
+      } 
+    }
 
     if(btnAdd && modal){
       btnAdd.addEventListener('click', ()=>{ modal.style.display='block'; document.body.style.overflow='hidden'; });
@@ -332,39 +644,226 @@
     const admType = document.getElementById('adm-type');
     const admReason = document.getElementById('adm-reason');
     const admReasonGroup = document.getElementById('adm-reason-group');
+    const admEmployee = document.getElementById('adm-employee');
+    const admEmployeeSearch = document.getElementById('adm-employee-search');
+    const admEmployeeList = document.getElementById('adm-employee-list');
+    let selectedEmployee = null;
+
+    // 직원 검색 기능
+    function searchEmployees(query) {
+      if (!query || query.length < 1) {
+        admEmployeeList.style.display = 'none';
+        return;
+      }
+
+      const filteredEmployees = dm.employees.filter(emp => 
+        emp.name.toLowerCase().includes(query.toLowerCase()) ||
+        emp.email.toLowerCase().includes(query.toLowerCase()) ||
+        (emp.department && emp.department.toLowerCase().includes(query.toLowerCase())) ||
+        (emp.branch && emp.branch.toLowerCase().includes(query.toLowerCase()))
+      );
+
+      if (filteredEmployees.length === 0) {
+        admEmployeeList.innerHTML = '<div class="employee-dropdown-item">검색 결과가 없습니다.</div>';
+      } else {
+        admEmployeeList.innerHTML = '';
+        filteredEmployees.forEach(emp => {
+          const item = document.createElement('div');
+          item.className = 'employee-dropdown-item';
+          // 지점별 색상 생성
+          const branchStyle = emp.branch ? getBranchStyle(emp.branch) : '';
+          
+          item.innerHTML = `
+            <div class="employee-info">
+              <div class="employee-name">${emp.name}</div>
+              <div class="employee-email">${emp.email}</div>
+              <div class="employee-details">
+                ${emp.branch ? `<span class="employee-branch" style="${branchStyle}">${emp.branch}</span>` : ''}
+                ${emp.department ? `<span class="employee-department">${emp.department}</span>` : ''}
+              </div>
+            </div>
+          `;
+          item.addEventListener('click', () => selectEmployee(emp));
+          admEmployeeList.appendChild(item);
+        });
+      }
+      admEmployeeList.style.display = 'block';
+    }
+
+    // 직원 선택
+    function selectEmployee(emp) {
+      selectedEmployee = emp;
+      admEmployeeSearch.value = `${emp.name} (${emp.email})`;
+      admEmployeeList.style.display = 'none';
+      console.log('직원 선택됨:', emp);
+    }
+
+    // 검색 입력 이벤트
+    if (admEmployeeSearch) {
+      admEmployeeSearch.addEventListener('input', (e) => {
+        searchEmployees(e.target.value);
+      });
+
+      admEmployeeSearch.addEventListener('focus', (e) => {
+        if (e.target.value) {
+          searchEmployees(e.target.value);
+        }
+      });
+
+      // 외부 클릭 시 드롭다운 숨기기
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.form-group')) {
+          admEmployeeList.style.display = 'none';
+        }
+      });
+    }
+
+    // 모달이 열릴 때마다 완전 초기화
+    if(btnAdd && modal){
+      btnAdd.addEventListener('click', ()=>{ 
+        modal.style.display='block'; 
+        document.body.style.overflow='hidden';
+        
+        // 폼 완전 초기화
+        if(form) {
+          form.reset();
+        }
+        
+        // 검색 필드 초기화
+        if(admEmployeeSearch) {
+          admEmployeeSearch.value = '';
+          selectedEmployee = null;
+        }
+        if(admEmployeeList) {
+          admEmployeeList.style.display = 'none';
+        }
+        
+        // 날짜 필드 초기화
+        if(admStart) admStart.value = '';
+        if(admEnd) admEnd.value = '';
+        if(admDays) admDays.value = '';
+        
+        // 유형 초기화
+        if(admType) admType.value = 'vacation';
+        
+        // 사유 초기화
+        if(admReason) admReason.value = '';
+        if(admReasonGroup) admReasonGroup.style.display = 'none';
+        
+        // 사유 토글 초기화
+        if(admType) {
+          toggleAdmReason();
+        }
+        
+        // 종료일 최소값 설정 (오늘 날짜)
+        const today = new Date().toISOString().split('T')[0];
+        if(admEnd) {
+          admEnd.min = today;
+        }
+      });
+    }
 
     function calcAdmDays(){
       if(!admStart.value || !admEnd.value) return;
       const s=new Date(admStart.value); const e=new Date(admEnd.value);
       if(s>e) return; const diff=(e-s)/(1000*60*60*24)+1; admDays.value = diff;
     }
-    if(admStart) admStart.addEventListener('change', calcAdmDays);
-    if(admEnd) admEnd.addEventListener('change', calcAdmDays);
-    function toggleAdmReason(){ const isOther = admType.value==='other'; admReasonGroup.style.display=isOther?'':'none'; admReason.disabled=!isOther; if(!isOther) admReason.value=''; }
+
+    // 날짜 유효성 검사 함수
+    function validateDates() {
+      if (!admStart.value || !admEnd.value) return true;
+      
+      const startDate = new Date(admStart.value);
+      const endDate = new Date(admEnd.value);
+      
+      if (endDate < startDate) {
+        alert('종료일은 시작일보다 이전일 수 없습니다.');
+        admEnd.value = admStart.value; // 종료일을 시작일과 같게 설정
+        calcAdmDays(); // 일수 재계산
+        return false;
+      }
+      return true;
+    }
+
+    // 시작일 변경 시 종료일 최소값 설정
+    function updateEndDateMin() {
+      if (admStart.value && admEnd) {
+        admEnd.min = admStart.value;
+        // 종료일이 시작일보다 이전이면 시작일로 설정
+        if (admEnd.value && new Date(admEnd.value) < new Date(admStart.value)) {
+          admEnd.value = admStart.value;
+          calcAdmDays();
+        }
+      }
+    }
+
+    if(admStart) {
+      admStart.addEventListener('change', () => {
+        updateEndDateMin();
+        calcAdmDays();
+      });
+    }
+    if(admEnd) {
+      admEnd.addEventListener('change', () => {
+        validateDates();
+        calcAdmDays();
+      });
+    }
+    function toggleAdmReason(){ 
+      const isOther = admType.value==='other'; 
+      admReasonGroup.style.display=isOther?'':'none'; 
+      admReason.disabled=!isOther; 
+      if(!isOther) {
+        // 기타가 아닌 경우 해당 유형을 사유에 자동 입력
+        const typeMap = {
+          'vacation': '휴가',
+          'personal': '개인사정', 
+          'sick': '병가'
+        };
+        admReason.value = typeMap[admType.value] || '';
+      }
+    }
     if(admType){ toggleAdmReason(); admType.addEventListener('change', toggleAdmReason); }
 
     if(form){
       form.addEventListener('submit', (e)=>{
         e.preventDefault();
-        const email = document.getElementById('adm-email').value.trim();
-        const emp = dm.employees.find(emp=>emp.email===email);
-        if(!emp){ alert('직원 이메일을 찾을 수 없습니다.'); return; }
-        if(!admStart.value || !admEnd.value || !admDays.value){ alert('날짜/일수 입력을 확인해주세요.'); return; }
+        console.log('폼 제출 시도:', {selectedEmployee, admStart: admStart.value, admEnd: admEnd.value, admDays: admDays.value});
+        
+        if(!selectedEmployee){ 
+          alert('직원을 선택해주세요.'); 
+          return; 
+        }
+        const emp = selectedEmployee;
+        if(!admStart.value || !admEnd.value || !admDays.value){ 
+          alert('날짜/일수 입력을 확인해주세요.'); 
+          return; 
+        }
+        
+        // 날짜 유효성 검사
+        if (!validateDates()) {
+          return;
+        }
         const req = {
           id: Date.now()+Math.floor(Math.random()*10000),
           employeeId: emp.id,
-          employeeName: emp.name || email,
+          employeeName: emp.name || emp.email,
           startDate: admStart.value,
           endDate: admEnd.value,
           days: parseFloat(admDays.value),
           type: admType.value,
-          reason: admType.value==='other' ? (admReason.value || '') : '',
+          reason: admType.value==='other' ? (admReason.value || '') : (admReason.value || ''),
           status: 'pending',
           requestDate: new Date().toISOString().split('T')[0]
         };
-        dm.leaveRequests.push(req); dm.saveData('leaveRequests', dm.leaveRequests);
+        dm.leaveRequests.push(req); 
+        dm.saveData('leaveRequests', dm.leaveRequests);
+        console.log('연차 등록 성공:', req);
         alert('연차 신청이 등록되었습니다.');
-        closeModal(); refresh();
+        
+        // 모달 완전 초기화 후 닫기
+        closeModal(); 
+        refresh();
       });
     }
 

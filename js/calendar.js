@@ -436,7 +436,15 @@ class Calendar {
             reasonGroup.style.display = isOther ? '' : 'none';
             reasonTextarea.disabled = !isOther;
             reasonTextarea.required = isOther;
-            if (!isOther) reasonTextarea.value = '';
+            if (!isOther) {
+                // 기타가 아닌 경우 해당 유형을 사유에 자동 입력
+                const typeMap = {
+                    'vacation': '휴가',
+                    'personal': '개인사정', 
+                    'sick': '병가'
+                };
+                reasonTextarea.value = typeMap[leaveTypeSelect.value] || '';
+            }
         };
         toggleReason();
         if (leaveTypeSelect) leaveTypeSelect.addEventListener('change', toggleReason);

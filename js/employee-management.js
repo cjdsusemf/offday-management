@@ -57,7 +57,6 @@
                     <td>${stats.total}일</td>
                     <td>${stats.used}일</td>
                     <td>${stats.remaining}일</td>
-                    <td><span class="badge ${leaveStandard === '회계연도' ? 'badge-std-fiscal' : 'badge-std-hire'}">${leaveStandard}</span></td>
                     <td>
                         <div class="usage-rate">
                             <div class="usage-bar">
