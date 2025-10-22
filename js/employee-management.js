@@ -4,7 +4,7 @@
     let currentEditingId = null;
     let currentSort = { column: null, direction: 'asc' };
     let currentPage = 1;
-    const itemsPerPage = 10;
+    let itemsPerPage = 10; // 동적으로 변경 가능하도록 수정
     let isInitialized = false; // 초기화 중복 방지
 
     function renderEmployeeTable(employees) {
@@ -94,8 +94,17 @@
 
     function updateTableInfo(total) {
         const countElement = document.getElementById('employeeCount');
+        const paginationInfo = document.getElementById('paginationInfo');
+        
         if (countElement) {
             countElement.textContent = `총 ${total}명의 직원`;
+        }
+        
+        // 페이지네이션 정보 업데이트
+        if (paginationInfo) {
+            const startItem = (currentPage - 1) * itemsPerPage + 1;
+            const endItem = Math.min(currentPage * itemsPerPage, total);
+            paginationInfo.textContent = `${startItem}-${endItem} / 총 ${total}개`;
         }
     }
 
@@ -548,6 +557,14 @@
         });
     }
 
+    // 항목 갯수 설정 변경 처리
+    function handleItemsPerPageChange() {
+        const newItemsPerPage = parseInt(document.getElementById('itemsPerPageFilter').value);
+        itemsPerPage = newItemsPerPage;
+        currentPage = 1; // 항목 갯수 변경 시 첫 페이지로 이동
+        refreshEmployeeTable();
+    }
+
     // 이벤트 핸들러 등록 함수
     function attachEventListeners() {
         if (isInitialized) return; // 중복 등록 방지
@@ -578,6 +595,12 @@
         const departmentFilter = document.getElementById('departmentFilter');
         if (departmentFilter) {
             departmentFilter.addEventListener('change', refreshEmployeeTable);
+        }
+
+        // 항목 갯수 설정 필터
+        const itemsPerPageFilter = document.getElementById('itemsPerPageFilter');
+        if (itemsPerPageFilter) {
+            itemsPerPageFilter.addEventListener('change', handleItemsPerPageChange);
         }
 
         // 정렬 이벤트 리스너

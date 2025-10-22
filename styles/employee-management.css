@@ -685,3 +685,11 @@ tr.resigned td {
 .btn-reactivate:hover {
     background: #218838;
 }
+
+/* 페이지네이션 정보 스타일 */
+.pagination-info {
+    color: #6b7280;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-left: 1rem;
+}

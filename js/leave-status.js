@@ -3,6 +3,10 @@ class LeaveStatus {
     constructor() {
         this.dataManager = window.dataManager;
         this.currentUser = null;
+        // 신청 내역 페이지네이션 관련 변수
+        this.requestsCurrentPage = 1;
+        this.requestsItemsPerPage = 10;
+        this.requestsTotalPages = 1;
         this.init();
     }
 
@@ -150,20 +154,32 @@ class LeaveStatus {
         // 혼재된 employeeId 값(사용자 id 또는 직원 id) 모두 수용
         const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
         const employeeId = employee ? employee.id : null;
-        const myRequests = this.dataManager.leaveRequests
-            .filter(request => request.employeeId === this.currentUser.id || (employeeId !== null && request.employeeId === employeeId))
-            .sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate))
-            .slice(0, 5);
+        const selectedYear = this.getSelectedRequestsYear();
+        const allRequests = this.dataManager.leaveRequests
+            .filter(request => {
+                const belongs = request.employeeId === this.currentUser.id || (employeeId !== null && request.employeeId === employeeId);
+                if (!belongs) return false;
+                if (!selectedYear) return true;
+                return new Date(request.startDate).getFullYear() === selectedYear;
+            })
+            .sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
+
+        // 페이지네이션 적용
+        this.requestsTotalPages = Math.ceil(allRequests.length / this.requestsItemsPerPage);
+        const startIndex = (this.requestsCurrentPage - 1) * this.requestsItemsPerPage;
+        const endIndex = startIndex + this.requestsItemsPerPage;
+        const myRequests = allRequests.slice(startIndex, endIndex);
 
         const container = document.getElementById('my-requests');
         
-        if (myRequests.length === 0) {
+        if (allRequests.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-calendar-plus"></i>
                     <p>연차 신청 내역이 없습니다.</p>
                 </div>
             `;
+            this.updateRequestsPagination(allRequests.length);
             return;
         }
 
@@ -176,6 +192,106 @@ class LeaveStatus {
                 </div>
             </div>
         `).join('');
+        
+        // 페이지네이션 업데이트
+        this.updateRequestsPagination(allRequests.length);
+    }
+
+    getSelectedRequestsYear() {
+        const sel = document.getElementById('requests-year-selector');
+        if (!sel) return null;
+        const val = parseInt(sel.value, 10);
+        return isNaN(val) ? null : val;
+    }
+
+    // 신청 내역 페이지네이션 업데이트
+    updateRequestsPagination(totalItems) {
+        const pagination = document.getElementById('requests-pagination');
+        const prevBtn = document.getElementById('requests-prev-page');
+        const nextBtn = document.getElementById('requests-next-page');
+        const pageNumbers = document.getElementById('requests-page-numbers');
+        const paginationInfo = document.getElementById('requests-pagination-info');
+        
+        if (!pagination || !prevBtn || !nextBtn || !pageNumbers) return;
+        
+        // 페이지네이션 정보 업데이트
+        if (paginationInfo) {
+            const startItem = (this.requestsCurrentPage - 1) * this.requestsItemsPerPage + 1;
+            const endItem = Math.min(this.requestsCurrentPage * this.requestsItemsPerPage, totalItems);
+            paginationInfo.textContent = `${startItem}-${endItem} / 총 ${totalItems}개`;
+        }
+        
+        // 총 항목이 페이지당 항목 수보다 적으면 페이지네이션 숨기기
+        if (totalItems <= this.requestsItemsPerPage) {
+            pagination.style.display = 'none';
+            return;
+        }
+        
+        pagination.style.display = 'flex';
+        
+        // 이전/다음 버튼 상태 업데이트
+        prevBtn.disabled = this.requestsCurrentPage === 1;
+        nextBtn.disabled = this.requestsCurrentPage === this.requestsTotalPages;
+        
+        // 페이지 번호 생성
+        pageNumbers.innerHTML = '';
+        
+        // 표시할 페이지 번호 계산 (최대 5개)
+        let startPage = Math.max(1, this.requestsCurrentPage - 2);
+        let endPage = Math.min(this.requestsTotalPages, startPage + 4);
+        
+        // 끝 페이지가 조정되면 시작 페이지도 조정
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+        
+        // 첫 페이지가 1이 아니면 "..." 표시
+        if (startPage > 1) {
+            const firstPageBtn = document.createElement('button');
+            firstPageBtn.textContent = '1';
+            firstPageBtn.className = 'page-number';
+            firstPageBtn.addEventListener('click', () => this.goToRequestsPage(1));
+            pageNumbers.appendChild(firstPageBtn);
+            
+            if (startPage > 2) {
+                const dots = document.createElement('span');
+                dots.textContent = '...';
+                dots.className = 'page-dots';
+                pageNumbers.appendChild(dots);
+            }
+        }
+        
+        // 페이지 번호 버튼들 생성
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.textContent = i;
+            pageBtn.className = `page-number ${i === this.requestsCurrentPage ? 'active' : ''}`;
+            pageBtn.addEventListener('click', () => this.goToRequestsPage(i));
+            pageNumbers.appendChild(pageBtn);
+        }
+        
+        // 마지막 페이지가 끝 페이지가 아니면 "..." 표시
+        if (endPage < this.requestsTotalPages) {
+            if (endPage < this.requestsTotalPages - 1) {
+                const dots = document.createElement('span');
+                dots.textContent = '...';
+                dots.className = 'page-dots';
+                pageNumbers.appendChild(dots);
+            }
+            
+            const lastPageBtn = document.createElement('button');
+            lastPageBtn.textContent = this.requestsTotalPages;
+            lastPageBtn.className = 'page-number';
+            lastPageBtn.addEventListener('click', () => this.goToRequestsPage(this.requestsTotalPages));
+            pageNumbers.appendChild(lastPageBtn);
+        }
+    }
+    
+    // 신청 내역 페이지 이동
+    goToRequestsPage(page) {
+        if (page < 1 || page > this.requestsTotalPages || page === this.requestsCurrentPage) return;
+        this.requestsCurrentPage = page;
+        this.loadMyRequests();
     }
 
     // 월별 연차 사용 차트 로드
@@ -215,26 +331,49 @@ class LeaveStatus {
     getMonthlyLeaveData(userId, year) {
         const monthlyData = new Array(12).fill(0);
         
-        this.dataManager.leaveRequests
-            .filter(request => {
-                const requestYear = new Date(request.startDate).getFullYear();
-                return request.employeeId === userId && 
-                       requestYear === year && 
-                       request.status === 'approved';
-            })
-            .forEach(request => {
-                const startDate = new Date(request.startDate);
-                const endDate = new Date(request.endDate);
-                
-                // 연차 기간이 여러 월에 걸치는 경우 처리
-                let currentDate = new Date(startDate);
-                while (currentDate <= endDate) {
-                    const month = currentDate.getMonth();
-                    monthlyData[month]++;
-                    currentDate.setDate(currentDate.getDate() + 1);
-                }
-            });
+        // 현재 사용자와 연결된 직원 정보 찾기
+        const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
+        const employeeId = employee ? employee.id : null;
         
+        // 사용자의 연차 신청만 필터링 (해당 연도와 겹치는 모든 연차 포함)
+        const userRequests = this.dataManager.leaveRequests.filter(request => {
+            const requestStart = new Date(request.startDate);
+            const requestEnd = new Date(request.endDate);
+            const yearStart = new Date(year, 0, 1);
+            const yearEnd = new Date(year, 11, 31);
+            
+            const belongsToUser = (request.employeeId === userId) || (employeeId !== null && request.employeeId === employeeId);
+            const isApproved = request.status === 'approved';
+            
+            // 해당 연도와 겹치는 연차인지 확인 (더 정확한 날짜 비교)
+            const overlapsWithYear = requestStart <= yearEnd && requestEnd >= yearStart;
+            
+            return belongsToUser && 
+                   overlapsWithYear && 
+                   isApproved;
+        });
+        
+        // 각 월별로 연차 일수 계산
+        userRequests.forEach(request => {
+            const startDate = new Date(request.startDate);
+            const endDate = new Date(request.endDate);
+            
+            // 해당 월에 연차가 포함되는지 확인하고 일수 추가
+            for (let month = 0; month < 12; month++) {
+                const monthStart = new Date(year, month, 1);
+                const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999); // 해당 월의 마지막 날 23:59:59
+                
+                // 연차 기간이 해당 월과 겹치는지 확인
+                if (startDate <= monthEnd && endDate >= monthStart) {
+                    // 겹치는 일수 계산
+                    const overlapStart = new Date(Math.max(startDate.getTime(), monthStart.getTime()));
+                    const overlapEnd = new Date(Math.min(endDate.getTime(), monthEnd.getTime()));
+                    const overlapDays = Math.floor((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    monthlyData[month] += overlapDays;
+                }
+            }
+        });
         return monthlyData;
     }
 
@@ -245,14 +384,17 @@ class LeaveStatus {
         const employeeId = employee ? employee.id : null;
 
         const start = new Date(year, month - 1, 1);
-        const end = new Date(year, month, 0);
+        const end = new Date(year, month, 0, 23, 59, 59, 999); // 해당 월의 마지막 날 23:59:59
+
 
         const list = (this.dataManager.leaveRequests || [])
             .filter(r => {
                 const belongs = (r.employeeId === this.currentUser.id) || (employeeId !== null && r.employeeId === employeeId);
                 if (!belongs) return false;
                 const rs = new Date(r.startDate); const re = new Date(r.endDate);
-                return rs <= end && re >= start;
+                // 해당 월과 겹치는 모든 연차 포함 (월을 넘나드는 연차도 포함)
+                const overlaps = rs <= end && re >= start;
+                return overlaps;
             })
             .map(r => {
                 const rs = new Date(r.startDate); const re = new Date(r.endDate);
@@ -262,41 +404,76 @@ class LeaveStatus {
             })
             .sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
 
-        const body = document.getElementById('month-modal-body');
-        const title = document.getElementById('month-modal-title');
-        const modal = document.getElementById('month-modal');
-        const closeBtn = document.getElementById('month-modal-close');
 
-        if (!body || !title || !modal) return;
+        // 올바른 모달 요소들 사용
+        const modal = document.getElementById('monthly-detail-modal');
+        const title = document.getElementById('monthly-detail-title');
+        const totalDaysEl = document.getElementById('monthly-total-days');
+        const requestCountEl = document.getElementById('monthly-request-count');
+        const requestsList = document.getElementById('monthly-requests-list');
 
-        title.textContent = `${year}년 ${month}월 상세 내역`;
-
-        if (list.length === 0) {
-            body.innerHTML = `<div class="empty-state">해당 월의 연차 내역이 없습니다.</div>`;
-        } else {
-            const used = list.filter(r=>r.status==='approved').reduce((s,r)=>s+(r.daysInMonth||0),0);
-            const pending = list.filter(r=>r.status==='pending').reduce((s,r)=>s+(r.daysInMonth||0),0);
-            const rejected = list.filter(r=>r.status==='rejected').reduce((s,r)=>s+(r.daysInMonth||0),0);
-            const summary = `<div class="lm-summary">승인 ${used}일 · 대기 ${pending}일 · 거부 ${rejected}일</div>`;
-            const items = list.map(r => `
-                <div class="lm-item">
-                    <div class="period">${r.startDate} ~ ${r.endDate}</div>
-                    <div class="detail">${r.daysInMonth}일(해당월) · 총 ${r.days}일 · ${r.reason || ''} · <span class="request-status ${r.status}">${this.getStatusText(r.status)}</span></div>
-                </div>
-            `).join('');
-            body.innerHTML = summary + `<div class="lm-list">${items}</div>`;
+        if (!modal || !title || !totalDaysEl || !requestCountEl || !requestsList) {
+            console.error('월별 상세 모달 요소를 찾을 수 없습니다');
+            return;
         }
 
+        // 모달 제목 설정
+        title.textContent = `${year}년 ${month}월 연차 사용 내역`;
+
+        // 요약 정보 설정
+        // 총 사용 일수는 승인된 연차만 카운트
+        const approvedRequests = list.filter(request => request.status === 'approved');
+        const totalDays = approvedRequests.reduce((sum, request) => sum + (request.daysInMonth || 0), 0);
+        totalDaysEl.textContent = `${totalDays}일`;
+        // 신청 건수는 모든 신청 건수
+        requestCountEl.textContent = `${list.length}건`;
+
+        // 연차 신청 내역 표시
+        if (list.length === 0) {
+            requestsList.innerHTML = `
+                <div class="no-requests">
+                    <i class="fas fa-calendar-times"></i>
+                    <p>${month}월에는 연차를 사용하지 않았습니다.</p>
+                </div>
+            `;
+        } else {
+            requestsList.innerHTML = list.map(request => {
+                const startDate = new Date(request.startDate);
+                const endDate = new Date(request.endDate);
+                const period = startDate.toLocaleDateString() + (startDate.getTime() !== endDate.getTime() ? ` ~ ${endDate.toLocaleDateString()}` : '');
+                
+                // 안전한 데이터 처리
+                const reason = this.safeText(request.reason, this.getLeaveTypeText(request.type || request.leaveType) || '사유없음');
+                const statusText = this.getStatusText(request.status) || '알수없음';
+                const daysInMonth = request.daysInMonth || 0;
+                const totalDays = request.days || 0;
+                const status = request.status || 'unknown';
+                
+                return `
+                    <div class="monthly-request-item">
+                        <div class="monthly-request-header">
+                            <div class="monthly-request-period">${period}</div>
+                            <div class="monthly-request-status ${status}">${statusText}</div>
+                        </div>
+                        <div class="monthly-request-details">
+                            <div class="monthly-request-type">${reason}</div>
+                            <div class="monthly-request-days">${daysInMonth}일(해당월) · 총 ${totalDays}일</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 모달 표시
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
-        if (closeBtn) closeBtn.onclick = () => this.closeMonthModal();
-        window.addEventListener('keydown', this._escMonthlyHandler = (e)=>{ if(e.key==='Escape') this.closeMonthModal(); });
     }
 
     closeMonthModal() {
-        const modal = document.getElementById('month-modal');
+        const modal = document.getElementById('monthly-detail-modal');
         if (modal) modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+        // overflow 속성을 완전히 제거
+        document.body.style.removeProperty('overflow');
         if (this._escMonthlyHandler) {
             window.removeEventListener('keydown', this._escMonthlyHandler);
             this._escMonthlyHandler = null;
@@ -395,6 +572,16 @@ class LeaveStatus {
         return typeMap[leaveType] || leaveType;
     }
 
+    // 안전한 텍스트 반환(원시 데이터가 'undefined'/'null' 문자열일 때 대비)
+    safeText(value, fallback = '') {
+        if (value === undefined || value === null) return fallback;
+        const str = String(value).trim();
+        if (str === '' || str.toLowerCase() === 'undefined' || str.toLowerCase() === 'null') {
+            return fallback;
+        }
+        return str;
+    }
+
     // 이벤트 리스너 설정
     setupEventListeners() {
         // 탭 네비게이션 이벤트
@@ -406,6 +593,39 @@ class LeaveStatus {
             yearSelector.addEventListener('change', (e) => {
                 this.loadMonthlyChartForYear(parseInt(e.target.value));
             });
+        }
+
+        // 신청 내역 연도 선택기 이벤트
+        const reqYearSelector = document.getElementById('requests-year-selector');
+        if (reqYearSelector) {
+            reqYearSelector.addEventListener('change', () => {
+                this.requestsCurrentPage = 1; // 연도 변경 시 첫 페이지로 이동
+                this.loadMyRequests();
+            });
+            // 초기값을 현재 연도로 맞추기
+            const currentYear = new Date().getFullYear();
+            const option = Array.from(reqYearSelector.options).find(o => parseInt(o.value,10) === currentYear);
+            if (option) reqYearSelector.value = String(currentYear);
+        }
+
+        // 신청 내역 항목 갯수 설정 이벤트
+        const requestsItemsPerPage = document.getElementById('requests-items-per-page');
+        if (requestsItemsPerPage) {
+            requestsItemsPerPage.addEventListener('change', () => {
+                this.requestsItemsPerPage = parseInt(requestsItemsPerPage.value);
+                this.requestsCurrentPage = 1; // 항목 갯수 변경 시 첫 페이지로 이동
+                this.loadMyRequests();
+            });
+        }
+
+        // 신청 내역 페이지네이션 이벤트
+        const requestsPrevBtn = document.getElementById('requests-prev-page');
+        const requestsNextBtn = document.getElementById('requests-next-page');
+        if (requestsPrevBtn) {
+            requestsPrevBtn.addEventListener('click', () => this.goToRequestsPage(this.requestsCurrentPage - 1));
+        }
+        if (requestsNextBtn) {
+            requestsNextBtn.addEventListener('click', () => this.goToRequestsPage(this.requestsCurrentPage + 1));
         }
 
         // 모달 외부 클릭 시 닫기
@@ -615,6 +835,7 @@ class LeaveStatus {
         }
         
         document.getElementById('pending-modal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
     }
 
     // 직원 부서 정보 가져오기
@@ -653,6 +874,7 @@ class LeaveStatus {
     // 모달 닫기
     closeModal() {
         document.getElementById('pending-modal').style.display = 'none';
+        document.body.style.removeProperty('overflow');
     }
 
     // 데이터 내보내기
@@ -695,69 +917,21 @@ class LeaveStatus {
         }, 300);
     }
 
-    // 월별 상세 모달 표시
-    showMonthlyDetail(month, year) {
-        if (!this.currentUser) return;
 
-        const modal = document.getElementById('monthly-detail-modal');
-        const title = document.getElementById('monthly-detail-title');
-        const totalDaysEl = document.getElementById('monthly-total-days');
-        const requestCountEl = document.getElementById('monthly-request-count');
-        const requestsList = document.getElementById('monthly-requests-list');
-
-        // 해당 월의 연차 신청 내역 가져오기
-        const monthlyRequests = this.getMonthlyRequests(month, year);
-        const totalDays = monthlyRequests.reduce((sum, request) => sum + request.days, 0);
-
-        // 모달 제목 설정
-        title.textContent = `${year}년 ${month}월 연차 사용 내역`;
-
-        // 요약 정보 설정
-        totalDaysEl.textContent = `${totalDays}일`;
-        requestCountEl.textContent = `${monthlyRequests.length}건`;
-
-        // 연차 신청 내역 표시
-        if (monthlyRequests.length === 0) {
-            requestsList.innerHTML = `
-                <div class="no-requests">
-                    <i class="fas fa-calendar-times"></i>
-                    <p>${month}월에는 연차를 사용하지 않았습니다.</p>
-                </div>
-            `;
-        } else {
-            requestsList.innerHTML = monthlyRequests.map(request => {
-                const startDate = new Date(request.startDate);
-                const endDate = new Date(request.endDate);
-                const period = startDate.toLocaleDateString() + (startDate.getTime() !== endDate.getTime() ? ` ~ ${endDate.toLocaleDateString()}` : '');
-                
-                return `
-                    <div class="monthly-request-item">
-                        <div class="monthly-request-header">
-                            <div class="monthly-request-period">${period}</div>
-                            <div class="monthly-request-status ${request.status}">${this.getStatusText(request.status)}</div>
-                        </div>
-                        <div class="monthly-request-details">
-                            <div class="monthly-request-type">${this.getLeaveTypeText(request.leaveType)}</div>
-                            <div class="monthly-request-days">${request.days}일</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // 모달 표시
-        modal.style.display = 'block';
-    }
-
-    // 해당 월의 연차 신청 내역 가져오기
+    // 해당 월의 연차 신청 내역 가져오기 (모든 신청 건, 월을 넘나드는 연차도 포함)
     getMonthlyRequests(month, year) {
         return this.dataManager.leaveRequests.filter(request => {
             const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
             const employeeId = employee ? employee.id : null;
             if (!(request.employeeId === this.currentUser.id || (employeeId !== null && request.employeeId === employeeId))) return false;
             
-            const requestDate = new Date(request.startDate);
-            return requestDate.getMonth() + 1 === month && requestDate.getFullYear() === year;
+            const requestStart = new Date(request.startDate);
+            const requestEnd = new Date(request.endDate);
+            const monthStart = new Date(year, month - 1, 1);
+            const monthEnd = new Date(year, month, 0);
+            
+            // 해당 월과 겹치는 모든 연차 포함
+            return requestStart <= monthEnd && requestEnd >= monthStart;
         });
     }
 
@@ -765,6 +939,7 @@ class LeaveStatus {
     closeMonthlyDetailModal() {
         const modal = document.getElementById('monthly-detail-modal');
         modal.style.display = 'none';
+        document.body.style.removeProperty('overflow');
     }
 
     // 연차 신청 제출
@@ -781,10 +956,15 @@ class LeaveStatus {
         const startDate = formData.get('startDate');
         const endDate = formData.get('endDate');
         const leaveType = formData.get('leaveType');
-        const reason = formData.get('reason');
+        // disabled 필드는 FormData에 포함되지 않으므로 보정
+        let reason = formData.get('reason');
+        if (!reason && leaveType && leaveType !== 'other') {
+            reason = this.getLeaveTypeText(leaveType) || '';
+        }
         const totalDays = parseInt(formData.get('totalDays'));
 
-        if (!startDate || !endDate || !leaveType || !reason || !totalDays) {
+        // '기타'일 때만 사유를 필수로 요구
+        if (!startDate || !endDate || !leaveType || (leaveType === 'other' && !reason) || !totalDays) {
             this.showNotification('모든 필드를 입력해주세요.', 'error');
             return;
         }
@@ -809,6 +989,23 @@ class LeaveStatus {
         const userLeaveData = this.getUserLeaveData(this.currentUser.id);
         if (totalDays > userLeaveData.remaining) {
             this.showNotification(`남은 연차(${userLeaveData.remaining}일)보다 많은 일수를 신청할 수 없습니다.`, 'error');
+            return;
+        }
+
+        // 기간 중복 검증: 본인 신청 중 승인/대기와 겹치면 금지
+        const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
+        const employeeId = employee ? employee.id : null;
+        const belongsToMe = (req) => req.employeeId === this.currentUser.id || (employeeId !== null && req.employeeId === employeeId);
+        const overlaps = (aStart, aEnd, bStart, bEnd) => {
+            const as = new Date(aStart); const ae = new Date(aEnd);
+            const bs = new Date(bStart); const be = new Date(bEnd);
+            return as <= be && ae >= bs;
+        };
+        const hasOverlap = (this.dataManager.leaveRequests || []).some(req =>
+            belongsToMe(req) && req.status !== 'rejected' && overlaps(startDate, endDate, req.startDate, req.endDate)
+        );
+        if (hasOverlap) {
+            this.showNotification('이미 신청된 기간과 겹칩니다. 기간을 조정해주세요.', 'error');
             return;
         }
 
@@ -932,5 +1129,7 @@ document.head.appendChild(style);
 
 // LeaveStatus 인스턴스 생성 (한 번만)
 window.addEventListener('DOMContentLoaded', () => {
-    window.leaveStatus = new LeaveStatus();
+    if (!window.leaveStatus) {
+        window.leaveStatus = new LeaveStatus();
+    }
 });

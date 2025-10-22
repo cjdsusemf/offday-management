@@ -3,6 +3,11 @@
   let dm;
   let selectedItems = new Set(); // 선택된 항목 ID를 저장하는 Set
   
+  // 페이지네이션 관련 변수
+  let currentPage = 1;
+  let itemsPerPage = 10; // 페이지당 항목 수
+  let totalPages = 1;
+  
   // 지점별 색상 캐시 (동적 생성)
   const branchColorCache = {};
 
@@ -46,11 +51,20 @@
   function render(list){
     const wrap=document.getElementById('approvalList');
     if(!wrap) return;
+    
+    // 페이지네이션 계산
+    totalPages = Math.ceil(list.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedList = list.slice(startIndex, endIndex);
+    
     if(list.length===0){ 
       wrap.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>검색 조건에 맞는 신청이 없습니다.</p></div>'; 
+      updatePagination(list.length);
       return; 
     }
-    wrap.innerHTML = list.map(r=>{
+    
+    wrap.innerHTML = paginatedList.map(r=>{
       const employee = resolveEmployee(r);
       const branch = employee ? (employee.branch || '-') : '-';
       const department = employee ? (employee.department || '-') : '-';
@@ -73,7 +87,9 @@
         </div>
       `;
     }).join('');
+    
     updateBulkButtons(); // 렌더링 후 일괄 버튼 상태 업데이트
+    updatePagination(list.length); // 페이지네이션 업데이트
   }
   
   function statusText(s){return s==='pending'?'대기중':s==='approved'?'승인됨':s==='rejected'?'거부됨':s}
@@ -147,7 +163,108 @@
     }
   }
   
-  function refresh(){ render(getFiltered()); }
+  function refresh(){ 
+    currentPage = 1; // 필터 변경 시 첫 페이지로 이동
+    render(getFiltered()); 
+  }
+
+  // 항목 갯수 설정 변경 처리
+  function handleItemsPerPageChange() {
+    const newItemsPerPage = parseInt(document.getElementById('itemsPerPageFilter').value);
+    itemsPerPage = newItemsPerPage;
+    currentPage = 1; // 항목 갯수 변경 시 첫 페이지로 이동
+    render(getFiltered());
+  }
+
+  // 페이지네이션 업데이트
+  function updatePagination(totalItems) {
+    const pagination = document.getElementById('pagination');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const pageNumbers = document.getElementById('pageNumbers');
+    const paginationInfo = document.getElementById('paginationInfo');
+    
+    if (!pagination || !prevBtn || !nextBtn || !pageNumbers) return;
+    
+    // 페이지네이션 정보 업데이트
+    if (paginationInfo) {
+      const startItem = (currentPage - 1) * itemsPerPage + 1;
+      const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+      paginationInfo.textContent = `${startItem}-${endItem} / 총 ${totalItems}개`;
+    }
+    
+    // 총 항목이 페이지당 항목 수보다 적으면 페이지네이션 숨기기
+    if (totalItems <= itemsPerPage) {
+      pagination.style.display = 'none';
+      return;
+    }
+    
+    pagination.style.display = 'flex';
+    
+    // 이전/다음 버튼 상태 업데이트
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+    
+    // 페이지 번호 생성
+    pageNumbers.innerHTML = '';
+    
+    // 표시할 페이지 번호 계산 (최대 5개)
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    
+    // 끝 페이지가 조정되면 시작 페이지도 조정
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+    
+    // 첫 페이지가 1이 아니면 "..." 표시
+    if (startPage > 1) {
+      const firstPageBtn = document.createElement('button');
+      firstPageBtn.textContent = '1';
+      firstPageBtn.className = 'page-number';
+      firstPageBtn.addEventListener('click', () => goToPage(1));
+      pageNumbers.appendChild(firstPageBtn);
+      
+      if (startPage > 2) {
+        const dots = document.createElement('span');
+        dots.textContent = '...';
+        dots.className = 'page-dots';
+        pageNumbers.appendChild(dots);
+      }
+    }
+    
+    // 페이지 번호 버튼들 생성
+    for (let i = startPage; i <= endPage; i++) {
+      const pageBtn = document.createElement('button');
+      pageBtn.textContent = i;
+      pageBtn.className = `page-number ${i === currentPage ? 'active' : ''}`;
+      pageBtn.addEventListener('click', () => goToPage(i));
+      pageNumbers.appendChild(pageBtn);
+    }
+    
+    // 마지막 페이지가 끝 페이지가 아니면 "..." 표시
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        const dots = document.createElement('span');
+        dots.textContent = '...';
+        dots.className = 'page-dots';
+        pageNumbers.appendChild(dots);
+      }
+      
+      const lastPageBtn = document.createElement('button');
+      lastPageBtn.textContent = totalPages;
+      lastPageBtn.className = 'page-number';
+      lastPageBtn.addEventListener('click', () => goToPage(totalPages));
+      pageNumbers.appendChild(lastPageBtn);
+    }
+  }
+  
+  // 페이지 이동
+  function goToPage(page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    currentPage = page;
+    render(getFiltered());
+  }
 
   // 템플릿 다운로드(Excel) - 한국어 헤더
   function downloadTemplate(){
@@ -507,10 +624,15 @@
     document.getElementById('searchInput').addEventListener('input', refresh);
     document.getElementById('branchFilter').addEventListener('change', refresh);
     document.getElementById('statusFilter').addEventListener('change', refresh);
+    document.getElementById('itemsPerPageFilter').addEventListener('change', handleItemsPerPageChange);
     document.getElementById('approvalList').addEventListener('click', handleItemClick);
     document.getElementById('selectAll').addEventListener('change', handleSelectAll);
     document.getElementById('bulkApprove').addEventListener('click', handleBulkApprove);
     document.getElementById('bulkReject').addEventListener('click', handleBulkReject);
+    
+    // 페이지네이션 이벤트 리스너
+    document.getElementById('prevPage').addEventListener('click', () => goToPage(currentPage - 1));
+    document.getElementById('nextPage').addEventListener('click', () => goToPage(currentPage + 1));
 
     // 템플릿 다운로드
     const btnTpl = document.getElementById('btnDownloadTemplate');
