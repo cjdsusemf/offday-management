@@ -5,8 +5,10 @@ class LeaveStatus {
         this.currentUser = null;
         // 신청 내역 페이지네이션 관련 변수
         this.requestsCurrentPage = 1;
-        this.requestsItemsPerPage = 10;
+        this.requestsItemsPerPage = 5;
         this.requestsTotalPages = 1;
+        this.requestsStatusFilter = 'all'; // 상태 필터 추가
+        this.requestsTypeFilter = 'all'; // 휴가 유형 필터 추가
         this.init();
     }
 
@@ -15,6 +17,7 @@ class LeaveStatus {
         this.updateCurrentYear();
         this.updateCalculationCriteria();
         this.loadPersonalLeaveStats();
+        this.loadWelfareLeaveStats();
         this.loadMyRequests();
         this.loadMonthlyChart();
         this.loadPlanningStats();
@@ -98,6 +101,70 @@ class LeaveStatus {
         document.getElementById('progress-fill').style.width = `${usagePercentage}%`;
     }
 
+    // 복지 휴가 통계 로드
+    loadWelfareLeaveStats() {
+        if (!this.currentUser) return;
+
+        const userWelfareData = this.getUserWelfareData(this.currentUser.id);
+        
+        // 복지 휴가 현황 업데이트
+        document.getElementById('welfare-earned-days').textContent = userWelfareData.earned;
+        document.getElementById('welfare-used-days').textContent = userWelfareData.used;
+        document.getElementById('welfare-remaining-days').textContent = userWelfareData.remaining;
+        document.getElementById('welfare-pending-days').textContent = userWelfareData.pending;
+
+        // 복지 휴가 사용률 계산 및 업데이트
+        const usagePercentage = userWelfareData.earned > 0 ? 
+            Math.round((userWelfareData.used / userWelfareData.earned) * 100) : 0;
+        
+        document.getElementById('welfare-usage-percentage').textContent = `${usagePercentage}%`;
+        document.getElementById('welfare-progress-fill').style.width = `${usagePercentage}%`;
+    }
+
+    // 사용자별 복지 휴가 데이터 계산
+    getUserWelfareData(userId) {
+        const currentYear = new Date().getFullYear();
+        
+        // 복지 휴가 정책 (예시: 연간 5일 지급)
+        const welfarePolicy = {
+            totalDays: 5,
+            expireDate: `${currentYear}-12-31`,
+            canCarryOver: false
+        };
+        
+        // 사용자 정보로 직원 ID와 사용자 ID 모두 허용
+        const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
+        const employeeId = employee ? employee.id : null;
+        const userIdForRequests = this.currentUser.id;
+        
+        const userWelfareRequests = this.dataManager.leaveRequests.filter(request => {
+            const belongsToUser = (request.employeeId === userIdForRequests) || (employeeId !== null && request.employeeId === employeeId);
+            const isWelfare = request.leaveType && request.leaveType.startsWith('welfare-');
+            const sameYear = new Date(request.startDate).getFullYear() === currentYear;
+            return belongsToUser && isWelfare && sameYear;
+        });
+
+        // 지급된 복지 휴가
+        const earned = welfarePolicy.totalDays;
+        
+        // 사용한 복지 휴가 (승인된 복지 휴가)
+        const used = userWelfareRequests
+            .filter(request => request.status === 'approved')
+            .reduce((total, request) => total + request.days, 0);
+        
+        // 대기 중인 복지 휴가
+        const pending = userWelfareRequests
+            .filter(request => request.status === 'pending')
+            .reduce((total, request) => total + request.days, 0);
+        
+        // 남은 복지 휴가
+        const remaining = earned - used - pending;
+
+        console.log(`복지 휴가 현황 - 지급: ${earned}, 사용: ${used}, 대기: ${pending}, 남은: ${remaining}`);
+
+        return { earned, used, pending, remaining };
+    }
+
     // 사용자별 연차 데이터 계산
     getUserLeaveData(userId) {
         const currentYear = new Date().getFullYear();
@@ -110,7 +177,8 @@ class LeaveStatus {
         const userRequests = this.dataManager.leaveRequests.filter(request => {
             const belongsToUser = (request.employeeId === userIdForRequests) || (employeeId !== null && request.employeeId === employeeId);
             const sameYear = new Date(request.startDate).getFullYear() === currentYear;
-            return belongsToUser && sameYear;
+            const isStatutoryLeave = !request.leaveType || !request.leaveType.startsWith('welfare-');
+            return belongsToUser && sameYear && isStatutoryLeave;
         });
 
         // 발생 연차 (지점별 계산 기준 적용)
@@ -139,6 +207,19 @@ class LeaveStatus {
         if (window.LeaveCalculation) {
             // 새로운 연차 계산 시스템 사용
             const earnedDays = window.LeaveCalculation.calculateLeaveByBranchStandard(userId);
+            
+            // 디버깅 정보 출력
+            const employee = this.dataManager.employees.find(emp => emp.id === userId);
+            if (employee) {
+                console.log('연차 계산 디버깅:', {
+                    employeeName: employee.name,
+                    hireDate: employee.hireDate || employee.joinDate,
+                    currentDate: new Date().toISOString().split('T')[0],
+                    calculatedDays: earnedDays,
+                    branch: employee.branch
+                });
+            }
+            
             return earnedDays;
         } else {
             // 기존 계산 방식 (폴백)
@@ -155,14 +236,34 @@ class LeaveStatus {
         const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
         const employeeId = employee ? employee.id : null;
         const selectedYear = this.getSelectedRequestsYear();
-        const allRequests = this.dataManager.leaveRequests
+        
+        // 기본 필터링 (연도, 사용자)
+        let allRequests = this.dataManager.leaveRequests
             .filter(request => {
                 const belongs = request.employeeId === this.currentUser.id || (employeeId !== null && request.employeeId === employeeId);
                 if (!belongs) return false;
                 if (!selectedYear) return true;
                 return new Date(request.startDate).getFullYear() === selectedYear;
-            })
-            .sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
+            });
+
+        // 상태 필터 적용
+        if (this.requestsStatusFilter !== 'all') {
+            allRequests = allRequests.filter(request => request.status === this.requestsStatusFilter);
+        }
+
+        // 휴가 유형 필터 적용
+        if (this.requestsTypeFilter !== 'all') {
+            if (this.requestsTypeFilter === 'annual') {
+                // 법정 연차만 (복지 휴가가 아닌 것)
+                allRequests = allRequests.filter(request => !request.leaveType || !request.leaveType.startsWith('welfare-'));
+            } else if (this.requestsTypeFilter === 'welfare') {
+                // 복지 휴가만
+                allRequests = allRequests.filter(request => request.leaveType && request.leaveType.startsWith('welfare-'));
+            }
+        }
+
+        // 정렬
+        allRequests = allRequests.sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
 
         // 페이지네이션 적용
         this.requestsTotalPages = Math.ceil(allRequests.length / this.requestsItemsPerPage);
@@ -173,10 +274,11 @@ class LeaveStatus {
         const container = document.getElementById('my-requests');
         
         if (allRequests.length === 0) {
+            const statusText = this.requestsStatusFilter === 'all' ? '' : ` (${this.getStatusText(this.requestsStatusFilter)})`;
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-calendar-plus"></i>
-                    <p>연차 신청 내역이 없습니다.</p>
+                    <p>해당 상태의 연차 신청 내역이 없습니다${statusText}.</p>
                 </div>
             `;
             this.updateRequestsPagination(allRequests.length);
@@ -300,28 +402,57 @@ class LeaveStatus {
 
         const currentYear = new Date().getFullYear();
         const monthlyData = this.getMonthlyLeaveData(this.currentUser.id, currentYear);
+        const welfareData = this.getMonthlyWelfareData(this.currentUser.id, currentYear);
         
         const container = document.getElementById('monthly-chart');
         const months = ['1월', '2월', '3월', '4월', '5월', '6월', 
                        '7월', '8월', '9월', '10월', '11월', '12월'];
         
-        const maxDays = Math.max(...monthlyData, 1); // 최대값 계산 (0으로 나누기 방지)
+        const maxDays = Math.max(...monthlyData, ...welfareData, 1); // 최대값 계산 (0으로 나누기 방지)
+        
+        // 전체 최대값 계산 (스케일링용)
+        const allMonthlyTotals = monthlyData.map((days, index) => days + (welfareData[index] || 0));
+        const maxTotalDays = Math.max(...allMonthlyTotals, 1);
         
         container.innerHTML = monthlyData.map((days, index) => {
-            const height = (days / maxDays) * 100;
+            const welfareDays = welfareData[index] || 0;
+            const totalDays = days + welfareDays;
+            
+            // 모든 월에 대해 막대 표시 (0일인 경우도 얇은 막대로 표시)
+            
+            // 막대가 있는 경우 세로로 2개 막대를 나란히 표시
+            // 각 막대의 높이를 픽셀 단위로 계산 (최대 높이 80px 기준)
+            const maxHeight = 80; // 최대 높이 80px
+            const annualHeight = days > 0 ? (days / maxTotalDays) * maxHeight : 3;
+            const welfareHeight = welfareDays > 0 ? (welfareDays / maxTotalDays) * maxHeight : 3;
+            
+            // 디버깅을 위한 콘솔 로그
+            console.log(`월 ${index + 1}: 법정연차 ${days}일 (높이: ${annualHeight}px), 복지휴가 ${welfareDays}일 (높이: ${welfareHeight}px), 최대값: ${maxTotalDays}`);
+            
             return `
-                <div class="month-bar" style="height: ${height}%" data-month="${index + 1}" data-year="${currentYear}">
-                    <div class="month-value">${days}일</div>
+                <div class="month-group" data-month="${index + 1}" data-year="${currentYear}">
+                    <div class="month-chart-area">
+                        <div class="month-bars-container">
+                            <div class="month-bar-wrapper">
+                                <div class="month-bar annual-bar" style="height: ${annualHeight}px !important; min-height: ${annualHeight}px !important;" title="법정 연차: ${days}일"></div>
+                                <div class="bar-value ${days === 0 ? 'zero-value' : ''}">${days}일</div>
+                            </div>
+                            <div class="month-bar-wrapper">
+                                <div class="month-bar welfare-bar" style="height: ${welfareHeight}px !important; min-height: ${welfareHeight}px !important;" title="복지 휴가: ${welfareDays}일"></div>
+                                <div class="bar-value ${welfareDays === 0 ? 'zero-value' : ''}">${welfareDays}일</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="month-label">${months[index]}</div>
                 </div>
             `;
         }).join('');
 
         // 월별 차트 클릭 이벤트 추가
-        container.querySelectorAll('.month-bar').forEach(bar => {
-            bar.addEventListener('click', () => {
-                const month = parseInt(bar.getAttribute('data-month'));
-                const year = parseInt(bar.getAttribute('data-year'));
+        container.querySelectorAll('.month-group').forEach(group => {
+            group.addEventListener('click', () => {
+                const month = parseInt(group.getAttribute('data-month'));
+                const year = parseInt(group.getAttribute('data-year'));
                 this.showMonthlyDetail(month, year);
             });
         });
@@ -335,7 +466,7 @@ class LeaveStatus {
         const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
         const employeeId = employee ? employee.id : null;
         
-        // 사용자의 연차 신청만 필터링 (해당 연도와 겹치는 모든 연차 포함)
+        // 사용자의 법정연차 신청만 필터링 (복지휴가 제외)
         const userRequests = this.dataManager.leaveRequests.filter(request => {
             const requestStart = new Date(request.startDate);
             const requestEnd = new Date(request.endDate);
@@ -344,13 +475,15 @@ class LeaveStatus {
             
             const belongsToUser = (request.employeeId === userId) || (employeeId !== null && request.employeeId === employeeId);
             const isApproved = request.status === 'approved';
+            const isStatutoryLeave = !request.leaveType || !request.leaveType.startsWith('welfare-');
             
             // 해당 연도와 겹치는 연차인지 확인 (더 정확한 날짜 비교)
             const overlapsWithYear = requestStart <= yearEnd && requestEnd >= yearStart;
             
             return belongsToUser && 
                    overlapsWithYear && 
-                   isApproved;
+                   isApproved &&
+                   isStatutoryLeave;
         });
         
         // 각 월별로 연차 일수 계산
@@ -377,6 +510,58 @@ class LeaveStatus {
         return monthlyData;
     }
 
+    // 월별 복지 휴가 사용 데이터 계산
+    getMonthlyWelfareData(userId, year) {
+        const monthlyData = new Array(12).fill(0);
+        
+        // 현재 사용자와 연결된 직원 정보 찾기
+        const employee = this.dataManager.employees.find(emp => emp.email === this.currentUser.email);
+        const employeeId = employee ? employee.id : null;
+        
+        // 사용자의 복지 휴가 신청만 필터링 (해당 연도와 겹치는 모든 복지 휴가 포함)
+        const userWelfareRequests = this.dataManager.leaveRequests.filter(request => {
+            const requestStart = new Date(request.startDate);
+            const requestEnd = new Date(request.endDate);
+            const yearStart = new Date(year, 0, 1);
+            const yearEnd = new Date(year, 11, 31);
+            
+            const belongsToUser = (request.employeeId === userId) || (employeeId !== null && request.employeeId === employeeId);
+            const isWelfare = request.leaveType && request.leaveType.startsWith('welfare-');
+            const isApproved = request.status === 'approved';
+            
+            // 해당 연도와 겹치는 복지 휴가인지 확인
+            const overlapsWithYear = requestStart <= yearEnd && requestEnd >= yearStart;
+            
+            return belongsToUser && 
+                   isWelfare && 
+                   overlapsWithYear && 
+                   isApproved;
+        });
+        
+        // 각 월별로 복지 휴가 일수 계산
+        userWelfareRequests.forEach(request => {
+            const startDate = new Date(request.startDate);
+            const endDate = new Date(request.endDate);
+            
+            // 해당 월에 복지 휴가가 포함되는지 확인하고 일수 추가
+            for (let month = 0; month < 12; month++) {
+                const monthStart = new Date(year, month, 1);
+                const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+                
+                // 복지 휴가 기간이 해당 월과 겹치는지 확인
+                if (startDate <= monthEnd && endDate >= monthStart) {
+                    // 겹치는 일수 계산
+                    const overlapStart = new Date(Math.max(startDate.getTime(), monthStart.getTime()));
+                    const overlapEnd = new Date(Math.min(endDate.getTime(), monthEnd.getTime()));
+                    const overlapDays = Math.floor((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    monthlyData[month] += overlapDays;
+                }
+            }
+        });
+        return monthlyData;
+    }
+
     // 월별 상세 모달 표시
     showMonthlyDetail(month, year) {
         if (!this.currentUser) return;
@@ -386,8 +571,8 @@ class LeaveStatus {
         const start = new Date(year, month - 1, 1);
         const end = new Date(year, month, 0, 23, 59, 59, 999); // 해당 월의 마지막 날 23:59:59
 
-
-        const list = (this.dataManager.leaveRequests || [])
+        // 전체 연차 신청 목록 (필터링 전)
+        this.monthlyDetailData = (this.dataManager.leaveRequests || [])
             .filter(r => {
                 const belongs = (r.employeeId === this.currentUser.id) || (employeeId !== null && r.employeeId === employeeId);
                 if (!belongs) return false;
@@ -404,7 +589,6 @@ class LeaveStatus {
             })
             .sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
 
-
         // 올바른 모달 요소들 사용
         const modal = document.getElementById('monthly-detail-modal');
         const title = document.getElementById('monthly-detail-title');
@@ -420,27 +604,122 @@ class LeaveStatus {
         // 모달 제목 설정
         title.textContent = `${year}년 ${month}월 연차 사용 내역`;
 
-        // 요약 정보 설정
-        // 총 사용 일수는 승인된 연차만 카운트
-        const approvedRequests = list.filter(request => request.status === 'approved');
-        const totalDays = approvedRequests.reduce((sum, request) => sum + (request.daysInMonth || 0), 0);
-        totalDaysEl.textContent = `${totalDays}일`;
-        // 신청 건수는 모든 신청 건수
-        requestCountEl.textContent = `${list.length}건`;
+        // 필터 버튼 이벤트 리스너 설정
+        this.setupMonthlyDetailFilters();
 
-        // 연차 신청 내역 표시
-        if (list.length === 0) {
-            requestsList.innerHTML = `
-                <div class="no-requests">
-                    <i class="fas fa-calendar-times"></i>
-                    <p>${month}월에는 연차를 사용하지 않았습니다.</p>
+        // 초기 데이터 표시 (전체)
+        this.updateMonthlyDetailDisplay('all');
+
+        // 모달 표시
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    // 월별 상세 모달 필터 설정
+    setupMonthlyDetailFilters() {
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        filterButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                // 모든 버튼에서 active 클래스 제거
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                // 클릭된 버튼에 active 클래스 추가
+                button.classList.add('active');
+                
+                // 필터 적용
+                const status = button.getAttribute('data-status');
+                this.updateMonthlyDetailDisplay(status);
+            });
+        });
+    }
+
+    // 월별 상세 모달 표시 업데이트
+    updateMonthlyDetailDisplay(filterStatus) {
+        if (!this.monthlyDetailData) return;
+
+        const totalDaysEl = document.getElementById('monthly-total-days');
+        const requestCountEl = document.getElementById('monthly-request-count');
+        const requestsList = document.getElementById('monthly-requests-list');
+
+        // 필터링된 목록
+        let filteredList = this.monthlyDetailData;
+        if (filterStatus !== 'all') {
+            filteredList = this.monthlyDetailData.filter(request => request.status === filterStatus);
+        }
+
+        // 요약 정보 업데이트 (깔끔한 표시)
+        const approvedRequests = filteredList.filter(request => request.status === 'approved');
+        const annualRequests = approvedRequests.filter(request => !request.leaveType || !request.leaveType.startsWith('welfare-'));
+        const welfareRequests = approvedRequests.filter(request => request.leaveType && request.leaveType.startsWith('welfare-'));
+        
+        const annualDays = annualRequests.reduce((sum, request) => sum + (request.daysInMonth || 0), 0);
+        const welfareDays = welfareRequests.reduce((sum, request) => sum + (request.daysInMonth || 0), 0);
+        const totalDays = annualDays + welfareDays;
+        
+        // 깔끔한 요약 표시 (신청건수 포함)
+        if (totalDays > 0) {
+            totalDaysEl.innerHTML = `
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">신청건수</span>
+                        <span class="stat-value count">${filteredList.length}건</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">총 사용일수</span>
+                        <span class="stat-value">${totalDays}일</span>
+                    </div>
+                    ${annualDays > 0 ? `
+                    <div class="stat-item sub-item">
+                        <span class="stat-label">
+                            <span class="sub-indicator">•</span>법정연차
+                        </span>
+                        <span class="stat-value annual">${annualDays}일</span>
+                    </div>
+                    ` : ''}
+                    ${welfareDays > 0 ? `
+                    <div class="stat-item sub-item">
+                        <span class="stat-label">
+                            <span class="sub-indicator">•</span>복지휴가
+                        </span>
+                        <span class="stat-value welfare">${welfareDays}일</span>
+                    </div>
+                    ` : ''}
                 </div>
             `;
         } else {
-            requestsList.innerHTML = list.map(request => {
+            totalDaysEl.innerHTML = `
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">신청건수</span>
+                        <span class="stat-value count">${filteredList.length}건</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">총 사용일수</span>
+                        <span class="stat-value">0일</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 신청건수 요소 숨기기 (이미 위에서 표시됨)
+        if (requestCountEl) {
+            requestCountEl.style.display = 'none';
+        }
+
+        // 연차 신청 내역 표시
+        if (filteredList.length === 0) {
+            const statusText = filterStatus === 'all' ? '' : ` (${this.getStatusText(filterStatus)})`;
+            requestsList.innerHTML = `
+                <div class="no-requests">
+                    <i class="fas fa-calendar-times"></i>
+                    <p>해당 상태의 연차 신청이 없습니다${statusText}.</p>
+                </div>
+            `;
+        } else {
+            requestsList.innerHTML = filteredList.map(request => {
                 const startDate = new Date(request.startDate);
                 const endDate = new Date(request.endDate);
-                const period = startDate.toLocaleDateString() + (startDate.getTime() !== endDate.getTime() ? ` ~ ${endDate.toLocaleDateString()}` : '');
+                const isSameDay = startDate.getTime() === endDate.getTime();
+                const period = isSameDay ? startDate.toLocaleDateString() : `${startDate.toLocaleDateString()} ~ ${endDate.toLocaleDateString()}`;
                 
                 // 안전한 데이터 처리
                 const reason = this.safeText(request.reason, this.getLeaveTypeText(request.type || request.leaveType) || '사유없음');
@@ -449,24 +728,24 @@ class LeaveStatus {
                 const totalDays = request.days || 0;
                 const status = request.status || 'unknown';
                 
+                // 휴가 유형에 따른 색상 구분
+                const isWelfare = request.leaveType && request.leaveType.startsWith('welfare-');
+                const typeClass = isWelfare ? 'welfare' : 'annual';
+                
                 return `
-                    <div class="monthly-request-item">
-                        <div class="monthly-request-header">
-                            <div class="monthly-request-period">${period}</div>
-                            <div class="monthly-request-status ${status}">${statusText}</div>
+                    <div class="monthly-request-item ${typeClass}">
+                        <div class="request-main">
+                            <div class="request-date">${period}</div>
+                            <div class="request-status ${status}">${statusText}</div>
                         </div>
-                        <div class="monthly-request-details">
-                            <div class="monthly-request-type">${reason}</div>
-                            <div class="monthly-request-days">${daysInMonth}일(해당월) · 총 ${totalDays}일</div>
+                        <div class="request-info">
+                            <div class="request-type">${reason}</div>
+                            <div class="request-days">${daysInMonth}일</div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
-
-        // 모달 표시
-        modal.style.display = 'block';
-        document.body.style.overflow = 'hidden';
     }
 
     closeMonthModal() {
@@ -513,18 +792,50 @@ class LeaveStatus {
                 return belongs && r.status === 'approved' && new Date(r.startDate).getFullYear() === currentYear;
             });
 
+        console.log('연차 사용 패턴 - 승인된 연차 신청:', requests);
+
         const byType = { vacation: 0, personal: 0, sick: 0, other: 0 };
         let totalDays = 0;
-        requests.forEach(r => { byType[r.type] = (byType[r.type] || 0) + (r.days || 0); totalDays += (r.days || 0); });
+        
+        requests.forEach(r => { 
+            // leaveType 또는 type 필드 확인 (leaveType 우선)
+            const leaveType = r.leaveType || r.type;
+            console.log('연차 신청 데이터:', { id: r.id, type: r.type, leaveType: r.leaveType, reason: r.reason, days: r.days });
+            
+            if (leaveType && byType.hasOwnProperty(leaveType)) {
+                byType[leaveType] = (byType[leaveType] || 0) + (r.days || 0);
+            } else {
+                // reason 필드에서 유형 추출 시도
+                const reason = r.reason || '';
+                if (reason.includes('휴가') || reason.includes('vacation')) {
+                    byType.vacation = (byType.vacation || 0) + (r.days || 0);
+                } else if (reason.includes('개인사정') || reason.includes('personal')) {
+                    byType.personal = (byType.personal || 0) + (r.days || 0);
+                } else if (reason.includes('병가') || reason.includes('sick')) {
+                    byType.sick = (byType.sick || 0) + (r.days || 0);
+                } else {
+                    byType.other = (byType.other || 0) + (r.days || 0);
+                }
+            }
+            totalDays += (r.days || 0); 
+        });
+        
+        console.log('연차 사용 패턴 집계:', byType, '총 일수:', totalDays);
+        
         if (totalDays === 0) totalDays = 1; // 0 나누기 방지
 
         const percent = type => Math.round((byType[type] / totalDays) * 100);
-        const setBar = (id, value) => { const el = document.getElementById(id); if (el) el.style.width = `${value}%`; const txt = document.getElementById(`${id}-val`); if (txt) txt.textContent = `${value}%`; };
+        const setBar = (id, value) => { 
+            const el = document.getElementById(id); 
+            if (el) el.style.width = `${value}%`; 
+            const txt = document.getElementById(`${id}-val`); 
+            if (txt) txt.textContent = `${value}%`; 
+        };
 
         setBar('bar-vacation', percent('vacation'));
         setBar('bar-personal', percent('personal'));
         setBar('bar-other', percent('other'));
-        // 병가는 필요 시 추가: setBar('bar-sick', percent('sick'));
+        setBar('bar-sick', percent('sick'));
     }
 
     // 연차 사용 팁 업데이트
@@ -567,6 +878,11 @@ class LeaveStatus {
             'vacation': '휴가',
             'personal': '개인사정',
             'sick': '병가',
+            'half-morning': '반차 (오전)',
+            'half-afternoon': '반차 (오후)',
+            'welfare-vacation': '복지휴가',
+            'welfare-half-morning': '복지반차 (오전)',
+            'welfare-half-afternoon': '복지반차 (오후)',
             'other': '기타'
         };
         return typeMap[leaveType] || leaveType;
@@ -617,6 +933,12 @@ class LeaveStatus {
                 this.loadMyRequests();
             });
         }
+
+        // 신청 내역 상태 필터 이벤트
+        this.setupRequestsStatusFilters();
+        
+        // 신청 내역 휴가 유형 필터 이벤트
+        this.setupRequestsTypeFilters();
 
         // 신청 내역 페이지네이션 이벤트
         const requestsPrevBtn = document.getElementById('requests-prev-page');
@@ -707,22 +1029,44 @@ class LeaveStatus {
         const reasonTextarea = document.getElementById('reason');
         const reasonGroup = reasonTextarea ? reasonTextarea.closest('.form-group') : null;
 
-        if (startDateInput && endDateInput && totalDaysInput) {
+        if (startDateInput && endDateInput && totalDaysInput && leaveTypeSelect) {
+            const halfDayTimeSelection = document.getElementById('half-day-time-selection');
+            
             const calculateDays = () => {
                 const startDate = new Date(startDateInput.value);
                 const endDate = new Date(endDateInput.value);
+                const leaveType = leaveTypeSelect.value;
                 
-                if (startDate && endDate && startDate <= endDate) {
-                    const timeDiff = endDate.getTime() - startDate.getTime();
-                    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                    totalDaysInput.value = daysDiff;
+                if (leaveType === 'half-morning' || leaveType === 'half-afternoon' || 
+                    leaveType === 'welfare-half-morning' || leaveType === 'welfare-half-afternoon') {
+                    // 반차 선택 시 (법정연차 반차 + 복지휴가 반차)
+                    totalDaysInput.value = 0.5;
+                    // 종료일을 시작일과 같게 설정
+                    if (startDateInput.value) {
+                        endDateInput.value = startDateInput.value;
+                        endDateInput.disabled = true;
+                        endDateInput.style.background = '#f8f9fa';
+                        endDateInput.style.color = '#6c757d';
+                    }
                 } else {
-                    totalDaysInput.value = '';
+                    // 일반 연차 선택 시
+                    endDateInput.disabled = false;
+                    endDateInput.style.background = '';
+                    endDateInput.style.color = '';
+                    
+                    if (startDate && endDate && startDate <= endDate) {
+                        const timeDiff = endDate.getTime() - startDate.getTime();
+                        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                        totalDaysInput.value = daysDiff;
+                    } else {
+                        totalDaysInput.value = '';
+                    }
                 }
             };
 
             startDateInput.addEventListener('change', calculateDays);
             endDateInput.addEventListener('change', calculateDays);
+            leaveTypeSelect.addEventListener('change', calculateDays);
         }
 
         // 오늘 날짜를 기본값으로 설정
@@ -732,6 +1076,47 @@ class LeaveStatus {
         }
         if (endDateInput) {
             endDateInput.min = today;
+        }
+
+        // 시작일과 종료일 간 유효성 검증
+        const validateDates = () => {
+            if (!startDateInput || !endDateInput) return;
+            
+            const startDate = new Date(startDateInput.value);
+            const endDate = new Date(endDateInput.value);
+            
+            if (startDateInput.value && endDateInput.value) {
+                if (endDate < startDate) {
+                    // 종료일이 시작일보다 이전인 경우 시작일로 설정
+                    endDateInput.value = startDateInput.value;
+                    endDateInput.style.borderColor = '#dc3545';
+                    endDateInput.style.backgroundColor = '#fff5f5';
+                    
+                    // 3초 후 스타일 복원
+                    setTimeout(() => {
+                        endDateInput.style.borderColor = '';
+                        endDateInput.style.backgroundColor = '';
+                    }, 3000);
+                } else {
+                    endDateInput.style.borderColor = '';
+                    endDateInput.style.backgroundColor = '';
+                }
+            }
+        };
+
+        // 시작일 변경 시 종료일 최소값 업데이트
+        if (startDateInput) {
+            startDateInput.addEventListener('change', () => {
+                if (startDateInput.value && endDateInput) {
+                    endDateInput.min = startDateInput.value;
+                    validateDates();
+                }
+            });
+        }
+
+        // 종료일 변경 시 유효성 검증
+        if (endDateInput) {
+            endDateInput.addEventListener('change', validateDates);
         }
 
         // 연차 유형이 '기타'일 때만 사유 입력 가능(사유 입력창 표시/숨김)
@@ -762,28 +1147,57 @@ class LeaveStatus {
         if (!this.currentUser) return;
 
         const monthlyData = this.getMonthlyLeaveData(this.currentUser.id, year);
+        const welfareData = this.getMonthlyWelfareData(this.currentUser.id, year);
         
         const container = document.getElementById('monthly-chart');
         const months = ['1월', '2월', '3월', '4월', '5월', '6월', 
                        '7월', '8월', '9월', '10월', '11월', '12월'];
         
-        const maxDays = Math.max(...monthlyData, 1);
+        const maxDays = Math.max(...monthlyData, ...welfareData, 1);
+        
+        // 전체 최대값 계산 (스케일링용)
+        const allMonthlyTotals = monthlyData.map((days, index) => days + (welfareData[index] || 0));
+        const maxTotalDays = Math.max(...allMonthlyTotals, 1);
         
         container.innerHTML = monthlyData.map((days, index) => {
-            const height = (days / maxDays) * 100;
+            const welfareDays = welfareData[index] || 0;
+            const totalDays = days + welfareDays;
+            
+            // 모든 월에 대해 막대 표시 (0일인 경우도 얇은 막대로 표시)
+            
+            // 막대가 있는 경우 세로로 2개 막대를 나란히 표시
+            // 각 막대의 높이를 픽셀 단위로 계산 (최대 높이 80px 기준)
+            const maxHeight = 80; // 최대 높이 80px
+            const annualHeight = days > 0 ? (days / maxTotalDays) * maxHeight : 3;
+            const welfareHeight = welfareDays > 0 ? (welfareDays / maxTotalDays) * maxHeight : 3;
+            
+            // 디버깅을 위한 콘솔 로그
+            console.log(`월 ${index + 1}: 법정연차 ${days}일 (높이: ${annualHeight}px), 복지휴가 ${welfareDays}일 (높이: ${welfareHeight}px), 최대값: ${maxTotalDays}`);
+            
             return `
-                <div class="month-bar" style="height: ${height}%" data-month="${index + 1}" data-year="${year}">
-                    <div class="month-value">${days}일</div>
+                <div class="month-group" data-month="${index + 1}" data-year="${year}">
+                    <div class="month-chart-area">
+                        <div class="month-bars-container">
+                            <div class="month-bar-wrapper">
+                                <div class="month-bar annual-bar" style="height: ${annualHeight}px !important; min-height: ${annualHeight}px !important;" title="법정 연차: ${days}일"></div>
+                                <div class="bar-value ${days === 0 ? 'zero-value' : ''}">${days}일</div>
+                            </div>
+                            <div class="month-bar-wrapper">
+                                <div class="month-bar welfare-bar" style="height: ${welfareHeight}px !important; min-height: ${welfareHeight}px !important;" title="복지 휴가: ${welfareDays}일"></div>
+                                <div class="bar-value ${welfareDays === 0 ? 'zero-value' : ''}">${welfareDays}일</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="month-label">${months[index]}</div>
                 </div>
             `;
         }).join('');
 
         // 클릭 이벤트 다시 바인딩
-        container.querySelectorAll('.month-bar').forEach(bar => {
-            bar.addEventListener('click', () => {
-                const month = parseInt(bar.getAttribute('data-month'));
-                const yr = parseInt(bar.getAttribute('data-year')) || year;
+        container.querySelectorAll('.month-group').forEach(group => {
+            group.addEventListener('click', () => {
+                const month = parseInt(group.getAttribute('data-month'));
+                const yr = parseInt(group.getAttribute('data-year')) || year;
                 this.showMonthlyDetail(month, yr);
             });
         });
@@ -942,6 +1356,44 @@ class LeaveStatus {
         document.body.style.removeProperty('overflow');
     }
 
+    // 신청 내역 상태 필터 설정
+    setupRequestsStatusFilters() {
+        const filterButtons = document.querySelectorAll('#requests-tab .status-filter-buttons .filter-btn');
+        filterButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                // 모든 버튼에서 active 클래스 제거
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                // 클릭된 버튼에 active 클래스 추가
+                button.classList.add('active');
+                
+                // 필터 적용
+                const status = button.getAttribute('data-status');
+                this.requestsStatusFilter = status;
+                this.requestsCurrentPage = 1; // 필터 변경 시 첫 페이지로 이동
+                this.loadMyRequests();
+            });
+        });
+    }
+
+    // 신청 내역 휴가 유형 필터 설정
+    setupRequestsTypeFilters() {
+        const typeFilterButtons = document.querySelectorAll('#requests-tab .type-filter-buttons .filter-btn');
+        typeFilterButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                // 모든 버튼에서 active 클래스 제거
+                typeFilterButtons.forEach(btn => btn.classList.remove('active'));
+                // 클릭된 버튼에 active 클래스 추가
+                button.classList.add('active');
+                
+                // 필터 적용
+                const type = button.getAttribute('data-type');
+                this.requestsTypeFilter = type;
+                this.requestsCurrentPage = 1; // 필터 변경 시 첫 페이지로 이동
+                this.loadMyRequests();
+            });
+        });
+    }
+
     // 연차 신청 제출
     submitLeaveRequest() {
         if (!this.currentUser) {
@@ -961,7 +1413,7 @@ class LeaveStatus {
         if (!reason && leaveType && leaveType !== 'other') {
             reason = this.getLeaveTypeText(leaveType) || '';
         }
-        const totalDays = parseInt(formData.get('totalDays'));
+        const totalDays = parseFloat(formData.get('totalDays'));
 
         // '기타'일 때만 사유를 필수로 요구
         if (!startDate || !endDate || !leaveType || (leaveType === 'other' && !reason) || !totalDays) {
@@ -985,11 +1437,21 @@ class LeaveStatus {
             return;
         }
 
-        // 연차 일수 제한 검사
-        const userLeaveData = this.getUserLeaveData(this.currentUser.id);
-        if (totalDays > userLeaveData.remaining) {
-            this.showNotification(`남은 연차(${userLeaveData.remaining}일)보다 많은 일수를 신청할 수 없습니다.`, 'error');
-            return;
+        // 연차 일수 제한 검사 (복지휴가와 법정연차 구분)
+        if (leaveType.startsWith('welfare-')) {
+            // 복지휴가 신청 시 복지휴가 잔여일수로 체크
+            const welfareData = this.getUserWelfareData(this.currentUser.id);
+            if (totalDays > welfareData.remaining) {
+                this.showNotification(`남은 복지휴가(${welfareData.remaining}일)보다 많은 일수를 신청할 수 없습니다.`, 'error');
+                return;
+            }
+        } else {
+            // 법정연차 신청 시 법정연차 잔여일수로 체크
+            const userLeaveData = this.getUserLeaveData(this.currentUser.id);
+            if (totalDays > userLeaveData.remaining) {
+                this.showNotification(`남은 연차(${userLeaveData.remaining}일)보다 많은 일수를 신청할 수 없습니다.`, 'error');
+                return;
+            }
         }
 
         // 기간 중복 검증: 본인 신청 중 승인/대기와 겹치면 금지
@@ -1033,13 +1495,18 @@ class LeaveStatus {
         // 대시보드 새로고침
         this.refreshDashboard();
 
-        // 성공 알림
-        this.showNotification('연차 신청이 완료되었습니다.', 'success');
+        // 성공 알림 (복지휴가와 법정연차 구분)
+        if (leaveType.startsWith('welfare-')) {
+            this.showNotification('휴가 신청이 완료되었습니다.', 'success');
+        } else {
+            this.showNotification('연차 신청이 완료되었습니다.', 'success');
+        }
     }
 
     // 대시보드 새로고침
     refreshDashboard() {
         this.loadPersonalLeaveStats();
+        this.loadWelfareLeaveStats();
         this.loadMyRequests();
         this.loadMonthlyChart();
         this.loadPlanningStats();

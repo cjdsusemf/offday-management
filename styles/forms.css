@@ -277,3 +277,37 @@
     font-size: 0.8rem;
     margin-top: 0.25rem;
 }
+
+/* 반차 옵션 스타일 */
+#leave-type {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+}
+
+#leave-type option {
+    background: white;
+    color: #2c3e50;
+    padding: 0.5rem;
+}
+
+/* 반차 선택 시 특별 스타일 */
+#leave-type:focus {
+    border-color: #ff6b6b;
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+/* 반차일 때 일수 입력 필드 스타일 */
+#days[value="0.5"] {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    color: #8b4513;
+    font-weight: bold;
+}
+
+/* 반차 라벨 스타일 */
+#leave-type + label::after {
+    content: " (0.5일)";
+    color: #ff6b6b;
+    font-size: 0.8rem;
+    font-weight: bold;
+}

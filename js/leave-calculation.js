@@ -85,16 +85,21 @@ class LeaveCalculation {
         
         // 입사연도 (월차만 발생)
         if (current.getFullYear() === hire.getFullYear()) {
-            return this.calculateMonthlyLeave(hireDate, currentDate);
+            const monthlyLeave = this.calculateMonthlyLeave(hireDate, currentDate);
+            // 0.5 단위로 반올림 (연차/반차 개념)
+            return Math.round(monthlyLeave * 2) / 2;
         }
         
         // 입사 2년차: [(입사년 재직일수÷365일 또는 366일)×15일] + 월차발생
         if (current.getFullYear() === hire.getFullYear() + 1) {
             // 입사년 재직일수 계산 (입사일부터 해당년도 12월 31일까지)
             const yearEnd = new Date(hire.getFullYear(), 11, 31);
-            const firstYearDays = Math.floor((yearEnd - hire) / (24 * 60 * 60 * 1000)) + 1;
+            // 시간대 차이를 고려하여 정확한 일수 계산
+            const hireDateOnly = new Date(hire.getFullYear(), hire.getMonth(), hire.getDate());
+            const yearEndDateOnly = new Date(hire.getFullYear(), 11, 31);
+            const firstYearDays = Math.floor((yearEndDateOnly - hireDateOnly) / (24 * 60 * 60 * 1000)) + 1;
             
-            // 윤년 여부 판단하여 총 일수 결정
+            // 윤년 여부 판단하여 총 일수 결정 (입사년도 기준)
             const isLeapYear = (hire.getFullYear() % 4 === 0 && hire.getFullYear() % 100 !== 0) || 
                               (hire.getFullYear() % 400 === 0);
             const daysInYear = isLeapYear ? 366 : 365;
@@ -102,33 +107,92 @@ class LeaveCalculation {
             // (입사년 재직일수÷365일 또는 366일)×15일
             const proportionalAnnual = (firstYearDays / daysInYear) * 15;
             
-            // 2년차 월차 계산
-            let secondYearMonthly = 0;
-            let firstMonthlyDate = new Date(hire.getFullYear() + 1, 0, hire.getDate());
+            // 2024년 월차 계산 (입사일부터 2024년 12월까지)
+            let firstYearMonthly = 0;
+            let firstYearMonthlyDate = new Date(hire);
+            let firstYearEnd = new Date(hire.getFullYear(), 11, 31);
             
-            if (current >= firstMonthlyDate) {
-                let currentMonthlyDate = firstMonthlyDate;
+            while (firstYearMonthlyDate <= firstYearEnd) {
+                // 다음 달의 같은 날짜 계산
+                let nextMonth = firstYearMonthlyDate.getMonth() + 1;
+                let nextYear = firstYearMonthlyDate.getFullYear();
+                
+                if (nextMonth > 11) {
+                    nextMonth = 0;
+                    nextYear += 1;
+                }
+                
+                let nextMonthlyDate = new Date(nextYear, nextMonth, hire.getDate());
+                
+                // 날짜가 존재하지 않는 경우 마지막 날로 조정
+                const lastDayOfMonth = new Date(nextYear, nextMonth + 1, 0);
+                if (hire.getDate() > lastDayOfMonth.getDate()) {
+                    nextMonthlyDate.setDate(lastDayOfMonth.getDate());
+                }
+                
+                if (nextMonthlyDate <= firstYearEnd) {
+                    firstYearMonthly += 1;
+                    firstYearMonthlyDate = nextMonthlyDate;
+                } else {
+                    break;
+                }
+            }
+            
+            // 2025년 월차 계산 (2025년 1월부터 현재까지)
+            let secondYearMonthly = 0;
+            let currentMonthlyDate = new Date(hire.getFullYear() + 1, 0, hire.getDate()); // 2025년 1월 7일
+            
+            if (current >= currentMonthlyDate) {
                 while (currentMonthlyDate <= current) {
                     secondYearMonthly += 1;
+                    
                     // 다음 달의 같은 날짜 계산
-                    if (currentMonthlyDate.getMonth() === 11) {
-                        currentMonthlyDate = new Date(currentMonthlyDate.getFullYear() + 1, 0, hire.getDate());
-                    } else {
-                        currentMonthlyDate = new Date(currentMonthlyDate.getFullYear(), currentMonthlyDate.getMonth() + 1, hire.getDate());
+                    let nextMonth = currentMonthlyDate.getMonth() + 1;
+                    let nextYear = currentMonthlyDate.getFullYear();
+                    
+                    if (nextMonth > 11) {
+                        nextMonth = 0;
+                        nextYear += 1;
                     }
                     
+                    currentMonthlyDate = new Date(nextYear, nextMonth, hire.getDate());
+                    
                     // 날짜가 존재하지 않는 경우 마지막 날로 조정
-                    const lastDayOfMonth = new Date(currentMonthlyDate.getFullYear(), currentMonthlyDate.getMonth() + 1, 0);
-                    if (currentMonthlyDate.getDate() !== hire.getDate()) {
-                        currentMonthlyDate.setDate(Math.min(hire.getDate(), lastDayOfMonth.getDate()));
+                    const lastDayOfMonth = new Date(nextYear, nextMonth + 1, 0);
+                    if (hire.getDate() > lastDayOfMonth.getDate()) {
+                        currentMonthlyDate.setDate(lastDayOfMonth.getDate());
                     }
                 }
             }
             
-            // 2년차 월차는 최대 10일까지만
-            const actualSecondYearMonthly = Math.min(secondYearMonthly, 10);
+            // 월차는 총 11개가 최대이므로, 2024년 월차(5개)를 차감하여 2025년 최대 월차는 6개
+            const remainingMonthly = 11 - firstYearMonthly; // 11 - 5 = 6
+            const actualSecondYearMonthly = Math.min(secondYearMonthly, remainingMonthly);
             
-            return proportionalAnnual + actualSecondYearMonthly;
+            // 총 월차 = 2025년 월차만 (2024년 월차는 이월되지 않음)
+            const actualMonthly = actualSecondYearMonthly;
+            
+            const totalLeave = proportionalAnnual + actualMonthly;
+            
+            // 0.5 단위로 반올림 (연차/반차 개념)
+            const roundedLeave = Math.round(totalLeave * 2) / 2;
+            
+            console.log(`회계연도 기준 2년차 계산:`, {
+                hireDate: hire.toISOString().split('T')[0],
+                currentDate: current.toISOString().split('T')[0],
+                firstYearDays,
+                daysInYear: `${daysInYear}일 (${isLeapYear ? '윤년' : '평년'})`,
+                proportionalAnnual: proportionalAnnual.toFixed(2),
+                firstYearMonthly,
+                secondYearMonthly,
+                remainingMonthly,
+                actualSecondYearMonthly,
+                actualMonthly,
+                total: totalLeave.toFixed(2),
+                roundedTotal: roundedLeave.toFixed(1)
+            });
+            
+            return roundedLeave;
         }
         
         // 3년차 이상: 15일 + 추가 연차 (월차 제외)
@@ -145,10 +209,15 @@ class LeaveCalculation {
             
             console.log(`회계연도 기준 계산 - 입사년: ${hire.getFullYear()}, 현재년: ${current.getFullYear()}, 추가년수: ${additionalYears}`);
             
-            console.log(`회계연도 기준 3년차 이상 - 기본: ${baseAnnual}, 추가: ${additionalDays}, 총: ${baseAnnual + additionalDays}`);
+            const totalLeave = baseAnnual + additionalDays;
+            
+            // 0.5 단위로 반올림 (연차/반차 개념)
+            const roundedLeave = Math.round(totalLeave * 2) / 2;
+            
+            console.log(`회계연도 기준 3년차 이상 - 기본: ${baseAnnual}, 추가: ${additionalDays}, 총: ${totalLeave}, 반올림: ${roundedLeave}`);
             
             // 회계연도 기준에서는 3년차 이상부터는 월차를 별도로 계산하지 않음
-            return baseAnnual + additionalDays;
+            return roundedLeave;
         }
     }
 
