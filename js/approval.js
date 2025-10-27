@@ -70,13 +70,18 @@
       const department = employee ? (employee.department || '-') : '-';
       const isSelected = selectedItems.has(r.id); // 현재 항목이 선택되었는지 확인
       const branchStyle = getBranchStyle(branch);
+      const leaveTypeText = r.leaveType === 'welfare-vacation' ? '복지휴가' : 
+                           r.leaveType === 'vacation' ? '법정연차' :
+                           r.leaveType === 'personal' ? '개인사정' :
+                           r.leaveType === 'sick' ? '병가' : '기타';
+      
       return `
         <div class="approval-item ${isSelected ? 'selected' : ''}" data-id="${r.id}">
           <input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} data-id="${r.id}">
           <div>
             <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch" style="${branchStyle}">${branch}</span> <span class="approval-dept">${department}</span></div>
             <div class="approval-meta">기간: ${r.startDate} ~ ${r.endDate} (${r.days}일)  신청일: ${r.requestDate || '-'}</div>
-            <div class="approval-meta">사유: ${r.reason || '-'}</div>
+            <div class="approval-meta">유형: <span class="leave-type-badge ${r.leaveType}">${leaveTypeText}</span>  사유: ${r.reason || '-'}</div>
           </div>
           <div class="approval-actions">
             ${r.status==='pending' ? `
@@ -98,6 +103,7 @@
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const branchFilter = document.getElementById('branchFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
+    const leaveTypeFilter = document.getElementById('leaveTypeFilter').value;
     const reqs = dm.leaveRequests || [];
     
     return reqs.filter(r => {
@@ -107,8 +113,9 @@
       const matchesSearch = !searchTerm || r.employeeName.toLowerCase().includes(searchTerm);
       const matchesBranch = branchFilter === 'all' || branch === branchFilter;
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+      const matchesLeaveType = leaveTypeFilter === 'all' || r.leaveType === leaveTypeFilter;
       
-      return matchesSearch && matchesBranch && matchesStatus;
+      return matchesSearch && matchesBranch && matchesStatus && matchesLeaveType;
     });
   }
 
@@ -276,10 +283,10 @@
     
     const header = ['이메일','시작일','종료일','일수','유형','사유'];
     const examples = [
-      ['user1@company.com','2025-01-15','2025-01-17','3','휴가','가족 행사'],
-      ['user2@company.com','2025-01-20','2025-01-20','1','개인사정','개인 용무'],
-      ['user3@company.com','2025-01-25','2025-01-25','1','병가','감기로 인한 휴가'],
-      ['user4@company.com','2025-02-01','2025-02-03','3','기타','결혼식 참석']
+      ['user1@company.com','2025-01-15','2025-01-17','3','법정연차','가족 행사'],
+      ['user2@company.com','2025-01-20','2025-01-20','1','복지휴가','복지휴가 사용'],
+      ['user3@company.com','2025-01-25','2025-01-25','1','개인사정','개인 용무'],
+      ['user4@company.com','2025-02-01','2025-02-03','3','병가','감기로 인한 휴가']
     ];
     
     // 워크북 생성
@@ -409,7 +416,8 @@
         
         // 한국어 유형을 영어로 매핑
         const typeMapping = {
-          '휴가': 'vacation',
+          '법정연차': 'vacation',
+          '복지휴가': 'welfare-vacation',
           '개인사정': 'personal', 
           '병가': 'sick',
           '기타': 'other'
@@ -624,6 +632,7 @@
     document.getElementById('searchInput').addEventListener('input', refresh);
     document.getElementById('branchFilter').addEventListener('change', refresh);
     document.getElementById('statusFilter').addEventListener('change', refresh);
+    document.getElementById('leaveTypeFilter').addEventListener('change', refresh);
     document.getElementById('itemsPerPageFilter').addEventListener('change', handleItemsPerPageChange);
     document.getElementById('approvalList').addEventListener('click', handleItemClick);
     document.getElementById('selectAll').addEventListener('change', handleSelectAll);
@@ -938,7 +947,8 @@
       if(!isOther) {
         // 기타가 아닌 경우 해당 유형을 사유에 자동 입력
         const typeMap = {
-          'vacation': '휴가',
+          'vacation': '법정연차',
+          'welfare-vacation': '복지휴가',
           'personal': '개인사정', 
           'sick': '병가'
         };

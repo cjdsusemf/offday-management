@@ -14,7 +14,7 @@
         if (employees.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="13" class="empty-state">
+                    <td colspan="14" class="empty-state">
                         <i class="fas fa-users"></i>
                         <p>검색 조건에 맞는 직원이 없습니다.</p>
                     </td>
@@ -40,8 +40,17 @@
             } catch(_) {}
 
             const stats = getComputedLeaveStats(emp);
+            const welfareStats = getComputedWelfareLeaveStats(emp);
             const usageRate = stats.total > 0 ? (stats.used / stats.total * 100) : 0;
             const usageClass = usageRate < 30 ? 'low' : usageRate < 70 ? 'medium' : 'high';
+            
+            // 디버깅용 로그
+            console.log(`직원 ${emp.name}: usageRate=${usageRate}, welfareStats=`, welfareStats);
+            
+            // 복지휴가 데이터가 없으면 기본값 설정
+            if (!welfareStats || welfareStats.total === undefined) {
+                welfareStats = { total: 0, used: 0, remaining: 0, expired: 0 };
+            }
             return `
                 <tr data-id="${emp.id}" class="${status}">
                     <td><strong>${emp.name}</strong></td>
@@ -54,9 +63,13 @@
                     <td>${emp.phone || '-'}</td>
                     <td>${emp.hireDate}</td>
                     <td>${emp.birthDate || '-'}</td>
-                    <td>${stats.total}일</td>
-                    <td>${stats.used}일</td>
-                    <td>${stats.remaining}일</td>
+                        <td>
+                            <div class="annual-leave-info" onclick="showAnnualLeaveHistory(${emp.id})" style="cursor: pointer;" title="연차 이력 보기">
+                                <div class="annual-leave-total">발생: ${stats.total % 1 === 0 ? stats.total : stats.total.toFixed(1)}일</div>
+                                <div class="annual-leave-used">사용: ${stats.used % 1 === 0 ? stats.used : stats.used.toFixed(1)}일</div>
+                                <div class="annual-leave-remaining">잔여: ${stats.remaining % 1 === 0 ? stats.remaining : stats.remaining.toFixed(1)}일</div>
+                            </div>
+                        </td>
                     <td>
                         <div class="usage-rate">
                             <div class="usage-bar">
@@ -65,11 +78,24 @@
                             <span class="usage-text">${usageRate.toFixed(0)}%</span>
                         </div>
                     </td>
+                    <td>
+                        <div class="welfare-leave-info" onclick="showWelfareLeaveHistory(${emp.id})" style="cursor: pointer;" title="복지휴가 이력 보기">
+                            <div class="welfare-leave-total">지급: ${welfareStats.total}일</div>
+                            <div class="welfare-leave-used">사용: ${welfareStats.used}일</div>
+                            <div class="welfare-leave-remaining">잔여: ${welfareStats.remaining}일</div>
+                            <div class="welfare-leave-expired">만기: ${welfareStats.expired}일</div>
+                        </div>
+                    </td>
                     <td class="actions-column">
                         <div class="employee-actions-btns">
                             <button class="btn-icon btn-edit" onclick="editEmployee(${emp.id})" title="수정">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            ${status === 'active' ? 
+                                `<button class="btn-icon btn-welfare" onclick="grantWelfareLeave(${emp.id})" title="복지휴가 지급">
+                                    <i class="fas fa-gift"></i>
+                                </button>` : ''
+                            }
                             ${status === 'active' ? 
                                 `<button class="btn-icon btn-resign" onclick="resignEmployee(${emp.id})" title="퇴사 처리">
                                     <i class="fas fa-user-times"></i>
@@ -108,7 +134,75 @@
         }
     }
 
-    // 직원 연차 현황 산출(실제 leaveRequests 기준)
+    // 직원 복지휴가 현황 산출
+    function getComputedWelfareLeaveStats(employee) {
+        try {
+            const currentYear = new Date().getFullYear();
+            const today = new Date().toISOString().split('T')[0];
+            
+            // employeeId 혼재 대응(user.id/employee.id)
+            const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+            const users = dm?.users || JSON.parse(usersStorage);
+            const user = users.find(u => u.email === employee.email);
+            const identifiers = new Set([employee.id]);
+            if (user) identifiers.add(user.id);
+
+            // 복지휴가 신청 내역 필터링
+            const welfareRequests = (dm.leaveRequests || []).filter(r =>
+                identifiers.has(r.employeeId) &&
+                new Date(r.startDate).getFullYear() === currentYear &&
+                r.leaveType === 'welfare-vacation'
+            );
+
+            const used = welfareRequests
+                .filter(r => r.status === 'approved')
+                .reduce((sum, r) => sum + (r.days || 0), 0);
+
+            // 복지휴가 지급 이력에서 만기 정보 계산
+            const welfareGrants = (dm.welfareLeaveGrants || []).filter(grant => grant.employeeId === employee.id);
+            
+            let totalGranted = 0;
+            let expiredDays = 0;
+            
+            welfareGrants.forEach(grant => {
+                totalGranted += grant.grantedDays || 0;
+                
+                // 만기일이 있고 오늘 날짜가 만기일을 넘었으면 만기 처리
+                if (grant.expiryDate && grant.expiryDate < today) {
+                    // 해당 지급분의 사용 여부 확인
+                    const grantUsed = welfareRequests
+                        .filter(r => r.status === 'approved' && 
+                               new Date(r.startDate) >= grant.effectiveDate &&
+                               new Date(r.startDate) <= grant.expiryDate)
+                        .reduce((sum, r) => sum + (r.days || 0), 0);
+                    
+                    const grantRemaining = Math.max((grant.grantedDays || 0) - grantUsed, 0);
+                    expiredDays += grantRemaining;
+                }
+            });
+
+            // 총 복지휴가는 지급된 총량 또는 직원 데이터에서 가져오기
+            const total = totalGranted > 0 ? totalGranted : (employee.welfareLeaveDays || 0);
+            const remaining = Math.max(total - used - expiredDays, 0);
+            
+            // 디버깅을 위한 콘솔 로그
+            console.log(`복지휴가 계산 - ${employee.name}:`, {
+                totalGranted,
+                used,
+                expiredDays,
+                remaining,
+                welfareGrants: welfareGrants.length,
+                today
+            });
+            
+            return { total, used, remaining, expired: expiredDays };
+        } catch (e) {
+            console.error('복지휴가 계산 오류:', e);
+            return { total: employee.welfareLeaveDays || 0, used: 0, remaining: employee.welfareLeaveDays || 0, expired: 0 };
+        }
+    }
+
+    // 직원 연차 현황 산출(실제 leaveRequests 기준) - 법정연차만
     function getComputedLeaveStats(employee) {
         try {
             const currentYear = new Date().getFullYear();
@@ -119,9 +213,11 @@
             const identifiers = new Set([employee.id]);
             if (user) identifiers.add(user.id);
 
+            // 법정연차만 필터링 (복지휴가 제외)
             const requests = (dm.leaveRequests || []).filter(r =>
                 identifiers.has(r.employeeId) &&
-                new Date(r.startDate).getFullYear() === currentYear
+                new Date(r.startDate).getFullYear() === currentYear &&
+                r.leaveType !== 'welfare-vacation' // 복지휴가 제외
             );
 
             const used = requests
@@ -132,7 +228,7 @@
             let total = employee.annualLeaveDays || 15;
             if (window.LeaveCalculation && typeof window.LeaveCalculation.calculateLeaveByBranchStandard === 'function') {
                 try {
-                    total = Math.round(window.LeaveCalculation.calculateLeaveByBranchStandard(employee.id));
+                    total = window.LeaveCalculation.calculateLeaveByBranchStandard(employee.id);
                 } catch (_) {}
             }
             const remaining = Math.max(total - used, 0);
@@ -429,12 +525,680 @@
         return true;
     }
 
+    // 복지휴가 지급 모달 열기
+    function grantWelfareLeave(id) {
+        const employee = dm.employees.find(emp => emp.id === id);
+        if (!employee) return;
+
+        const modal = document.getElementById('welfareLeaveModal');
+        const form = document.getElementById('welfareLeaveForm');
+        
+        if (!modal || !form) return;
+
+        // 폼 초기화
+        form.reset();
+        
+        // 직원 정보 설정
+        document.getElementById('welfareEmployeeName').value = employee.name;
+        document.getElementById('welfareEmployeeEmail').value = employee.email;
+        
+        // 오늘 날짜를 기본값으로 설정
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('welfareLeaveEffectiveDate').value = today;
+        
+        // 기본 만기일을 1년 후로 설정
+        const oneYearLater = new Date();
+        oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+        document.getElementById('welfareLeaveExpiryDate').value = oneYearLater.toISOString().split('T')[0];
+        
+        // 현재 복지휴가 현황 표시
+        const welfareStats = getComputedWelfareLeaveStats(employee);
+        const currentTotal = welfareStats.total;
+        
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        
+        // 모달 제목에 현재 복지휴가 정보 표시
+        document.getElementById('welfareModalTitle').textContent = 
+            `복지휴가 지급 - ${employee.name} (현재: ${currentTotal}일)`;
+    }
+
+    // 복지휴가 지급 모달 닫기
+    function closeWelfareModal() {
+        const modal = document.getElementById('welfareLeaveModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // 복지휴가 지급 처리
+    function saveWelfareLeave(formData) {
+        const employeeEmail = document.getElementById('welfareEmployeeEmail').value;
+        const employee = dm.employees.find(emp => emp.email === employeeEmail);
+        
+        if (!employee) {
+            alert('직원 정보를 찾을 수 없습니다.');
+            return false;
+        }
+
+        const welfareLeaveDays = parseFloat(formData.get('welfareLeaveDays'));
+        const welfareLeaveReason = formData.get('welfareLeaveReason') || '';
+        const welfareLeaveEffectiveDate = formData.get('welfareLeaveEffectiveDate');
+        const welfareLeaveExpiryDate = formData.get('welfareLeaveExpiryDate');
+
+        if (welfareLeaveDays <= 0) {
+            alert('복지휴가 일수는 0보다 커야 합니다.');
+            return false;
+        }
+
+        // 직원 데이터에 복지휴가 추가
+        const currentWelfareLeave = employee.welfareLeaveDays || 0;
+        employee.welfareLeaveDays = currentWelfareLeave + welfareLeaveDays;
+        
+        // 복지휴가 지급 기록 생성
+        const welfareGrant = {
+            id: Date.now() + Math.floor(Math.random() * 10000),
+            employeeId: employee.id,
+            employeeName: employee.name,
+            employeeEmail: employee.email,
+            grantedDays: welfareLeaveDays,
+            reason: welfareLeaveReason,
+            effectiveDate: welfareLeaveEffectiveDate,
+            expiryDate: welfareLeaveExpiryDate,
+            grantedDate: new Date().toISOString().split('T')[0],
+            grantedBy: getCurrentUser()?.email || 'admin'
+        };
+
+        // 복지휴가 지급 기록 저장
+        if (!dm.welfareLeaveGrants) {
+            dm.welfareLeaveGrants = [];
+        }
+        dm.welfareLeaveGrants.push(welfareGrant);
+        
+        // 직원 데이터 저장
+        dm.saveData('employees', dm.employees);
+        dm.saveData('welfareLeaveGrants', dm.welfareLeaveGrants);
+
+        alert(`${employee.name} 직원에게 복지휴가 ${welfareLeaveDays}일이 지급되었습니다.`);
+        
+        closeWelfareModal();
+        refreshEmployeeTable();
+        return true;
+    }
+
+    // 복지휴가 이력 표시
+    function showWelfareLeaveHistory(employeeId) {
+        const employee = dm.employees.find(emp => emp.id === employeeId);
+        if (!employee) return;
+
+        const modal = document.getElementById('welfareHistoryModal');
+        const content = document.getElementById('welfareHistoryContent');
+        const title = document.getElementById('welfareHistoryTitle');
+        
+        if (!modal || !content || !title) return;
+
+        // 복지휴가 지급 이력 가져오기
+        const welfareGrants = (dm.welfareLeaveGrants || []).filter(grant => grant.employeeId === employeeId);
+        
+        // 복지휴가 사용 이력 가져오기 (전체 연도)
+        const welfareRequests = (dm.leaveRequests || []).filter(req => 
+            req.employeeId === employeeId &&
+            req.leaveType === 'welfare-vacation'
+        );
+
+        // 현재 복지휴가 현황
+        const welfareStats = getComputedWelfareLeaveStats(employee);
+
+        title.textContent = `${employee.name} - 복지휴가 이력`;
+
+        let html = `
+            <div class="welfare-history-section">
+                <h4 class="welfare-history-section-title">현재 복지휴가 현황</h4>
+                <div class="welfare-history-stats">
+                    <div class="welfare-stat-item total">
+                        <div class="welfare-stat-label">총 지급</div>
+                        <div class="welfare-stat-value total">${welfareStats.total}일</div>
+                    </div>
+                    <div class="welfare-stat-item used">
+                        <div class="welfare-stat-label">사용</div>
+                        <div class="welfare-stat-value used">${welfareStats.used}일</div>
+                    </div>
+                    <div class="welfare-stat-item remaining">
+                        <div class="welfare-stat-label">잔여</div>
+                        <div class="welfare-stat-value remaining">${welfareStats.remaining}일</div>
+                    </div>
+                    <div class="welfare-stat-item expired">
+                        <div class="welfare-stat-label">만기</div>
+                        <div class="welfare-stat-value expired">${welfareStats.expired}일</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 지급 이력
+        html += `
+            <div class="welfare-history-section">
+                <h4 class="welfare-history-section-title">복지휴가 지급 이력</h4>
+        `;
+        
+        if (welfareGrants.length > 0) {
+            html += `
+                <table class="welfare-history-table">
+                    <thead>
+                        <tr>
+                            <th>지급일</th>
+                            <th>지급일수</th>
+                            <th>유효시작일</th>
+                            <th>유효만기일</th>
+                            <th>지급사유</th>
+                            <th>지급자</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            welfareGrants.forEach(grant => {
+                html += `
+                    <tr>
+                        <td>${grant.grantedDate}</td>
+                        <td>${grant.grantedDays}일</td>
+                        <td>${grant.effectiveDate}</td>
+                        <td>${grant.expiryDate || '-'}</td>
+                        <td>${grant.reason || '-'}</td>
+                        <td>${grant.grantedBy}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+        } else {
+            html += `
+                <div class="welfare-history-empty">
+                    지급 이력이 없습니다.
+                </div>
+            `;
+        }
+        
+        html += `</div>`;
+
+        // 사용 이력
+        html += `
+            <div class="welfare-history-section">
+                <h4 class="welfare-history-section-title">
+                    복지휴가 사용 이력 (전체)
+                    <div class="annual-leave-filters">
+                        <div class="filter-group">
+                            <label>연도:</label>
+                            <select id="welfareLeaveYearFilter">
+                                <option value="all">전체</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>상태:</label>
+                            <select id="welfareLeaveStatusFilter">
+                                <option value="all">전체</option>
+                                <option value="approved">승인됨</option>
+                                <option value="pending">대기중</option>
+                                <option value="rejected">거부됨</option>
+                            </select>
+                        </div>
+                    </div>
+                </h4>
+                <div id="welfareLeaveHistoryTable"></div>
+        `;
+        
+        html += `</div>`;
+
+        content.innerHTML = html;
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
+        // 연도 옵션 생성 (DOM 생성 후)
+        const years = [...new Set(welfareRequests.map(req => new Date(req.startDate).getFullYear()))].sort((a, b) => b - a);
+        
+        const yearFilterSelect = document.getElementById('welfareLeaveYearFilter');
+        if (yearFilterSelect) {
+            years.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = `${year}년`;
+                yearFilterSelect.appendChild(option);
+            });
+        }
+
+        // 필터링된 데이터 표시 함수
+        function renderFilteredWelfareLeaveHistory() {
+            const selectedYear = document.getElementById('welfareLeaveYearFilter')?.value || 'all';
+            const selectedStatus = document.getElementById('welfareLeaveStatusFilter')?.value || 'all';
+            
+            let filteredRequests = welfareRequests;
+            
+            // 연도 필터 적용
+            if (selectedYear !== 'all') {
+                filteredRequests = filteredRequests.filter(req => 
+                    new Date(req.startDate).getFullYear() == selectedYear
+                );
+            }
+            
+            // 상태 필터 적용
+            if (selectedStatus !== 'all') {
+                filteredRequests = filteredRequests.filter(req => req.status === selectedStatus);
+            }
+            
+            const historyContainer = document.getElementById('welfareLeaveHistoryTable');
+            if (!historyContainer) {
+                return;
+            }
+            
+            if (filteredRequests.length === 0) {
+                historyContainer.innerHTML = `
+                    <div class="welfare-history-empty">
+                        필터 조건에 맞는 사용 이력이 없습니다.
+                    </div>
+                `;
+                return;
+            }
+            
+            // 연도별로 그룹화
+            const requestsByYear = {};
+            filteredRequests.forEach(req => {
+                const year = new Date(req.startDate).getFullYear();
+                if (!requestsByYear[year]) {
+                    requestsByYear[year] = [];
+                }
+                requestsByYear[year].push(req);
+            });
+
+            // 연도별로 정렬 (최신 연도부터)
+            const sortedYears = Object.keys(requestsByYear).sort((a, b) => b - a);
+
+            let tableHTML = '';
+            sortedYears.forEach(year => {
+                const yearRequests = requestsByYear[year];
+                tableHTML += `
+                    <h5 style="margin: 16px 0 8px 0; color: #374151; font-size: 0.9rem;">${year}년 (${yearRequests.length}건)</h5>
+                    <table class="welfare-history-table">
+                        <thead>
+                            <tr>
+                                <th>신청일</th>
+                                <th>사용기간</th>
+                                <th>사용일수</th>
+                                <th>상태</th>
+                                <th>사유</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                yearRequests.forEach(req => {
+                    const statusText = req.status === 'approved' ? '승인됨' : 
+                                     req.status === 'pending' ? '대기중' : '거부됨';
+                    const statusClass = req.status === 'approved' ? 'status-approved' : 
+                                      req.status === 'pending' ? 'status-pending' : 'status-rejected';
+                    
+                    tableHTML += `
+                        <tr>
+                            <td>${req.requestDate || '-'}</td>
+                            <td>${req.startDate} ~ ${req.endDate}</td>
+                            <td>${req.days}일</td>
+                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                            <td>${req.reason || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+            });
+            
+            historyContainer.innerHTML = tableHTML;
+        }
+
+        // 초기 테이블 렌더링
+        if (welfareRequests.length > 0) {
+            renderFilteredWelfareLeaveHistory();
+        } else {
+            const historyContainer = document.getElementById('welfareLeaveHistoryTable');
+            if (historyContainer) {
+                historyContainer.innerHTML = `
+                    <div class="welfare-history-empty">
+                        사용 이력이 없습니다.
+                    </div>
+                `;
+            }
+        }
+
+        // 필터 이벤트 리스너 추가
+        const yearFilter = document.getElementById('welfareLeaveYearFilter');
+        const statusFilter = document.getElementById('welfareLeaveStatusFilter');
+        
+        if (yearFilter) {
+            yearFilter.addEventListener('change', renderFilteredWelfareLeaveHistory);
+        }
+        
+        if (statusFilter) {
+            statusFilter.addEventListener('change', renderFilteredWelfareLeaveHistory);
+        }
+    }
+
+    // 복지휴가 이력 모달 닫기
+    function closeWelfareHistoryModal() {
+        const modal = document.getElementById('welfareHistoryModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    function closeAnnualLeaveHistoryModal() {
+        const modal = document.getElementById('annualLeaveHistoryModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
     // 전역 함수로 등록
     window.addEmployee = addEmployee;
     window.editEmployee = editEmployee;
     window.deleteEmployee = deleteEmployee;
     window.resignEmployee = resignEmployee;
     window.reactivateEmployee = reactivateEmployee;
+    window.grantWelfareLeave = grantWelfareLeave;
+    window.showWelfareLeaveHistory = showWelfareLeaveHistory;
+
+    // 연차 이력 조회 함수
+    function showAnnualLeaveHistory(employeeId) {
+        const employee = dm.employees.find(emp => emp.id === employeeId);
+        if (!employee) return;
+
+        const modal = document.getElementById('annualLeaveHistoryModal');
+        const content = document.getElementById('annualLeaveHistoryContent');
+        const title = document.getElementById('annualLeaveHistoryTitle');
+        
+        if (!modal || !content || !title) return;
+
+        // 연차 사용 이력 가져오기 (법정연차만) - 전체 연도
+        // 연차현황과 동일한 ID 매핑 로직 사용
+        const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
+        const users = dm?.users || JSON.parse(usersStorage);
+        const user = users.find(u => u.email === employee.email);
+        const identifiers = new Set([employee.id]);
+        if (user) identifiers.add(user.id);
+        
+        const allRequests = (dm.leaveRequests || []).filter(req => 
+            identifiers.has(req.employeeId)
+        );
+        console.log('이민용의 모든 휴가 신청 (ID 매핑 포함):', allRequests);
+        
+        const annualLeaveRequests = allRequests.filter(req => 
+            req.leaveType !== 'welfare-vacation' // 복지휴가 제외
+        );
+        console.log('이민용의 연차 신청 (복지휴가 제외):', annualLeaveRequests);
+
+        // 현재 연차 현황
+        const annualStats = getComputedLeaveStats(employee);
+
+        title.textContent = `${employee.name} - 연차 이력`;
+
+        let html = `
+            <div class="welfare-history-section">
+                <h4 class="welfare-history-section-title">현재 연차 현황</h4>
+                <div class="welfare-history-stats">
+                    <div class="welfare-stat-item total">
+                        <div class="welfare-stat-label">발생</div>
+                        <div class="welfare-stat-value total">${annualStats.total % 1 === 0 ? annualStats.total : annualStats.total.toFixed(1)}일</div>
+                    </div>
+                    <div class="welfare-stat-item used">
+                        <div class="welfare-stat-label">사용</div>
+                        <div class="welfare-stat-value used">${annualStats.used % 1 === 0 ? annualStats.used : annualStats.used.toFixed(1)}일</div>
+                    </div>
+                    <div class="welfare-stat-item remaining">
+                        <div class="welfare-stat-label">잔여</div>
+                        <div class="welfare-stat-value remaining">${annualStats.remaining % 1 === 0 ? annualStats.remaining : annualStats.remaining.toFixed(1)}일</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 연차 사용 이력
+        html += `
+            <div class="welfare-history-section">
+                <h4 class="welfare-history-section-title">
+                    연차 사용 이력 (전체)
+                    <div class="annual-leave-filters">
+                        <div class="filter-group">
+                            <label>연도:</label>
+                            <select id="annualLeaveYearFilter">
+                                <option value="all">전체</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>상태:</label>
+                            <select id="annualLeaveStatusFilter">
+                                <option value="all">전체</option>
+                                <option value="approved">승인됨</option>
+                                <option value="pending">대기중</option>
+                                <option value="rejected">거부됨</option>
+                            </select>
+                        </div>
+                    </div>
+                </h4>
+        `;
+        
+        // 필터링된 데이터 표시 함수
+        function renderFilteredAnnualLeaveHistory() {
+            const selectedYear = document.getElementById('annualLeaveYearFilter')?.value || 'all';
+            const selectedStatus = document.getElementById('annualLeaveStatusFilter')?.value || 'all';
+            
+            console.log('필터 선택:', { selectedYear, selectedStatus });
+            console.log('원본 데이터:', annualLeaveRequests);
+            
+            let filteredRequests = annualLeaveRequests;
+            
+            // 연도 필터 적용
+            if (selectedYear !== 'all') {
+                filteredRequests = filteredRequests.filter(req => 
+                    new Date(req.startDate).getFullYear() == selectedYear
+                );
+                console.log('연도 필터 적용 후:', filteredRequests);
+            }
+            
+            // 상태 필터 적용
+            if (selectedStatus !== 'all') {
+                filteredRequests = filteredRequests.filter(req => req.status === selectedStatus);
+                console.log('상태 필터 적용 후:', filteredRequests);
+            }
+            
+            console.log('최종 필터링된 데이터:', filteredRequests);
+            
+            const historyContainer = document.getElementById('annualLeaveHistoryTable');
+            if (!historyContainer) {
+                console.log('historyContainer를 찾을 수 없음');
+                return;
+            }
+            
+            if (filteredRequests.length === 0) {
+                historyContainer.innerHTML = `
+                    <div class="welfare-history-empty">
+                        필터 조건에 맞는 사용 이력이 없습니다.
+                    </div>
+                `;
+                return;
+            }
+            
+            // 연도별로 그룹화
+            const requestsByYear = {};
+            filteredRequests.forEach(req => {
+                const year = new Date(req.startDate).getFullYear();
+                if (!requestsByYear[year]) {
+                    requestsByYear[year] = [];
+                }
+                requestsByYear[year].push(req);
+            });
+
+            // 연도별로 정렬 (최신 연도부터)
+            const sortedYears = Object.keys(requestsByYear).sort((a, b) => b - a);
+
+            let tableHTML = '';
+            sortedYears.forEach(year => {
+                const yearRequests = requestsByYear[year];
+                tableHTML += `
+                    <h5 style="margin: 16px 0 8px 0; color: #374151; font-size: 0.9rem;">${year}년 (${yearRequests.length}건)</h5>
+                    <table class="welfare-history-table">
+                        <thead>
+                            <tr>
+                                <th>신청일</th>
+                                <th>사용기간</th>
+                                <th>사용일수</th>
+                                <th>상태</th>
+                                <th>사유</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                yearRequests.forEach(req => {
+                    const statusText = req.status === 'approved' ? '승인됨' : 
+                                     req.status === 'pending' ? '대기중' : '거부됨';
+                    const statusClass = req.status === 'approved' ? 'status-approved' : 
+                                      req.status === 'pending' ? 'status-pending' : 'status-rejected';
+                    
+                    tableHTML += `
+                        <tr>
+                            <td>${req.requestDate || '-'}</td>
+                            <td>${req.startDate} ~ ${req.endDate}</td>
+                            <td>${req.days}일</td>
+                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                            <td>${req.reason || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+            });
+            
+            historyContainer.innerHTML = tableHTML;
+        }
+
+        // 초기 테이블 렌더링
+        html += `<div id="annualLeaveHistoryTable">`;
+        html += `</div>`;
+        
+        html += `</div>`;
+
+        content.innerHTML = html;
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
+        // 연도 옵션 생성 (DOM 생성 후)
+        const years = [...new Set(annualLeaveRequests.map(req => new Date(req.startDate).getFullYear()))].sort((a, b) => b - a);
+        console.log('사용 가능한 연도들:', years);
+        console.log('연차 신청 데이터:', annualLeaveRequests);
+        
+        const yearFilterSelect = document.getElementById('annualLeaveYearFilter');
+        if (yearFilterSelect) {
+            years.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = `${year}년`;
+                yearFilterSelect.appendChild(option);
+            });
+        }
+
+        // 초기 테이블 렌더링 (DOM이 생성된 후)
+        if (annualLeaveRequests.length > 0) {
+            renderFilteredAnnualLeaveHistory();
+        } else {
+            const historyContainer = document.getElementById('annualLeaveHistoryTable');
+            if (historyContainer) {
+                historyContainer.innerHTML = `
+                    <div class="welfare-history-empty">
+                        사용 이력이 없습니다.
+                    </div>
+                `;
+            }
+        }
+
+        // 필터 이벤트 리스너 추가
+        const yearFilter = document.getElementById('annualLeaveYearFilter');
+        const statusFilter = document.getElementById('annualLeaveStatusFilter');
+        
+        if (yearFilter) {
+            yearFilter.addEventListener('change', renderFilteredAnnualLeaveHistory);
+        }
+        
+        if (statusFilter) {
+            statusFilter.addEventListener('change', renderFilteredAnnualLeaveHistory);
+        }
+    }
+
+    window.showAnnualLeaveHistory = showAnnualLeaveHistory;
+    
+    // 테스트용 복지휴가 데이터 추가
+    function addTestWelfareLeaveData() {
+        if (!dm.welfareLeaveGrants) {
+            dm.welfareLeaveGrants = [];
+        }
+        
+        // 이미 테스트 데이터가 있는지 확인
+        const hasTestData = dm.welfareLeaveGrants.some(grant => grant.grantedBy === 'test');
+        if (hasTestData) return;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        // 첫 번째 직원에게 만기된 복지휴가 지급
+        const firstEmployee = dm.employees[0];
+        if (firstEmployee) {
+            const expiredGrant = {
+                id: Date.now() + 1,
+                employeeId: firstEmployee.id,
+                employeeName: firstEmployee.name,
+                employeeEmail: firstEmployee.email,
+                grantedDays: 3,
+                reason: '테스트용 복지휴가 (만기됨)',
+                effectiveDate: yesterdayStr,
+                expiryDate: yesterdayStr, // 어제 만료
+                grantedDate: yesterdayStr,
+                grantedBy: 'test'
+            };
+            dm.welfareLeaveGrants.push(expiredGrant);
+        }
+        
+        // 두 번째 직원에게 유효한 복지휴가 지급
+        const secondEmployee = dm.employees[1];
+        if (secondEmployee) {
+            const validGrant = {
+                id: Date.now() + 2,
+                employeeId: secondEmployee.id,
+                employeeName: secondEmployee.name,
+                employeeEmail: secondEmployee.email,
+                grantedDays: 5,
+                reason: '테스트용 복지휴가 (유효함)',
+                effectiveDate: today,
+                expiryDate: '2026-10-27', // 내년까지 유효
+                grantedDate: today,
+                grantedBy: 'test'
+            };
+            dm.welfareLeaveGrants.push(validGrant);
+        }
+        
+        // 데이터 저장
+        dm.saveData('welfareLeaveGrants', dm.welfareLeaveGrants);
+        console.log('테스트용 복지휴가 데이터가 추가되었습니다.');
+    }
 
     // 지점과 부서 데이터 로드 (캐싱 적용)
     function loadBranchAndDepartmentData() {
@@ -660,6 +1424,66 @@
             });
         }
 
+        // 복지휴가 모달 이벤트 리스너
+        const closeWelfareModalBtn = document.getElementById('closeWelfareModal');
+        if (closeWelfareModalBtn) {
+            closeWelfareModalBtn.addEventListener('click', closeWelfareModal);
+        }
+
+        const cancelWelfareBtn = document.getElementById('cancelWelfareBtn');
+        if (cancelWelfareBtn) {
+            cancelWelfareBtn.addEventListener('click', closeWelfareModal);
+        }
+
+        const welfareModal = document.getElementById('welfareLeaveModal');
+        if (welfareModal) {
+            welfareModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeWelfareModal();
+                }
+            });
+        }
+
+        // 복지휴가 폼 제출 처리
+        const welfareForm = document.getElementById('welfareLeaveForm');
+        if (welfareForm) {
+            welfareForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                saveWelfareLeave(formData);
+            });
+        }
+
+        // 복지휴가 이력 모달 이벤트 리스너
+        const closeWelfareHistoryModalBtn = document.getElementById('closeWelfareHistoryModal');
+        if (closeWelfareHistoryModalBtn) {
+            closeWelfareHistoryModalBtn.addEventListener('click', closeWelfareHistoryModal);
+        }
+
+        // 연차 이력 모달 이벤트 리스너
+        const closeAnnualLeaveHistoryModalBtn = document.getElementById('closeAnnualLeaveHistoryModal');
+        if (closeAnnualLeaveHistoryModalBtn) {
+            closeAnnualLeaveHistoryModalBtn.addEventListener('click', closeAnnualLeaveHistoryModal);
+        }
+
+        const welfareHistoryModal = document.getElementById('welfareHistoryModal');
+        if (welfareHistoryModal) {
+            welfareHistoryModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeWelfareHistoryModal();
+                }
+            });
+        }
+
+        const annualLeaveHistoryModal = document.getElementById('annualLeaveHistoryModal');
+        if (annualLeaveHistoryModal) {
+            annualLeaveHistoryModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeAnnualLeaveHistoryModal();
+                }
+            });
+        }
+
         // 로그아웃 처리는 auth.js에서 전역으로 처리됨
 
         // 엑셀 내보내기
@@ -708,6 +1532,11 @@
         
         dm = window.dataManager || new DataManager();
         window.dataManager = dm;
+
+        // 테스트용 복지휴가 데이터 추가 (개발 환경에서만)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            addTestWelfareLeaveData();
+        }
 
         // 페이지 로드 시 자동으로 회원 데이터 동기화 (한 번만 실행)
         if (typeof window.authManager !== 'undefined' && !window.employeeManagementInitialized) {

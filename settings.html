@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>연차관리 시스템 - 설정</title>
+    <title>�������� �ý��� - ����</title>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/settings.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -13,27 +13,32 @@
         <div class="container">
             <div class="logo">
                 <i class="fas fa-calendar-alt"></i>
-                <h1>연차관리 시스템</h1>
+                <h1>�������� �ý���</h1>
             </div>
-            <nav class="nav">
-                <a href="leave-status.html" class="nav-link">
-                    <i class="fas fa-calendar-check"></i> 연차현황
+                        <nav class="nav">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-home"></i> ��ú���
                 </a>
-                <a href="calendar.html" class="nav-link">
-                    <i class="fas fa-calendar-alt"></i> 캘린더
+                <a href="leave-request.html" class="nav-link">
+                    <i class="fas fa-calendar-plus"></i> ������û
                 </a>
-                
-                
-                <a href="main-management.html" class="nav-link">
-                    <i class="fas fa-cogs"></i> 메인관리
+                <a href="employee-management.html" class="nav-link">
+                    <i class="fas fa-users"></i> ��������
                 </a>
-                <div class="user-dropdown">
-                    <a href="mypage.html" id="profile-link">
-                        <i class="fas fa-user" id="navAvatarIcon"></i> 마이페이지
-                    </a>
-                    <a href="#" id="logout-link">
-                        <i class="fas fa-sign-out-alt"></i> 로그아웃
-                    </a>
+                <a href="statistics.html" class="nav-link">
+                    <i class="fas fa-chart-bar"></i> ���
+                </a>
+                <a href="settings.html" class="nav-link active">
+                    <i class="fas fa-cog"></i> ����
+                </a>
+                    <div class="user-dropdown">
+                        <a href="mypage.html" id="profile-link">
+                            <i class="fas fa-user"></i> ����������
+                        </a>
+                        <a href="#" id="logout-link">
+                            <i class="fas fa-sign-out-alt"></i> �α׾ƿ�
+                        </a>
+                    </div>
                 </div>
             </nav>
         </div>
@@ -42,27 +47,28 @@
     <main class="main">
         <div class="container">
             <div class="page-header">
-                <h2><i class="fas fa-cog"></i> 시스템 설정</h2>
-                <p>연차관리 시스템의 기본 설정을 관리하세요</p>
+                <h2><i class="fas fa-cog"></i> �ý��� ����</h2>
+                <p>�������� �ý����� ������ �����ϼ���</p>
             </div>
 
             <div class="settings-container">
+                <!-- �Ϲ� ���� -->
                 <div class="settings-section">
                     <div class="settings-header">
                         <div class="icon general">
                             <i class="fas fa-sliders-h"></i>
                         </div>
                         <div>
-                            <h3>일반 설정</h3>
-                            <p>시스템의 기본 옵션을 설정합니다</p>
+                            <h3>�Ϲ� ����</h3>
+                            <p>�ý����� �⺻ ������ �����մϴ�</p>
                         </div>
                     </div>
 
                     <div class="setting-group">
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>자동 저장</h4>
-                                <p>변경사항을 자동으로 저장합니다</p>
+                                <h4>�ڵ� ����</h4>
+                                <p>��������� �ڵ����� �����մϴ�</p>
                             </div>
                             <div class="setting-control">
                                 <label class="toggle-switch">
@@ -74,8 +80,8 @@
 
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>알림 표시</h4>
-                                <p>시스템 알림을 표시합니다</p>
+                                <h4>�˸� ǥ��</h4>
+                                <p>�ý��� �˸��� ǥ���մϴ�</p>
                             </div>
                             <div class="setting-control">
                                 <label class="toggle-switch">
@@ -87,8 +93,8 @@
 
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>다크 모드</h4>
-                                <p>어두운 테마를 사용합니다</p>
+                                <h4>��ũ ���</h4>
+                                <p>��ο� �׸��� ����մϴ�</p>
                             </div>
                             <div class="setting-control">
                                 <label class="toggle-switch">
@@ -100,110 +106,113 @@
                     </div>
                 </div>
 
+                <!-- ���� ���� -->
                 <div class="settings-section">
                     <div class="settings-header">
                         <div class="icon leave">
                             <i class="fas fa-calendar-check"></i>
                         </div>
                         <div>
-                            <h3>연차 설정</h3>
-                            <p>연차 관련 기본 설정을 관리합니다</p>
+                            <h3>���� ����</h3>
+                            <p>���� ���� �⺻ ������ �����մϴ�</p>
                         </div>
                     </div>
 
                     <div class="setting-group">
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>기본 연차 일수</h4>
-                                <p>신입 직원의 기본 연차 일수입니다</p>
+                                <h4>�⺻ ���� �ϼ�</h4>
+                                <p>�ű� ������ �⺻ ���� �ϼ��Դϴ�</p>
                             </div>
                             <div class="setting-control">
                                 <input type="number" id="default-leave-days" value="15" min="1" max="30">
-                                <span>일</span>
+                                <span>��</span>
                             </div>
                         </div>
 
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>연차 신청 제한</h4>
-                                <p>한 번에 신청할 수 있는 최대 연차 일수입니다</p>
+                                <h4>���� ��û ����</h4>
+                                <p>�� ���� ��û�� �� �ִ� �ִ� ���� �ϼ��Դϴ�</p>
                             </div>
                             <div class="setting-control">
                                 <input type="number" id="max-leave-days" value="10" min="1" max="30">
-                                <span>일</span>
+                                <span>��</span>
                             </div>
                         </div>
 
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>연차 신청 기간</h4>
-                                <p>연차 사용 최소 신청 기간입니다</p>
+                                <h4>���� ��û �Ⱓ</h4>
+                                <p>���� ��� �� �ּ� ��û �Ⱓ�Դϴ�</p>
                             </div>
                             <div class="setting-control">
                                 <input type="number" id="advance-notice" value="3" min="0" max="30">
-                                <span>일</span>
+                                <span>��</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- ȸ�� ���� -->
                 <div class="settings-section">
                     <div class="settings-header">
                         <div class="icon company">
                             <i class="fas fa-building"></i>
                         </div>
                         <div>
-                            <h3>회사 설정</h3>
-                            <p>회사 기본 정보를 관리합니다</p>
+                            <h3>ȸ�� ����</h3>
+                            <p>ȸ�� �⺻ ������ �����մϴ�</p>
                         </div>
                     </div>
 
                     <div class="setting-group">
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>회사명</h4>
-                                <p>연차관리 시스템에 표시될 회사명입니다</p>
+                                <h4>ȸ���</h4>
+                                <p>�������� �ý��ۿ� ǥ�õ� ȸ����Դϴ�</p>
                             </div>
                             <div class="setting-control">
-                                <input type="text" id="company-name" value="우리회사" placeholder="회사명을 입력하세요">
+                                <input type="text" id="company-name" value="�츮ȸ��" placeholder="ȸ����� �Է��ϼ���">
                             </div>
                         </div>
 
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>근무 시간</h4>
-                                <p>기본 근무 시간을 설정합니다</p>
+                                <h4>�ٹ� �ð�</h4>
+                                <p>�⺻ �ٹ� �ð��� �����մϴ�</p>
                             </div>
                             <div class="setting-control">
-                                <input type="text" id="work-hours" value="09:00 - 18:00" placeholder="근무 시간">
+                                <input type="text" id="work-hours" value="09:00 - 18:00" placeholder="�ٹ� �ð�">
                             </div>
                         </div>
 
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>근무일</h4>
-                                <p>주간 근무일을 설정합니다</p>
+                                <h4>�ٹ���</h4>
+                                <p>�ְ� �ٹ����� �����մϴ�</p>
                             </div>
                             <div class="setting-control">
                                 <select id="work-days">
-                                    <option value="월-금">월요일 - 금요일</option>
-                                    <option value="월-토">월요일 - 토요일</option>
-                                    <option value="화-토">화요일 - 토요일</option>
-                                    <option value="월-일">월요일 - 일요일</option>
+                                    <option value="��-��">������ - �ݿ���</option>
+                                    <option value="��-��">������ - �����</option>
+                                    <option value="ȭ-��">ȭ���� - �����</option>
+                                    <option value="��-��">������ - �Ͽ���</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- ������ ���� -->
                 <div class="settings-section">
                     <div class="settings-header">
                         <div class="icon data">
                             <i class="fas fa-database"></i>
                         </div>
                         <div>
-                            <h3>데이터 관리</h3>
-                            <p>시스템 데이터를 백업하고 관리합니다</p>
+                            <h3>������ ����</h3>
+                            <p>�ý��� �����͸� ����ϰ� �����մϴ�</p>
                         </div>
                     </div>
 
@@ -212,10 +221,10 @@
                             <div class="icon">
                                 <i class="fas fa-download"></i>
                             </div>
-                            <h4>데이터 내보내기</h4>
-                            <p>모든 데이터를 JSON 파일로 내보냅니다</p>
+                            <h4>������ ��������</h4>
+                            <p>��� �����͸� JSON ���Ϸ� �������ϴ�</p>
                             <button class="btn btn-primary" onclick="exportAllData()">
-                                <i class="fas fa-download"></i> 내보내기
+                                <i class="fas fa-download"></i> ��������
                             </button>
                         </div>
 
@@ -223,10 +232,10 @@
                             <div class="icon">
                                 <i class="fas fa-upload"></i>
                             </div>
-                            <h4>데이터 가져오기</h4>
-                            <p>JSON 파일에서 데이터를 가져옵니다</p>
+                            <h4>������ ��������</h4>
+                            <p>JSON ���Ͽ��� �����͸� �����ɴϴ�</p>
                             <button class="btn btn-secondary" onclick="importData()">
-                                <i class="fas fa-upload"></i> 가져오기
+                                <i class="fas fa-upload"></i> ��������
                             </button>
                         </div>
 
@@ -234,31 +243,34 @@
                             <div class="icon">
                                 <i class="fas fa-trash-alt"></i>
                             </div>
-                            <h4>데이터 초기화</h4>
-                            <p>모든 데이터를 삭제하고 초기화합니다</p>
+                            <h4>������ �ʱ�ȭ</h4>
+                            <p>��� �����͸� �����ϰ� �ʱ�ȭ�մϴ�</p>
                             <button class="btn btn-danger" onclick="resetAllData()">
-                                <i class="fas fa-trash-alt"></i> 초기화
+                                <i class="fas fa-trash-alt"></i> �ʱ�ȭ
                             </button>
                         </div>
                     </div>
                 </div>
 
+                <!-- ���� ��ư -->
                 <div class="action-buttons">
                     <button class="btn btn-primary" onclick="saveSettings()">
-                        <i class="fas fa-save"></i> 설정 저장
+                        <i class="fas fa-save"></i> ���� ����
                     </button>
                     <button class="btn btn-secondary" onclick="resetSettings()">
-                        <i class="fas fa-undo"></i> 기본값으로 복원
+                        <i class="fas fa-undo"></i> �⺻������ ����
                     </button>
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- ���� �Է� (����) -->
     <input type="file" id="file-input" accept=".json" style="display: none;">
 
     <script src="js/data-manager.js"></script>
     <script src="js/settings.js"></script>
+
     <script src="js/auth.js"></script>
     <script src="js/auth-guard.js"></script>
     <script>
@@ -266,7 +278,7 @@
             if (!AuthGuard.checkAuth()) return;
             document.getElementById('logout-link').addEventListener('click', (e) => {
                 e.preventDefault();
-                if (confirm('정말 로그아웃하시겠습니까?')) {
+                if (confirm('�α׾ƿ� �Ͻðڽ��ϱ�?')) {
                     window.authManager.logout();
                     window.location.href = 'login.html';
                 }
@@ -276,83 +288,4 @@
 </body>
 </html>
 
-                <div class="settings-section">
-                    <div class="settings-header">
-                        <div class="icon data">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <div>
-                            <h3>데이터 관리</h3>
-                            <p>시스템 데이터를 백업하고 관리합니다</p>
-                        </div>
-                    </div>
-
-                    <div class="data-management">
-                        <div class="data-card">
-                            <div class="icon">
-                                <i class="fas fa-download"></i>
-                            </div>
-                            <h4>데이터 내보내기</h4>
-                            <p>모든 데이터를 JSON 파일로 내보냅니다</p>
-                            <button class="btn btn-primary" onclick="exportAllData()">
-                                <i class="fas fa-download"></i> 내보내기
-                            </button>
-                        </div>
-
-                        <div class="data-card">
-                            <div class="icon">
-                                <i class="fas fa-upload"></i>
-                            </div>
-                            <h4>데이터 가져오기</h4>
-                            <p>JSON 파일에서 데이터를 가져옵니다</p>
-                            <button class="btn btn-secondary" onclick="importData()">
-                                <i class="fas fa-upload"></i> 가져오기
-                            </button>
-                        </div>
-
-                        <div class="data-card">
-                            <div class="icon">
-                                <i class="fas fa-trash-alt"></i>
-                            </div>
-                            <h4>데이터 초기화</h4>
-                            <p>모든 데이터를 삭제하고 초기화합니다</p>
-                            <button class="btn btn-danger" onclick="resetAllData()">
-                                <i class="fas fa-trash-alt"></i> 초기화
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="saveSettings()">
-                        <i class="fas fa-save"></i> 설정 저장
-                    </button>
-                    <button class="btn btn-secondary" onclick="resetSettings()">
-                        <i class="fas fa-undo"></i> 기본값으로 복원
-                    </button>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <input type="file" id="file-input" accept=".json" style="display: none;">
-
-    <script src="js/data-manager.js"></script>
-    <script src="js/settings.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/auth-guard.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!AuthGuard.checkAuth()) return;
-            document.getElementById('logout-link').addEventListener('click', (e) => {
-                e.preventDefault();
-                if (confirm('정말 로그아웃하시겠습니까?')) {
-                    window.authManager.logout();
-                    window.location.href = 'login.html';
-                }
-            });
-        });
-    </script>
-</body>
-</html>
 

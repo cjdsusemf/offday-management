@@ -66,6 +66,14 @@
           <option value="approved">승인됨</option>
           <option value="rejected">거부됨</option>
         </select>
+        <select id="leaveTypeFilter" class="form-select">
+          <option value="all">전체 유형</option>
+          <option value="vacation">법정연차</option>
+          <option value="welfare-vacation">복지휴가</option>
+          <option value="personal">개인사정</option>
+          <option value="sick">병가</option>
+          <option value="other">기타</option>
+        </select>
         <select id="itemsPerPageFilter" class="form-select">
           <option value="5">5개씩 보기</option>
           <option value="10" selected>10개씩 보기</option>
@@ -126,7 +134,8 @@
           <div class="form-group">
             <label for="adm-type">유형</label>
             <select id="adm-type" required>
-              <option value="vacation">휴가</option>
+              <option value="vacation">법정연차</option>
+              <option value="welfare-vacation">복지휴가</option>
               <option value="personal">개인사정</option>
               <option value="sick">병가</option>
               <option value="other">기타</option>

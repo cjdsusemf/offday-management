@@ -1,789 +1,486 @@
-﻿// 캘린더 기능 - DataManager 연동 버전
-class Calendar {
-    constructor() {
-        this.currentDate = new Date();
-        this.dataManager = window.dataManager;
-        this.currentMonth = this.currentDate.getMonth();
-        this.currentYear = this.currentDate.getFullYear();
-        this.selectedBranch = '';
-        this.init();
-    }
+// FullCalendar 기반 연차 캘린더
+(function(){
+    let calendar;
+    let allEvents = [];
+    
+    // 지점별 색상 정의
+    const branchColors = {
+        '본사': '#1976d2',
+        '강남점': '#388e3c',
+        '부산점': '#f57c00',
+        '평택점': '#7b1fa2',
+        '대구점': '#d32f2f',
+        '광주점': '#00796b',
+        '대전점': '#5d4037',
+        '울산점': '#455a64'
+    };
 
-    init() {
-        this.setupEventListeners();
-        this.renderCalendar();
-        this.loadLeaveData();
-        // 데이터 변경 시 자동 동기화
-        window.addEventListener('dm:updated', () => {
-            this.renderCalendar();
-            this.loadLeaveData();
-        });
-    }
-
-    setupEventListeners() {
-        // 이전/다음 달 버튼
-        document.getElementById('prev-month').addEventListener('click', () => {
-            this.currentMonth--;
-            if (this.currentMonth < 0) {
-                this.currentMonth = 11;
-                this.currentYear--;
-            }
-            this.renderCalendar();
-            this.loadLeaveData();
-        });
-
-        document.getElementById('next-month').addEventListener('click', () => {
-            this.currentMonth++;
-            if (this.currentMonth > 11) {
-                this.currentMonth = 0;
-                this.currentYear++;
-            }
-            this.renderCalendar();
-            this.loadLeaveData();
-        });
-
-        // 지점 필터 (실제 데이터 기반 옵션 채움 + 변경 시 동기화)
-        const branchSelect = document.getElementById('branch-filter');
-        if (branchSelect) {
-            this.populateBranchOptions();
-            branchSelect.addEventListener('change', (e) => {
-                this.selectedBranch = e.target.value === 'all' ? '' : e.target.value;
-                this.renderCalendar();
-                this.loadLeaveData();
-            });
+    // 초기화
+    function init() {
+        console.log('캘린더 초기화 시작');
+        if (!window.AuthGuard || !AuthGuard.checkAuth()) {
+            console.log('인증 실패');
+            return;
         }
-
-        // 연차 신청 버튼
-        document.getElementById('leave-request-btn').addEventListener('click', () => {
-            this.showLeaveRequestModal();
-        });
-
-        // 연차 신청 폼 이벤트
-        this.setupLeaveRequestForm();
-
-        // 날짜 선택 모달 이벤트
-        this.setupDatePickerModal();
-
-        // 현재 월/년도 클릭 이벤트
-        document.getElementById('current-month').addEventListener('click', () => {
-            this.showDatePickerModal();
-        });
-    }
-
-    renderCalendar() {
-        const monthNames = [
-            '1월', '2월', '3월', '4월', '5월', '6월',
-            '7월', '8월', '9월', '10월', '11월', '12월'
-        ];
-
-        // 현재 월 표시
-        document.getElementById('current-month').textContent = 
-            `${this.currentYear}년 ${monthNames[this.currentMonth]}`;
-
-        // 캘린더 그리드 생성
-        const calendarGrid = document.getElementById('calendar-grid');
-        calendarGrid.innerHTML = '';
-
-        // 이번 달 첫째 날과 마지막 날
-        const firstDay = new Date(this.currentYear, this.currentMonth, 1);
-        const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
-        const firstDayOfWeek = firstDay.getDay();
-        const daysInMonth = lastDay.getDate();
-
-        // 이전 달의 마지막 날들
-        const prevMonth = new Date(this.currentYear, this.currentMonth, 0);
-        const daysInPrevMonth = prevMonth.getDate();
-
-        // 캘린더 날짜 생성
-        for (let i = 0; i < 42; i++) {
-            const dayElement = document.createElement('div');
-            dayElement.className = 'calendar-day';
-
-            let dayNumber, isCurrentMonth, date;
-
-            if (i < firstDayOfWeek) {
-                // 이전 달
-                dayNumber = daysInPrevMonth - firstDayOfWeek + i + 1;
-                dayElement.classList.add('other-month');
-                isCurrentMonth = false;
-                date = new Date(this.currentYear, this.currentMonth - 1, dayNumber);
-            } else if (i < firstDayOfWeek + daysInMonth) {
-                // 이번 달
-                dayNumber = i - firstDayOfWeek + 1;
-                isCurrentMonth = true;
-                date = new Date(this.currentYear, this.currentMonth, dayNumber);
-            } else {
-                // 다음 달
-                dayNumber = i - firstDayOfWeek - daysInMonth + 1;
-                dayElement.classList.add('other-month');
-                isCurrentMonth = false;
-                date = new Date(this.currentYear, this.currentMonth + 1, dayNumber);
-            }
-
-            // 오늘 날짜 표시
-            const today = new Date();
-            if (isCurrentMonth && 
-                date.getDate() === today.getDate() && 
-                date.getMonth() === today.getMonth() && 
-                date.getFullYear() === today.getFullYear()) {
-                dayElement.classList.add('today');
-            }
-
-            dayElement.innerHTML = `
-                <div class="day-number">${dayNumber}</div>
-                <div class="leave-indicator" id="leave-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}"></div>
-            `;
-
-            // 날짜 클릭 이벤트 (연차 신청)
-            if (isCurrentMonth) {
-                dayElement.classList.add('clickable');
-                dayElement.addEventListener('click', () => {
-                    this.showLeaveRequestModal(date);
-                });
-            } else {
-                // 다른 달 날짜는 기존 상세 보기
-                dayElement.addEventListener('click', () => {
-                    this.showLeaveDetails(date);
-                });
-            }
-
-            calendarGrid.appendChild(dayElement);
-        }
-    }
-
-    loadLeaveData() {
-        // DataManager에서 실제 연차 데이터 가져오기
-        const leaveRequests = this.dataManager.leaveRequests || [];
-        const employees = this.dataManager.employees || [];
-        // 사용자-직원 매핑 지원 (user.id / employee.id 혼재 대응)
-        const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
-        const users = this.dataManager?.users || JSON.parse(usersStorage);
-        const userById = new Map(users.map(u => [u.id, u]));
-        const employeeById = new Map(employees.map(e => [e.id, e]));
-        const norm = (v) => (v || '').toString().trim().toLowerCase();
-        const employeeByEmail = new Map(employees.map(e => [norm(e.email), e]));
-
-        // 기존 표시 초기화
-        document.querySelectorAll('.leave-indicator').forEach(el => el.innerHTML = '');
-        document.querySelectorAll('.calendar-day').forEach(el => {
-            el.classList.remove('has-leave', 'has-pending');
-        });
         
-        // 각 날짜에 연차 정보 표시
-        leaveRequests.forEach(request => {
-            const startDate = new Date(request.startDate);
-            const endDate = new Date(request.endDate);
-            // employeeId가 user.id인 경우 이메일로 직원 매핑
-            let employee = employeeById.get(request.employeeId);
-            if (!employee) {
-                const user = userById.get(request.employeeId);
-                if (user) employee = employeeByEmail.get(norm(user.email));
-            }
-            
-            if (!employee) return;
-            
-            // 해당 연차가 현재 표시 중인 월에 포함되는지 확인
-            if (this.isDateInCurrentMonth(startDate) || this.isDateInCurrentMonth(endDate)) {
-                // 연차 기간의 모든 날짜에 표시
-                const currentDate = new Date(startDate);
-                while (currentDate <= endDate) {
-                    const dateStr = this.formatDate(currentDate);
-                    const indicator = document.getElementById(`leave-${dateStr}`);
-                    
-                    if (indicator && this.shouldShowLeave(request, employee)) {
-                        const leaveItem = document.createElement('div');
-                        leaveItem.className = `leave-item ${request.status}`;
-                        leaveItem.textContent = employee.name;
-                        leaveItem.title = `${employee.name} - ${request.reason || '연차'}`;
-                        
-                        leaveItem.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            this.showLeaveDetailModal(request, employee);
-                        });
-                        
-                        indicator.appendChild(leaveItem);
-                        
-                        // 해당 날짜에 연차가 있음을 표시
-                        const dayElement = indicator.closest('.calendar-day');
-                        if (request.status === 'approved') {
-                            dayElement.classList.add('has-leave');
-                        } else if (request.status === 'pending') {
-                            dayElement.classList.add('has-pending');
-                        }
-                    }
-                    
-                    currentDate.setDate(currentDate.getDate() + 1);
+        console.log('캘린더 초기화 중...');
+        initializeCalendar();
+        setupEventListeners();
+        loadLeaveData();
+    }
+
+    // FullCalendar 초기화
+    function initializeCalendar() {
+        const calendarEl = document.getElementById('calendar');
+        if (!calendarEl) {
+            console.error('캘린더 엘리먼트를 찾을 수 없습니다');
+            return;
+        }
+        console.log('FullCalendar 초기화 중...');
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ko',
+            headerToolbar: false, // 커스텀 헤더 사용
+            height: 'auto',
+            timeZone: 'local', // 로컬 시간대 사용
+            displayEventTime: false, // 시간 표시 비활성화
+            displayEventEnd: false, // 종료 시간 표시 비활성화
+            events: [], // 빈 배열로 시작
+            eventClick: function(info) {
+                // 연차 클릭 시 상세 정보 표시
+                const event = info.event;
+                const eventData = {
+                    ...event.extendedProps,
+                    start: event.startStr,
+                    end: event.endStr
+                };
+                showLeaveDetail(eventData);
+            },
+            eventDidMount: function(info) {
+                // 이벤트 스타일링
+                const event = info.event;
+                const branchName = event.extendedProps.branch_name;
+                const color = branchColors[branchName] || '#666';
+                
+                info.el.style.backgroundColor = color + '20';
+                info.el.style.borderLeftColor = color;
+                info.el.style.color = color;
+                info.el.style.fontWeight = '500';
+                info.el.style.borderRadius = '4px';
+                info.el.style.padding = '2px 6px';
+            },
+            dayCellDidMount: function(info) {
+                // 오늘 날짜 하이라이트
+                const today = new Date();
+                const cellDate = info.date;
+                if (cellDate.toDateString() === today.toDateString()) {
+                    info.el.style.backgroundColor = '#fff3cd';
                 }
             }
         });
+
+        calendar.render();
+        console.log('FullCalendar 렌더링 완료');
     }
 
-    isDateInCurrentMonth(date) {
-        return date.getMonth() === this.currentMonth && date.getFullYear() === this.currentYear;
-    }
-
-    shouldShowLeave(request, employee) {
-        // 지점 필터 적용 (공백/대소문자 정규화)
-        if (this.selectedBranch) {
-            const norm = (v) => (v || '').toString().trim().toLowerCase();
-            if (norm(employee.branch) !== norm(this.selectedBranch)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // 지점 옵션을 실제 직원 데이터로 채움
-    populateBranchOptions() {
-        const branchSelect = document.getElementById('branch-filter');
-        if (!branchSelect || !this.dataManager) return;
-        const employees = this.dataManager.employees || [];
-        const branches = Array.from(new Set(
-            employees.map(e => (e.branch || '').toString().trim()).filter(Boolean)
-        ));
-        const current = branchSelect.value;
-        branchSelect.innerHTML = '<option value="all">전체 지점</option>' +
-            branches.map(b => `<option value="${b}">${b}</option>`).join('');
-        if (current && current !== 'all') branchSelect.value = current;
-    }
-
-    showLeaveDetails(date) {
-        const dateStr = this.formatDate(date);
-        const leaveRequests = this.dataManager.leaveRequests || [];
-        const employees = this.dataManager.employees || [];
-        
-        const dayLeaves = leaveRequests.filter(request => {
-            const startDate = new Date(request.startDate);
-            const endDate = new Date(request.endDate);
-            const targetDate = new Date(dateStr);
-            
-            const employee = employees.find(emp => emp.id === request.employeeId);
-            if (!employee) return false;
-            
-            return targetDate >= startDate && targetDate <= endDate && this.shouldShowLeave(request, employee);
-        });
-
-        if (dayLeaves.length > 0) {
-            this.showDayLeaveModal(dateStr, dayLeaves, employees);
-        } else {
-            this.showLeaveRequestModal(dateStr);
-        }
-    }
-
-    showDayLeaveModal(dateStr, dayLeaves, employees) {
-        const modal = document.getElementById('leave-detail-modal');
-        const content = document.getElementById('leave-detail-content');
-        
-        content.innerHTML = `
-            <h4>${dateStr} 연차 신청자</h4>
-            <div class="day-leaves-list">
-                ${dayLeaves.map(request => {
-                    const employee = employees.find(emp => emp.id === request.employeeId);
-                    return `
-                        <div class="leave-detail-item ${request.status}">
-                            <div class="leave-detail-info">
-                                <div class="leave-detail-name">${employee.name}</div>
-                                <div class="leave-detail-dates">${request.startDate} ~ ${request.endDate} (${request.days}일)</div>
-                                <div class="leave-detail-dates">${employee.branch} | ${request.reason || '연차'}</div>
-                            </div>
-                            <div class="leave-detail-status ${request.status}">
-                                ${request.status === 'approved' ? '승인됨' : request.status === 'pending' ? '대기중' : '거부됨'}
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-        
-        modal.style.display = 'block';
-    }
-
-    showLeaveDetailModal(request, employee) {
-        const modal = document.getElementById('leave-detail-modal');
-        const content = document.getElementById('leave-detail-content');
-        
-        content.innerHTML = `
-            <h4>연차 상세 정보</h4>
-            <div class="leave-detail-item ${request.status}">
-                <div class="leave-detail-info">
-                    <div class="leave-detail-name">${employee.name}</div>
-                    <div class="leave-detail-dates">${request.startDate} ~ ${request.endDate} (${request.days}일)</div>
-                    <div class="leave-detail-dates">${employee.branch} | ${employee.department} | ${employee.position}</div>
-                    <div class="leave-detail-dates">사유: ${request.reason || '연차'}</div>
-                    <div class="leave-detail-dates">신청일: ${request.requestDate || '-'}</div>
-                </div>
-                <div class="leave-detail-status ${request.status}">
-                    ${request.status === 'approved' ? '승인됨' : request.status === 'pending' ? '대기중' : '거부됨'}
-                </div>
-            </div>
-        `;
-        
-        modal.style.display = 'block';
-    }
-    // 연차 신청 팝업 표시
-    showLeaveRequestModal(dateStr) {
-        const modal = document.getElementById('leave-request-modal');
-        const dateInput = document.getElementById('quick-date');
-        const form = document.getElementById('quick-leave-form');
-        
-        dateInput.value = dateStr;
-        document.getElementById('quick-type').value = 'vacation';
-        const reasonInput = document.getElementById('quick-reason');
-        const reasonGroup = reasonInput ? reasonInput.closest('.form-group') : null;
-        if (reasonGroup) reasonGroup.style.display = 'none';
-        if (reasonInput) { reasonInput.value = ''; reasonInput.disabled = true; reasonInput.required = false; }
-        
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            this.submitQuickLeaveRequest(dateStr);
-        };
-        
-        modal.style.display = 'block';
-    }
-        // 연차 신청 처리
-        submitQuickLeaveRequest(dateStr) {
-            const type = document.getElementById('quick-type').value;
-            const reasonInput = document.getElementById('quick-reason');
-            const reason = type === 'other' && reasonInput ? reasonInput.value : '';
-            const currentUser = window.AuthGuard.getCurrentUser();
-            
-            if (!currentUser) {
-                alert('로그인이 필요합니다.');
+    // 실제 연차 데이터 가져오기
+    function loadLeaveData() {
+        try {
+            // DataManager에서 실제 데이터 가져오기
+            const dm = window.dataManager;
+            if (!dm) {
+                console.error('DataManager를 찾을 수 없습니다');
                 return;
             }
-            
-            const days = type.includes('반차') ? 0.5 : 1;
-            
-            const newRequest = {
-                id: Date.now().toString(),
-                employeeId: currentUser.id,
-                startDate: dateStr,
-                endDate: dateStr,
-                days: days,
-                reason: reason,
-                type: type,
-                status: 'pending',
-                requestDate: new Date().toISOString().split('T')[0]
-            };
-            
-            this.dataManager.leaveRequests.push(newRequest);
-            this.dataManager.saveData();
-            
-            closeLeaveRequestModal();
-            
-            this.renderCalendar();
-            this.loadLeaveData();
-            
-            alert(`${dateStr} 연차 신청이 완료되었습니다!\n승인 대기 중입니다.`);
-        }
-    formatDate(date) {
-        if (typeof date === 'string') {
-            return date;
-        }
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
 
-    // 연차 신청 모달 표시
-    showLeaveRequestModal(selectedDate = null) {
-        const modal = document.getElementById('leave-request-modal');
-        const title = document.getElementById('modal-title');
-        const startDateInput = document.getElementById('start-date');
-        const endDateInput = document.getElementById('end-date');
-        const leaveTypeSelect = document.getElementById('leave-type');
-        const reasonTextarea = document.getElementById('reason');
-        const reasonGroup = document.getElementById('reason-group');
-
-        // 모달 제목 설정
-        if (selectedDate) {
-            const dateStr = selectedDate.toLocaleDateString('ko-KR');
-            title.textContent = `${dateStr} 연차 신청`;
-            // 선택된 날짜로 시작일 설정
-            startDateInput.value = selectedDate.toISOString().split('T')[0];
-            endDateInput.value = selectedDate.toISOString().split('T')[0];
-        } else {
-            title.textContent = '연차 신청';
-            // 오늘 날짜로 기본 설정
-            const today = new Date().toISOString().split('T')[0];
-            startDateInput.value = today;
-            endDateInput.value = today;
-        }
-
-        // 모달 표시
-        modal.style.display = 'block';
-        
-        // 모달이 열린 후 총 일수 계산
-        setTimeout(() => {
-            const startDateInput = document.getElementById('start-date');
-            const endDateInput = document.getElementById('end-date');
-            const totalDaysInput = document.getElementById('total-days');
+            const employees = dm.employees || [];
+            const leaveRequests = dm.leaveRequests || [];
+            const branches = dm.branches || [];
             
-            if (startDateInput.value && endDateInput.value) {
-                const startDate = new Date(startDateInput.value);
-                const endDate = new Date(endDateInput.value);
-                const timeDiff = endDate.getTime() - startDate.getTime();
-                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                totalDaysInput.value = daysDiff;
-            }
-        }, 100);
-
-        // 사유 입력창 토글(기타일 때만 표시)
-        const toggleReason = () => {
-            if (!leaveTypeSelect || !reasonTextarea || !reasonGroup) return;
-            const isOther = leaveTypeSelect.value === 'other';
-            reasonGroup.style.display = isOther ? '' : 'none';
-            reasonTextarea.disabled = !isOther;
-            reasonTextarea.required = isOther;
-            if (!isOther) {
-                // 기타가 아닌 경우 해당 유형을 사유에 자동 입력
-                const typeMap = {
-                    'vacation': '휴가',
-                    'personal': '개인사정', 
-                    'sick': '병가'
-                };
-                reasonTextarea.value = typeMap[leaveTypeSelect.value] || '';
-            }
-        };
-        toggleReason();
-        if (leaveTypeSelect) leaveTypeSelect.addEventListener('change', toggleReason);
-    }
-
-    // 연차 신청 모달 닫기
-    closeLeaveRequestModal() {
-        const modal = document.getElementById('leave-request-modal');
-        modal.style.display = 'none';
-        
-        // 폼 초기화
-        document.getElementById('leave-request-form').reset();
-    }
-
-    // 연차 신청 폼 이벤트 설정
-    setupLeaveRequestForm() {
-        const form = document.getElementById('leave-request-form');
-        const startDateInput = document.getElementById('start-date');
-        const endDateInput = document.getElementById('end-date');
-        const totalDaysInput = document.getElementById('total-days');
-
-        // 날짜 변경 시 총 일수 계산
-        const calculateDays = () => {
-            const startDate = new Date(startDateInput.value);
-            const endDate = new Date(endDateInput.value);
-            
-            if (startDateInput.value && endDateInput.value) {
-                if (startDate <= endDate) {
-                    const timeDiff = endDate.getTime() - startDate.getTime();
-                    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                    totalDaysInput.value = daysDiff;
-                } else {
-                    totalDaysInput.value = '';
-                }
-            } else {
-                totalDaysInput.value = '';
-            }
-        };
-
-        startDateInput.addEventListener('change', calculateDays);
-        endDateInput.addEventListener('change', calculateDays);
-        
-        // 모달이 열릴 때 초기 계산
-        const modal = document.getElementById('leave-request-modal');
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                    if (modal.style.display === 'block') {
-                        // 모달이 열릴 때 총 일수 계산
-                        setTimeout(calculateDays, 100);
-                    }
-                }
+            console.log('실제 데이터 로드:', {
+                employees: employees.length,
+                leaveRequests: leaveRequests.length,
+                branches: branches.length
             });
-        });
-        observer.observe(modal, { attributes: true });
 
-        // 폼 제출
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.submitLeaveRequest();
+            // 승인된 연차만 필터링
+            const approvedLeaves = leaveRequests.filter(req => req.status === 'approved');
+            console.log('승인된 연차:', approvedLeaves.length, '개');
+            console.log('승인된 연차 상세:', approvedLeaves);
+            
+            // 각 연차의 날짜 정보 상세 출력
+            approvedLeaves.forEach((leave, index) => {
+                console.log(`연차 #${index + 1}:`, {
+                    id: leave.id,
+                    employeeName: leave.employeeName,
+                    startDate: leave.startDate,
+                    endDate: leave.endDate,
+                    days: leave.days,
+                    leaveType: leave.leaveType,
+                    status: leave.status,
+                    employeeId: leave.employeeId,
+                    reason: leave.reason
+                });
+                
+                // 직원 정보 상세 확인
+                const employee = employees.find(emp => String(emp.id) === String(leave.employeeId));
+                console.log(`  직원 정보:`, employee);
+                
+                // 지점 정보 상세 확인
+                const branch = branches.find(br => br.id === (employee?.branchId || 1));
+                console.log(`  지점 정보:`, branch);
+                
+                // 날짜 변환 과정 확인
+                const startDate = leave.startDate + 'T00:00:00';
+                const endDate = new Date(new Date(leave.endDate + 'T00:00:00').getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] + 'T00:00:00';
+                console.log(`  날짜 변환: ${leave.startDate} → ${startDate}, ${leave.endDate} → ${endDate}`);
+            });
+
+            // FullCalendar 이벤트 형식으로 변환
+            const calendarEvents = approvedLeaves.map(leave => {
+                // 연차 승인 페이지와 동일한 방식으로 직원 정보 조회
+                const employee = employees.find(emp => String(emp.id) === String(leave.employeeId));
+                const branch = branches.find(br => br.id === (employee?.branchId || 1));
+                
+                // 연차 승인 페이지와 동일한 지점명 사용 방식
+                const branchName = employee?.branch || branch?.name || '본사';
+                console.log(`연차 ${leave.id} 지점 매핑:`, {
+                    employeeId: leave.employeeId,
+                    employee: employee,
+                    branch: branch,
+                    finalBranchName: branchName
+                });
+                
+                // 연차 승인 페이지와 동일한 leaveType 변환 로직
+                const leaveTypeText = leave.leaveType === 'welfare-vacation' ? '복지휴가' : 
+                                    leave.leaveType === 'vacation' ? '법정연차' :
+                                    leave.leaveType === 'personal' ? '개인사정' :
+                                    leave.leaveType === 'sick' ? '병가' : '기타';
+                
+                // 연차 승인 페이지와 동일한 직원명 사용
+                const employeeName = leave.employeeName || employee?.name || '알 수 없음';
+                const title = `${employeeName} (${leaveTypeText})`;
+                
+                // 날짜 변환 - FullCalendar의 배타적 end 날짜 처리
+                const startDate = leave.startDate;
+                const endDate = leave.endDate;
+                
+                // end 날짜를 포함적으로 처리하기 위해 하루 추가
+                const endDateObj = new Date(endDate);
+                endDateObj.setDate(endDateObj.getDate() + 1);
+                const inclusiveEndDate = endDateObj.toISOString().split('T')[0];
+                
+                return {
+                    id: leave.id,
+                    title: title,
+                    start: startDate,
+                    end: inclusiveEndDate,
+                    allDay: true, // 종일 이벤트로 설정
+                    backgroundColor: getBranchColor(branchName),
+                    borderColor: getBranchColor(branchName),
+                    textColor: '#333',
+                    extendedProps: {
+                        leave_type: leaveTypeText,
+                        half_type: leave.halfType || '전일',
+                        reason: leave.reason || '',
+                        user_name: employeeName,
+                        team_name: employee?.team || employee?.department || '알 수 없음',
+                        branch_name: branchName,
+                        branch_id: employee?.branchId || 1,
+                        team_id: employee?.teamId || 1,
+                        days: leave.days || 1,
+                        requestDate: leave.requestDate
+                    }
+                };
+            });
+            
+            console.log('변환된 캘린더 이벤트:', calendarEvents);
+            
+            // 변환된 이벤트의 날짜 정보 상세 출력
+            calendarEvents.forEach((event, index) => {
+                console.log(`캘린더 이벤트 #${index + 1}:`, {
+                    id: event.id,
+                    title: event.title,
+                    start: event.start,
+                    end: event.end,
+                    user_name: event.extendedProps.user_name,
+                    branch_name: event.extendedProps.branch_name,
+                    team_name: event.extendedProps.team_name
+                });
+            });
+            
+            allEvents = calendarEvents;
+            console.log('allEvents 설정 완료:', allEvents.length, '개');
+            console.log('allEvents 첫 번째 이벤트:', allEvents[0]);
+            
+            // 캘린더에서 모든 이벤트 제거 후 새로 추가
+            calendar.removeAllEvents();
+            calendar.addEventSource(calendarEvents);
+            console.log('캘린더에 이벤트 추가 완료:', calendarEvents.length, '개');
+            
+            // 필터 옵션 업데이트
+            updateFilterOptions();
+            
+            // 초기 필터 적용 (전체 표시)
+            applyFilters();
+            
+        } catch (error) {
+            console.error('연차 데이터 로드 실패:', error);
+            // API 폴백
+            loadLeaveDataFromAPI();
+        }
+    }
+
+    // API에서 연차 데이터 가져오기 (폴백)
+    function loadLeaveDataFromAPI() {
+        fetch('/api/leaves')
+            .then(response => response.json())
+            .then(data => {
+                console.log('API에서 연차 데이터 로드:', data);
+                allEvents = data || [];
+                
+                // FullCalendar 이벤트 형식으로 변환
+                const calendarEvents = allEvents.map(event => {
+                    // end 날짜를 포함적으로 처리하기 위해 하루 추가
+                    const endDateObj = new Date(event.end);
+                    endDateObj.setDate(endDateObj.getDate() + 1);
+                    const inclusiveEndDate = endDateObj.toISOString().split('T')[0];
+                    
+                    return {
+                        id: event.id,
+                        title: event.title,
+                        start: event.start,
+                        end: inclusiveEndDate,
+                        allDay: true,
+                        backgroundColor: getBranchColor(event.branch_name),
+                        borderColor: getBranchColor(event.branch_name),
+                        textColor: '#333',
+                        extendedProps: {
+                            leave_type: event.leave_type,
+                            half_type: event.half_type,
+                            reason: event.reason,
+                            user_name: event.user_name,
+                            team_name: event.team_name,
+                            branch_name: event.branch_name,
+                            branch_id: event.branch_id,
+                            team_id: event.team_id
+                        }
+                    };
+                });
+                
+                console.log('변환된 캘린더 이벤트:', calendarEvents);
+                
+                // 캘린더에서 모든 이벤트 제거 후 새로 추가
+                calendar.removeAllEvents();
+                calendar.addEventSource(calendarEvents);
+                console.log('캘린더에 이벤트 추가 완료:', calendarEvents.length, '개');
+                
+                // 필터 옵션 업데이트
+                updateFilterOptions();
+            })
+            .catch(error => {
+                console.error('API 연차 데이터 로드 실패:', error);
+            });
+    }
+
+    // 지점별 색상 가져오기
+    function getBranchColor(branchName) {
+        return branchColors[branchName] || '#666';
+    }
+
+    // 필터 옵션 업데이트
+    function updateFilterOptions() {
+        console.log('필터 옵션 업데이트 시작');
+        
+        // 지점 필터 업데이트
+        const branchFilter = document.getElementById('branchFilter');
+        if (branchFilter) {
+            const dm = window.dataManager;
+            const branches = dm?.branches || [];
+            console.log('사용 가능한 지점들:', branches);
+            
+            const uniqueBranches = branches.map(branch => branch.name).filter(Boolean);
+            console.log('고유 지점 이름들:', uniqueBranches);
+            
+            branchFilter.innerHTML = '<option value="all">전체 지점</option>';
+            uniqueBranches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch;
+                option.textContent = branch;
+                branchFilter.appendChild(option);
+            });
+        }
+
+        // 팀 필터 업데이트
+        const teamFilter = document.getElementById('teamFilter');
+        if (teamFilter) {
+            const dm = window.dataManager;
+            const employees = dm?.employees || [];
+            console.log('사용 가능한 직원들:', employees);
+            
+            const uniqueTeams = [...new Set(employees.map(emp => emp.team))].filter(Boolean);
+            console.log('고유 팀들:', uniqueTeams);
+            
+            teamFilter.innerHTML = '<option value="all">전체 팀</option>';
+            uniqueTeams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team;
+                option.textContent = team;
+                teamFilter.appendChild(option);
+            });
+        }
+        
+        console.log('필터 옵션 업데이트 완료');
+    }
+
+    // 이벤트 리스너 설정
+    function setupEventListeners() {
+        // 월 네비게이션
+        document.getElementById('prevMonth')?.addEventListener('click', () => {
+            calendar.prev();
+            updateCurrentMonth();
         });
 
-        // 모달 외부 클릭 시 닫기
-        modal.addEventListener('click', (e) => {
-            if (e.target.id === 'leave-request-modal') {
-                this.closeLeaveRequestModal();
+        document.getElementById('nextMonth')?.addEventListener('click', () => {
+            calendar.next();
+            updateCurrentMonth();
+        });
+
+        // 오늘 버튼
+        document.getElementById('todayBtn')?.addEventListener('click', () => {
+            calendar.today();
+            updateCurrentMonth();
+        });
+
+        // 필터 변경
+        document.getElementById('branchFilter')?.addEventListener('change', applyFilters);
+        document.getElementById('teamFilter')?.addEventListener('change', applyFilters);
+
+
+        // 연차 신청 버튼
+        document.getElementById('addLeaveBtn')?.addEventListener('click', () => {
+            window.location.href = 'leave-request.html';
+        });
+
+        // 모달 닫기
+        document.getElementById('closeLeaveDetailModal')?.addEventListener('click', closeLeaveDetailModal);
+        document.getElementById('leaveDetailModal')?.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('leaveDetailModal')) {
+                closeLeaveDetailModal();
             }
         });
     }
 
-    // 연차 신청 제출
-    submitLeaveRequest() {
-        if (!this.dataManager || !this.dataManager.currentUser) {
-            this.showNotification('로그인이 필요합니다.', 'error');
-            return;
+    // 현재 월 표시 업데이트
+    function updateCurrentMonth() {
+        const currentMonthElement = document.getElementById('currentMonth');
+        if (currentMonthElement && calendar) {
+            const currentDate = calendar.getDate();
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            currentMonthElement.textContent = `${year}년 ${month}월`;
         }
-
-        const form = document.getElementById('leave-request-form');
-        const formData = new FormData(form);
-        
-        // 폼 데이터 검증
-        const startDate = formData.get('startDate');
-        const endDate = formData.get('endDate');
-        const leaveType = formData.get('leaveType');
-        const reason = formData.get('reason');
-        const totalDays = parseInt(formData.get('totalDays'));
-
-        if (!startDate || !endDate || !leaveType || !reason || !totalDays) {
-            this.showNotification('모든 필드를 입력해주세요.', 'error');
-            return;
-        }
-
-        // 날짜 유효성 검사
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (start < today) {
-            this.showNotification('시작일은 오늘 이후여야 합니다.', 'error');
-            return;
-        }
-
-        if (end < start) {
-            this.showNotification('종료일은 시작일 이후여야 합니다.', 'error');
-            return;
-        }
-
-        // 연차 신청 데이터 생성
-        const leaveRequest = {
-            id: Date.now(),
-            employeeId: this.dataManager.currentUser.id,
-            employeeName: this.dataManager.currentUser.name,
-            startDate: startDate,
-            endDate: endDate,
-            days: totalDays,
-            leaveType: leaveType,
-            reason: reason,
-            status: 'pending',
-            requestDate: new Date().toISOString().split('T')[0],
-            department: this.dataManager.getEmployeeDepartment(this.dataManager.currentUser.id)
-        };
-
-        // 데이터 매니저에 연차 신청 추가
-        this.dataManager.addLeaveRequest(leaveRequest);
-
-        // 폼 초기화 및 모달 닫기
-        form.reset();
-        this.closeLeaveRequestModal();
-
-        // 캘린더 새로고침
-        this.loadLeaveData();
-
-        // 성공 알림
-        this.showNotification('연차 신청이 완료되었습니다.', 'success');
     }
 
-    // 알림 표시
-    showNotification(message, type = 'info') {
-        // 간단한 알림 구현
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            color: white;
-            font-weight: 600;
-            z-index: 10000;
-            animation: slideInRight 0.3s ease;
+
+    // 필터 적용
+    function applyFilters() {
+        const branchFilter = document.getElementById('branchFilter')?.value || 'all';
+        const teamFilter = document.getElementById('teamFilter')?.value || 'all';
+        
+        console.log('필터 적용:', { branchFilter, teamFilter });
+        console.log('allEvents 상태:', allEvents);
+        console.log('allEvents 길이:', allEvents.length);
+        
+        if (!allEvents || allEvents.length === 0) {
+            console.error('allEvents가 비어있습니다. 데이터를 다시 로드합니다.');
+            loadLeaveData();
+            return;
+        }
+        
+        // 전체 필터인 경우 모든 이벤트 표시
+        if (branchFilter === 'all' && teamFilter === 'all') {
+            console.log('전체 필터 - 모든 이벤트 표시');
+            calendar.removeAllEvents();
+            calendar.addEventSource(allEvents);
+            console.log('캘린더에 전체 이벤트 적용 완료:', allEvents.length, '개');
+            return;
+        }
+        
+        const filteredEvents = allEvents.filter(event => {
+            const branchMatch = branchFilter === 'all' || event.extendedProps.branch_name === branchFilter;
+            const teamMatch = teamFilter === 'all' || event.extendedProps.team_name === teamFilter;
+            
+            console.log(`이벤트 "${event.title}":`, {
+                branch_name: event.extendedProps.branch_name,
+                team_name: event.extendedProps.team_name,
+                branchMatch,
+                teamMatch,
+                passed: branchMatch && teamMatch
+            });
+            
+            return branchMatch && teamMatch;
+        });
+        
+        console.log('필터링된 이벤트:', filteredEvents);
+
+        // 필터링된 이벤트를 그대로 사용 (이미 FullCalendar 형식)
+        calendar.removeAllEvents();
+        calendar.addEventSource(filteredEvents);
+        console.log('캘린더에 필터링된 이벤트 적용 완료:', filteredEvents.length, '개');
+    }
+
+    // 연차 상세 정보 표시
+    function showLeaveDetail(eventData) {
+        const modal = document.getElementById('leaveDetailModal');
+        const title = document.getElementById('leaveDetailTitle');
+        const content = document.getElementById('leaveDetailContent');
+
+        if (!modal || !title || !content) return;
+
+        title.textContent = `${eventData.user_name} - 연차 상세 정보`;
+
+        const leaveTypeText = eventData.leave_type === '연차' ? '연차' : '복지휴가';
+        const statusText = '승인됨'; // API에서 승인된 연차만 조회
+
+        content.innerHTML = `
+            <div class="leave-detail-item">
+                <div class="leave-detail-header">
+                    <div class="leave-detail-title">${eventData.leave_type} 신청</div>
+                    <div class="leave-detail-status approved">승인됨</div>
+                </div>
+                <div class="leave-detail-info">
+                    <span><i class="fas fa-user"></i> ${eventData.user_name}</span>
+                    <span><i class="fas fa-building"></i> ${eventData.branch_name}</span>
+                    <span><i class="fas fa-users"></i> ${eventData.team_name}</span>
+                    <span><i class="fas fa-calendar"></i> ${eventData.start.split('T')[0]} ~ ${eventData.end.split('T')[0]} (${eventData.days || 1}일)</span>
+                    <span><i class="fas fa-file-alt"></i> ${eventData.reason || '사유 없음'}</span>
+                    <span><i class="fas fa-clock"></i> ${eventData.half_type || '전일'}</span>
+                    <span><i class="fas fa-calendar-plus"></i> 신청일: ${eventData.requestDate || '-'}</span>
+                </div>
+            </div>
         `;
 
-        if (type === 'success') {
-            notification.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
-        } else if (type === 'error') {
-            notification.style.background = 'linear-gradient(135deg, #dc3545, #c82333)';
-        } else {
-            notification.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
-        }
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
-    }
-
-    // 날짜 선택 모달 설정
-    setupDatePickerModal() {
-        this.selectedYear = this.currentYear;
-        this.selectedMonth = this.currentMonth;
-        this.currentYearRange = Math.floor(this.currentYear / 10) * 10; // 10년 단위로 반올림
-        this.generateYearButtons();
-        this.setupDatePickerEvents();
-    }
-
-    // 연도 버튼 생성
-    generateYearButtons() {
-        const yearGrid = document.getElementById('year-grid');
-        const yearRangeDisplay = document.getElementById('year-range-display');
-        
-        // 연도 범위 표시 업데이트
-        const startYear = this.currentYearRange;
-        const endYear = this.currentYearRange + 9;
-        yearRangeDisplay.textContent = `${startYear} - ${endYear}`;
-        
-        yearGrid.innerHTML = '';
-        
-        // 현재 범위의 10개 연도 생성
-        for (let year = startYear; year <= endYear; year++) {
-            const yearBtn = document.createElement('button');
-            yearBtn.className = 'year-btn';
-            yearBtn.textContent = year;
-            yearBtn.dataset.year = year;
-            
-            if (year === this.selectedYear) {
-                yearBtn.classList.add('selected');
-            }
-            
-            yearGrid.appendChild(yearBtn);
-        }
-    }
-
-    // 날짜 선택 모달 이벤트 설정
-    setupDatePickerEvents() {
-        // 연도 버튼 클릭 이벤트
-        document.getElementById('year-grid').addEventListener('click', (e) => {
-            if (e.target.classList.contains('year-btn')) {
-                // 모든 연도 버튼에서 selected 클래스 제거
-                document.querySelectorAll('.year-btn').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-                
-                // 클릭된 버튼에 selected 클래스 추가
-                e.target.classList.add('selected');
-                this.selectedYear = parseInt(e.target.dataset.year);
-            }
-        });
-
-        // 월 버튼 클릭 이벤트
-        document.getElementById('month-grid').addEventListener('click', (e) => {
-            if (e.target.classList.contains('month-btn')) {
-                // 모든 월 버튼에서 selected 클래스 제거
-                document.querySelectorAll('.month-btn').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-                
-                // 클릭된 버튼에 selected 클래스 추가
-                e.target.classList.add('selected');
-                this.selectedMonth = parseInt(e.target.dataset.month);
-            }
-        });
-
-        // 연도 범위 네비게이션 이벤트
-        document.getElementById('prev-year-range').addEventListener('click', () => {
-            this.currentYearRange -= 10;
-            this.generateYearButtons();
-        });
-
-        document.getElementById('next-year-range').addEventListener('click', () => {
-            this.currentYearRange += 10;
-            this.generateYearButtons();
-        });
-
-        // 모달 외부 클릭 시 닫기
-        const modal = document.getElementById('date-picker-modal');
-        modal.addEventListener('click', (e) => {
-            if (e.target.id === 'date-picker-modal') {
-                this.closeDatePickerModal();
-            }
-        });
-    }
-
-    // 날짜 선택 모달 표시
-    showDatePickerModal() {
-        const modal = document.getElementById('date-picker-modal');
-        
-        // 현재 선택된 연도와 월로 초기화
-        this.selectedYear = this.currentYear;
-        this.selectedMonth = this.currentMonth;
-        this.currentYearRange = Math.floor(this.currentYear / 10) * 10; // 현재 연도가 포함된 10년 범위로 설정
-        
-        // 연도 버튼 재생성
-        this.generateYearButtons();
-        
-        // 월 버튼 선택 상태 초기화
-        document.querySelectorAll('.month-btn').forEach(btn => {
-            btn.classList.remove('selected');
-            if (parseInt(btn.dataset.month) === this.selectedMonth) {
-                btn.classList.add('selected');
-            }
-        });
-        
         modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
     }
 
-    // 날짜 선택 모달 닫기
-    closeDatePickerModal() {
-        const modal = document.getElementById('date-picker-modal');
-        modal.style.display = 'none';
+    // 모달 닫기
+    function closeLeaveDetailModal() {
+        const modal = document.getElementById('leaveDetailModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
     }
 
-    // 날짜 선택 적용
-    applyDateSelection() {
-        this.currentYear = this.selectedYear;
-        this.currentMonth = this.selectedMonth;
-        
-        this.renderCalendar();
-        this.loadLeaveData();
-        this.closeDatePickerModal();
-    }
-}
+    // 전역 함수로 등록
+    window.showLeaveDetail = showLeaveDetail;
+    window.closeLeaveDetailModal = closeLeaveDetailModal;
 
-// 글로벌 함수들
-function closeLeaveDetailModal() {
-    const modal = document.getElementById('leave-detail-modal');
-    modal.style.display = 'none';
-}
-
-function closeLeaveRequestModal() {
-    if (window.calendar) {
-        window.calendar.closeLeaveRequestModal();
-    }
-}
-
-function closeDatePickerModal() {
-    if (window.calendar) {
-        window.calendar.closeDatePickerModal();
-    }
-}
-
-function applyDateSelection() {
-    if (window.calendar) {
-        window.calendar.applyDateSelection();
-    }
-}
-
-// 모달 외부 클릭 시 닫기
-document.addEventListener('click', (e) => {
-    const modal = document.getElementById('leave-detail-modal');
-    if (e.target === modal) {
-        closeLeaveDetailModal();
-    }
-});
-
-// Calendar 인스턴스 생성
-window.addEventListener('DOMContentLoaded', () => {
-    if (window.dataManager) {
-        window.calendar = new Calendar();
-    } else {
-        // DataManager가 로드될 때까지 대기
-        const checkDataManager = setInterval(() => {
-            if (window.dataManager) {
-                window.calendar = new Calendar();
-                clearInterval(checkDataManager);
-            }
-        }, 100);
-    }
-});
+    // 페이지 로드 시 초기화
+    window.addEventListener('DOMContentLoaded', function() {
+        init();
+    });
+})();

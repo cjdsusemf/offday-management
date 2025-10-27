@@ -131,7 +131,7 @@
 
 .employee-table {
     width: 100%;
-    min-width: 1200px; /* 최소 너비 설정 */
+    min-width: 1200px; /* 모든 컬럼 포함하도록 조정 */
     border-collapse: collapse;
     font-size: 0.9rem;
 }
@@ -205,7 +205,7 @@
     white-space: nowrap;
 }
 
-/* 컬럼별 너비 설정 */
+/* 컬럼별 너비 설정 - JavaScript와 일치 */
 .employee-table th:nth-child(1), /* 이름 */
 .employee-table td:nth-child(1) {
     width: 120px;
@@ -253,31 +253,514 @@
 .employee-table td:nth-child(5) { width: 100px; min-width: 90px; }
 
 .employee-table th:nth-child(6), /* 직급 */
-.employee-table td:nth-child(6) { width: 70px; min-width: 70px; }
+.employee-table td:nth-child(6) { width: 20px; min-width: 20px; }
 
 .employee-table th:nth-child(7), /* 이메일 */
-.employee-table td:nth-child(7) { width: 220px; min-width: 210px; }
+.employee-table td:nth-child(7) { width: 200px; min-width: 180px; }
 
 .employee-table th:nth-child(8), /* 전화번호 */
-.employee-table td:nth-child(8) { width: 130px; min-width: 120px; }
+.employee-table td:nth-child(8) { width: 120px; min-width: 110px; }
 
 .employee-table th:nth-child(9), /* 입사일 */
-.employee-table td:nth-child(9) { width: 100px; min-width: 90px; }
+.employee-table td:nth-child(9) { width: 90px; min-width: 80px; }
 
-.employee-table th:nth-child(10), /* 총 연차 */
-.employee-table td:nth-child(10) { width: 70px; min-width: 70px; }
+.employee-table th:nth-child(10), /* 생년월일 */
+.employee-table td:nth-child(10) { width: 90px; min-width: 80px; }
 
-.employee-table th:nth-child(11), /* 사용 */
-.employee-table td:nth-child(11) { width: 60px; min-width: 60px; }
+.employee-table th:nth-child(11), /* 연차 */
+.employee-table td:nth-child(11) { width: 120px; min-width: 110px; }
 
-.employee-table th:nth-child(12), /* 잔여 */
-.employee-table td:nth-child(12) { width: 60px; min-width: 60px; }
+.employee-table th:nth-child(12), /* 사용률 */
+.employee-table td:nth-child(12) { width: 100px; min-width: 90px; }
 
-.employee-table th:nth-child(13), /* 사용률 */
-.employee-table td:nth-child(13) { width: 120px; min-width: 110px; }
+.employee-table th:nth-child(13), /* 복지휴가 */
+.employee-table td:nth-child(13) { width: 140px; min-width: 130px; }
 
 .employee-table th:nth-child(14), /* 작업 */
-.employee-table td:nth-child(14) { width: 110px; min-width: 100px; }
+.employee-table td:nth-child(14) { width: 120px; min-width: 110px; }
+
+/* 연차 정보 스타일 */
+.annual-leave-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 2px 0;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+.annual-leave-info:hover {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 3px;
+}
+
+.annual-leave-total {
+    font-weight: 600;
+    color: #2563eb;
+    font-size: 0.8rem;
+}
+
+.annual-leave-used {
+    color: #dc2626;
+    font-size: 0.8rem;
+}
+
+.annual-leave-remaining {
+    color: #16a34a;
+    font-size: 0.8rem;
+}
+
+/* 복지휴가 정보 스타일 */
+.welfare-leave-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 2px 0;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+.welfare-leave-info:hover {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 3px;
+}
+
+.welfare-leave-total {
+    font-weight: 600;
+    color: #2563eb;
+    font-size: 0.8rem;
+}
+
+.welfare-leave-used {
+    color: #dc2626;
+    font-size: 0.8rem;
+}
+
+.welfare-leave-remaining {
+    color: #16a34a;
+    font-size: 0.8rem;
+}
+
+.welfare-leave-expired {
+    color: #dc2626;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+/* 복지휴가 이력 모달 스타일 */
+.welfare-history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.welfare-history-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.welfare-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.welfare-history-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.welfare-history-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.welfare-history-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.welfare-history-section {
+    margin-bottom: 24px;
+}
+
+.welfare-history-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.welfare-history-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.welfare-stat-item {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 4px solid #e5e7eb;
+}
+
+.welfare-stat-item.total {
+    border-left-color: #2563eb;
+}
+
+.welfare-stat-item.used {
+    border-left-color: #dc2626;
+}
+
+.welfare-stat-item.remaining {
+    border-left-color: #16a34a;
+}
+
+.welfare-stat-item.expired {
+    border-left-color: #dc2626;
+}
+
+.welfare-stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.welfare-stat-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.welfare-stat-value.total {
+    color: #2563eb;
+}
+
+.welfare-stat-value.used {
+    color: #dc2626;
+}
+
+.welfare-stat-value.remaining {
+    color: #16a34a;
+}
+
+.welfare-stat-value.expired {
+    color: #dc2626;
+}
+
+.welfare-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.welfare-history-table th,
+.welfare-history-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.welfare-history-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.welfare-history-table td {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.welfare-history-empty {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px dashed #d1d5db;
+}
+
+/* 연차 이력 모달 스타일 (복지휴가 이력과 동일한 스타일 사용) */
+.annual-leave-history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.annual-leave-history-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.annual-leave-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.annual-leave-history-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.annual-leave-header-filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.annual-leave-header-filters .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.annual-leave-header-filters label {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.annual-leave-header-filters select {
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: white;
+    color: #374151;
+    min-width: 80px;
+    transition: border-color 0.2s ease;
+}
+
+.annual-leave-header-filters select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.annual-leave-header-filters select:hover {
+    border-color: #9ca3af;
+}
+
+.annual-leave-history-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.annual-leave-history-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.annual-leave-history-section {
+    margin-bottom: 24px;
+}
+
+.annual-leave-history-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.annual-leave-history-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.annual-leave-stat-item {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 4px solid #e5e7eb;
+}
+
+.annual-leave-stat-item.total {
+    border-left-color: #2563eb;
+}
+
+.annual-leave-stat-item.used {
+    border-left-color: #dc2626;
+}
+
+.annual-leave-stat-item.remaining {
+    border-left-color: #16a34a;
+}
+
+.annual-leave-stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.annual-leave-stat-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.annual-leave-stat-value.total {
+    color: #2563eb;
+}
+
+.annual-leave-stat-value.used {
+    color: #dc2626;
+}
+
+.annual-leave-stat-value.remaining {
+    color: #16a34a;
+}
+
+.annual-leave-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.annual-leave-history-table th,
+.annual-leave-history-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.annual-leave-history-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.annual-leave-history-table td {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.annual-leave-history-empty {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px dashed #d1d5db;
+}
+
+/* 연차 이력 필터 스타일 */
+.annual-leave-filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.annual-leave-filters .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.annual-leave-filters label {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.annual-leave-filters select {
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: white;
+    color: #374151;
+    min-width: 80px;
+    transition: border-color 0.2s ease;
+}
+
+.annual-leave-filters select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.annual-leave-filters select:hover {
+    border-color: #9ca3af;
+}
 
 .employee-actions-btns {
     display: flex;
