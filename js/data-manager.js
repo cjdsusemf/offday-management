@@ -8,8 +8,11 @@ class DataManager {
         this.branchTeams = this.loadData('branchTeams') || {}; // 지점별 팀 관리
         this.branches = this.loadData('branches') || []; // 지점 데이터
         
-        // 샘플 데이터가 없으면 생성
-        if (this.employees.length === 0) {
+        // 샘플 데이터 자동 생성 비활성화 (사용자가 명시적으로 허용한 경우에만 생성)
+        // 로컬스토리지에 offday_auto_seed === '1' 일 때만 시드 생성
+        const allowAutoSeed = localStorage.getItem('offday_auto_seed') === '1';
+        if (allowAutoSeed && this.employees.length === 0 && this.leaveRequests.length === 0) {
+            console.log('샘플 데이터 자동 시드 허용됨 - 테스트 데이터 생성');
             this.createSampleData();
         }
         
@@ -23,6 +26,106 @@ class DataManager {
         
         // 기존 직원 데이터 마이그레이션
         this.migrateEmployeeDataToBranchTeams();
+
+        // 데이터 정리 로직 비활성화 (사용자가 명시적으로 요청할 때만 실행)
+        // this.cleanLeaveRequests();
+    }
+    
+    // 수동 데이터 정리 (사용자가 명시적으로 요청할 때만)
+    manualCleanup() {
+        console.log('🧹 수동 데이터 정리 시작...');
+        this.cleanLeaveRequests();
+        console.log('🧹 수동 데이터 정리 완료');
+    }
+    
+    // 모든 데이터 클리어 (개발용)
+    clearAllData() {
+        localStorage.removeItem('employees');
+        localStorage.removeItem('leaveRequests');
+        localStorage.removeItem('settings');
+        localStorage.removeItem('deletedEmployees');
+        localStorage.removeItem('branchTeams');
+        localStorage.removeItem('branches');
+        console.log('✅ 모든 데이터가 클리어되었습니다.');
+    }
+
+    // 고아/테스트 연차신청 정리: 직원 존재하지 않거나 테스트 이메일이면 제거 (관리자 계정 보호)
+    cleanLeaveRequests() {
+        try {
+            const employeesById = new Map((this.employees || []).map(e => [String(e.id), e]));
+            const before = (this.leaveRequests || []).length;
+            this.leaveRequests = (this.leaveRequests || []).filter(req => {
+                const emp = employeesById.get(String(req.employeeId));
+                if (!emp) return false; // 고아 데이터 제거
+                
+                // 관리자 계정은 보호 (admin@test.com도 유지)
+                if (emp.email === 'admin@test.com') return true;
+                
+                // 나머지 테스트 계정만 제거
+                if (typeof emp.email === 'string' && emp.email.endsWith('@test.com')) return false;
+                return true;
+            });
+            const after = this.leaveRequests.length;
+            if (after !== before) {
+                this.saveData('leaveRequests', this.leaveRequests);
+                console.log(`🧹 연차신청 정리: 제거 ${before - after}건 (관리자 계정 보호됨)`);
+            }
+        } catch (err) {
+            console.error('연차신청 정리 오류:', err);
+        }
+    }
+    
+    // 관리자 계정 복구 및 연차 신청 복구
+    restoreAdminAccount() {
+        try {
+            // 관리자 직원 데이터 확인/생성
+            let adminEmployee = this.employees.find(emp => emp.email === 'admin@test.com');
+            if (!adminEmployee) {
+                adminEmployee = {
+                    id: 2,
+                    name: 'admin',
+                    email: 'admin@test.com',
+                    branch: '본사',
+                    branchId: 1,
+                    department: '경영관리팀',
+                    team: '경영관리팀',
+                    position: '관리자',
+                    hireDate: '2022-01-01',
+                    phone: '010-2345-6789'
+                };
+                this.employees.push(adminEmployee);
+                this.saveData('employees', this.employees);
+                console.log('✅ 관리자 직원 계정이 복구되었습니다.');
+            }
+            
+            // 관리자 연차 신청 복구 (샘플 데이터에서)
+            const adminLeaveRequest = {
+                id: 2,
+                employeeId: adminEmployee.id,
+                employeeName: adminEmployee.name,
+                leaveType: '개인사정',
+                startDate: '2025-10-29',
+                endDate: '2025-10-29',
+                days: 1,
+                reason: '개인사정',
+                status: 'approved',
+                requestDate: '2025-10-26',
+                type: '휴가'
+            };
+            
+            // 이미 존재하는지 확인
+            const existingRequest = this.leaveRequests.find(req => req.id === adminLeaveRequest.id);
+            if (!existingRequest) {
+                this.leaveRequests.push(adminLeaveRequest);
+                this.saveData('leaveRequests', this.leaveRequests);
+                console.log('✅ 관리자 연차 신청이 복구되었습니다.');
+            }
+            
+            return true;
+        } catch (err) {
+            console.error('관리자 계정 복구 오류:', err);
+            return false;
+        }
     }
     
     // 모든 직원 관련 데이터 강제 삭제
@@ -81,12 +184,171 @@ class DataManager {
         this.leaveRequests = [];
         this.deletedEmployees = [];
         
-        // localStorage에 빈 데이터 저장
-        this.saveData('employees', []);
-        this.saveData('leaveRequests', []);
+        // 테스트용 직원 데이터 추가 (다양한 지점)
+        this.employees = [
+            {
+                id: 1,
+                name: '장경민',
+                email: 'jang@test.com',
+                branch: '본사',
+                branchId: 1,
+                department: '개발팀',
+                team: '개발팀',
+                position: '개발자',
+                hireDate: '2023-01-01',
+                phone: '010-1234-5678'
+            },
+            {
+                id: 2,
+                name: 'admin',
+                email: 'admin@test.com',
+                branch: '본사',
+                branchId: 1,
+                department: '경영관리팀',
+                team: '경영관리팀',
+                position: '관리자',
+                hireDate: '2022-01-01',
+                phone: '010-2345-6789'
+            },
+            {
+                id: 3,
+                name: '김강남',
+                email: 'kim@test.com',
+                branch: '강남점',
+                branchId: 2,
+                department: '영업팀',
+                team: '영업팀',
+                position: '영업사원',
+                hireDate: '2023-03-01',
+                phone: '010-3456-7890'
+            },
+            {
+                id: 4,
+                name: '박부산',
+                email: 'park@test.com',
+                branch: '부산점',
+                branchId: 3,
+                department: '컨설팅팀',
+                team: '컨설팅팀',
+                position: '컨설턴트',
+                hireDate: '2023-05-01',
+                phone: '010-4567-8901'
+            },
+            {
+                id: 5,
+                name: '이대구',
+                email: 'lee@test.com',
+                branch: '대구점',
+                branchId: 4,
+                department: '지원팀',
+                team: '지원팀',
+                position: '지원직',
+                hireDate: '2023-07-01',
+                phone: '010-5678-9012'
+            }
+        ];
+        
+        // 테스트용 연차 데이터 추가 (다양한 지점)
+        this.leaveRequests = [
+            {
+                id: 1,
+                employeeId: 1,
+                employeeName: '장경민',
+                leaveType: '개인사정',
+                startDate: '2025-10-28',
+                endDate: '2025-10-28',
+                days: 1,
+                reason: '개인사정',
+                status: 'approved',
+                requestDate: '2025-10-25',
+                type: '휴가'
+            },
+            {
+                id: 2,
+                employeeId: 2,
+                employeeName: 'admin',
+                leaveType: '개인사정',
+                startDate: '2025-10-29',
+                endDate: '2025-10-29',
+                days: 1,
+                reason: '개인사정',
+                status: 'approved',
+                requestDate: '2025-10-26',
+                type: '휴가'
+            },
+            {
+                id: 3,
+                employeeId: 3,
+                employeeName: '김강남',
+                leaveType: '기타',
+                startDate: '2025-11-03',
+                endDate: '2025-11-03',
+                days: 1,
+                reason: '기타',
+                status: 'pending',
+                requestDate: '2025-10-27',
+                type: '휴가'
+            },
+            {
+                id: 4,
+                employeeId: 4,
+                employeeName: '박부산',
+                leaveType: '기타',
+                startDate: '2025-11-07',
+                endDate: '2025-11-07',
+                days: 1,
+                reason: '기타',
+                status: 'pending',
+                requestDate: '2025-10-28',
+                type: '휴가'
+            },
+            {
+                id: 5,
+                employeeId: 5,
+                employeeName: '이대구',
+                leaveType: '개인사정',
+                startDate: '2025-11-05',
+                endDate: '2025-11-05',
+                days: 1,
+                reason: '개인사정',
+                status: 'approved',
+                requestDate: '2025-10-29',
+                type: '휴가'
+            },
+            {
+                id: 6,
+                employeeId: 1,
+                employeeName: '장경민',
+                leaveType: '기타',
+                startDate: '2025-11-10',
+                endDate: '2025-11-10',
+                days: 1,
+                reason: '기타',
+                status: 'approved',
+                requestDate: '2025-10-30',
+                type: '휴가'
+            },
+            {
+                id: 7,
+                employeeId: 3,
+                employeeName: '김강남',
+                leaveType: '개인사정',
+                startDate: '2025-11-12',
+                endDate: '2025-11-12',
+                days: 1,
+                reason: '개인사정',
+                status: 'pending',
+                requestDate: '2025-10-31',
+                type: '휴가'
+            }
+        ];
+        
+        // localStorage에 데이터 저장
+        this.saveData('employees', this.employees);
+        this.saveData('leaveRequests', this.leaveRequests);
         this.saveData('deletedEmployees', []);
         
-        console.log('✅ 직원 데이터가 빈 상태로 초기화되었습니다.');
+        console.log('✅ 테스트용 직원 및 연차 데이터가 생성되었습니다.');
     }
 
     // 샘플 지점 데이터 생성
@@ -490,6 +752,10 @@ class DataManager {
         };
         this.leaveRequests.push(newRequest);
         this.saveData('leaveRequests', this.leaveRequests);
+        
+        console.log('✅ 연차 신청 추가됨:', newRequest);
+        console.log('📊 현재 총 연차 신청 수:', this.leaveRequests.length);
+        
         return newRequest;
     }
 

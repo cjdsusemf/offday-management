@@ -83,7 +83,7 @@ npx http-server
 ```
 offday2/
  index.html              # 메인 대시보드
- leave-request.html      # 연차 신청 페이지
+ leave-status.html      # 연차현황 페이지 (연차신청 포함)
  employee-management.html # 직원 관리 페이지
  statistics.html         # 통계 페이지
  settings.html           # 설정 페이지

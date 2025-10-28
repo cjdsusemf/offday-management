@@ -70,10 +70,23 @@
       const department = employee ? (employee.department || '-') : '-';
       const isSelected = selectedItems.has(r.id); // 현재 항목이 선택되었는지 확인
       const branchStyle = getBranchStyle(branch);
-      const leaveTypeText = r.leaveType === 'welfare-vacation' ? '복지휴가' : 
-                           r.leaveType === 'vacation' ? '법정연차' :
-                           r.leaveType === 'personal' ? '개인사정' :
-                           r.leaveType === 'sick' ? '병가' : '기타';
+      const leaveTypeText = r.leaveType === '복지휴가' ? '복지휴가' : 
+                           r.leaveType === '법정연차' ? '법정연차' :
+                           r.leaveType || '기타';
+      // 사유 표시: reasonType 우선, 사람이 읽는 텍스트로 변환
+      const reasonMap = {
+        personal: '개인사정',
+        sick: '병가',
+        vacation: '휴가',
+        family: '가족사정',
+        other: '기타',
+        half_morning: '반차(오전)',
+        half_afternoon: '반차(오후)'
+      };
+      const key = String(r.reasonType || '').trim();
+      const humanReason = reasonMap[key] || '';
+      const detail = (r.reason && r.reason !== 'null') ? r.reason : '';
+      const reasonText = humanReason ? (detail ? `${humanReason} - ${detail}` : humanReason) : (detail || '-');
       
       return `
         <div class="approval-item ${isSelected ? 'selected' : ''}" data-id="${r.id}">
@@ -81,7 +94,7 @@
           <div>
             <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch" style="${branchStyle}">${branch}</span> <span class="approval-dept">${department}</span></div>
             <div class="approval-meta">기간: ${r.startDate} ~ ${r.endDate} (${r.days}일)  신청일: ${r.requestDate || '-'}</div>
-            <div class="approval-meta">유형: <span class="leave-type-badge ${r.leaveType}">${leaveTypeText}</span>  사유: ${r.reason || '-'}</div>
+            <div class="approval-meta">유형: <span class="leave-type-badge ${r.leaveType}">${leaveTypeText}</span>  사유: ${reasonText}</div>
           </div>
           <div class="approval-actions">
             ${r.status==='pending' ? `
@@ -94,7 +107,7 @@
     }).join('');
     
     updateBulkButtons(); // 렌더링 후 일괄 버튼 상태 업데이트
-    updatePagination(list.length); // 페이지네이션 업데이트
+    updatePagination(list.length); // 페이지네이션 업데이트 (전체 리스트 길이)
   }
   
   function statusText(s){return s==='pending'?'대기중':s==='approved'?'승인됨':s==='rejected'?'거부됨':s}
@@ -113,7 +126,14 @@
       const matchesSearch = !searchTerm || r.employeeName.toLowerCase().includes(searchTerm);
       const matchesBranch = branchFilter === 'all' || branch === branchFilter;
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-      const matchesLeaveType = leaveTypeFilter === 'all' || r.leaveType === leaveTypeFilter;
+      let matchesLeaveType = true;
+      if (leaveTypeFilter !== 'all') {
+        if (leaveTypeFilter === 'annual') {
+          matchesLeaveType = !r.leaveType || !r.leaveType.startsWith('복지');
+        } else if (leaveTypeFilter === 'welfare') {
+          matchesLeaveType = r.leaveType && r.leaveType.startsWith('복지');
+        }
+      }
       
       return matchesSearch && matchesBranch && matchesStatus && matchesLeaveType;
     });
@@ -200,12 +220,7 @@
       paginationInfo.textContent = `${startItem}-${endItem} / 총 ${totalItems}개`;
     }
     
-    // 총 항목이 페이지당 항목 수보다 적으면 페이지네이션 숨기기
-    if (totalItems <= itemsPerPage) {
-      pagination.style.display = 'none';
-      return;
-    }
-    
+    // 페이지네이션 항상 표시
     pagination.style.display = 'flex';
     
     // 이전/다음 버튼 상태 업데이트

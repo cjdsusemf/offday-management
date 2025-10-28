@@ -284,11 +284,29 @@ class LeaveStatus {
             return;
         }
 
+        // 사유 표시 텍스트 생성 유틸 (reasonType 기반, 비어있으면 reason 사용)
+        const getDisplayReason = (req) => {
+            const map = {
+                'personal': '개인사정',
+                'sick': '병가',
+                'other': '기타',
+                'vacation': '휴가',
+                'family': '가족사정',
+                'half_morning': '반차(오전)',
+                'half_afternoon': '반차(오후)'
+            };
+            const byType = map[String(req.reasonType || '').trim()] || '';
+            const base = (req.reason && req.reason !== 'null') ? req.reason : '';
+            // 둘 다 있으면 "사유(상세)" 형태로 합성
+            if (byType && base) return `${byType} - ${base}`;
+            return byType || base || '-';
+        };
+
         container.innerHTML = myRequests.map(request => `
             <div class="my-request-item">
                 <div class="request-period">${request.startDate} ~ ${request.endDate}</div>
                 <div class="request-details">
-                    <span>${request.days}일 | ${request.reason}</span>
+                    <span>${request.days}일 | ${getDisplayReason(request)}</span>
                     <span class="request-status ${request.status}">${this.getStatusText(request.status)}</span>
                 </div>
             </div>
@@ -796,27 +814,24 @@ class LeaveStatus {
         const byType = { vacation: 0, personal: 0, sick: 0, other: 0 };
         let totalDays = 0;
         
-        requests.forEach(r => { 
-            // leaveType 또는 type 필드 확인 (leaveType 우선)
-            const leaveType = r.leaveType || r.type;
-            console.log('연차 신청 데이터:', { id: r.id, type: r.type, leaveType: r.leaveType, reason: r.reason, days: r.days });
-            
-            if (leaveType && byType.hasOwnProperty(leaveType)) {
-                byType[leaveType] = (byType[leaveType] || 0) + (r.days || 0);
-            } else {
-                // reason 필드에서 유형 추출 시도
-                const reason = r.reason || '';
-                if (reason.includes('휴가') || reason.includes('vacation')) {
-                    byType.vacation = (byType.vacation || 0) + (r.days || 0);
-                } else if (reason.includes('개인사정') || reason.includes('personal')) {
-                    byType.personal = (byType.personal || 0) + (r.days || 0);
-                } else if (reason.includes('병가') || reason.includes('sick')) {
-                    byType.sick = (byType.sick || 0) + (r.days || 0);
-                } else {
-                    byType.other = (byType.other || 0) + (r.days || 0);
-                }
+        requests.forEach(r => {
+            // reasonType 우선 분류 (정확)
+            const rt = String(r.reasonType || '').toLowerCase();
+            if (rt.includes('personal')) byType.personal += (r.days || 0);
+            else if (rt.includes('sick')) byType.sick += (r.days || 0);
+            else if (rt.includes('vacation')) byType.vacation += (r.days || 0);
+            else if (rt.includes('family')) byType.other += (r.days || 0); // 가족사정은 기타 그룹으로
+            else if (rt.includes('other')) byType.other += (r.days || 0);
+            else {
+                // 폴백: 기존 leaveType/text에서 추정
+                const lt = String(r.leaveType || r.type || '').toLowerCase();
+                const reason = String(r.reason || '').toLowerCase();
+                if (lt.includes('personal') || reason.includes('개인사정')) byType.personal += (r.days || 0);
+                else if (lt.includes('sick') || reason.includes('병가')) byType.sick += (r.days || 0);
+                else if (lt.includes('vacation') || reason.includes('휴가')) byType.vacation += (r.days || 0);
+                else byType.other += (r.days || 0);
             }
-            totalDays += (r.days || 0); 
+            totalDays += (r.days || 0);
         });
         
         console.log('연차 사용 패턴 집계:', byType, '총 일수:', totalDays);
@@ -1019,6 +1034,7 @@ class LeaveStatus {
         // 폼 제출 이벤트
         form.addEventListener('submit', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             this.submitLeaveRequest();
         });
 
@@ -1027,22 +1043,40 @@ class LeaveStatus {
         const endDateInput = document.getElementById('end-date');
         const totalDaysInput = document.getElementById('total-days');
         const leaveTypeSelect = document.getElementById('leave-type');
+        const reasonTypeSelect = document.getElementById('reason-type');
         const reasonTextarea = document.getElementById('reason');
         const reasonGroup = reasonTextarea ? reasonTextarea.closest('.form-group') : null;
 
-        if (startDateInput && endDateInput && totalDaysInput && leaveTypeSelect) {
-            const halfDayTimeSelection = document.getElementById('half-day-time-selection');
-            
+        // 사유 옵션 정의
+        const reasonOptions = {
+            'annual': [
+                { value: 'personal', text: '개인사정' },
+                { value: 'sick', text: '병가' },
+                { value: 'other', text: '기타' },
+                // 반차는 공통: 오전/오후만 제공
+                { value: 'half_morning', text: '반차(오전)' },
+                { value: 'half_afternoon', text: '반차(오후)' }
+            ],
+            'welfare': [
+                { value: 'vacation', text: '휴가' },
+                { value: 'family', text: '가족사정' },
+                { value: 'other', text: '기타' },
+                // 반차는 공통: 오전/오후만 제공
+                { value: 'half_morning', text: '반차(오전)' },
+                { value: 'half_afternoon', text: '반차(오후)' }
+            ]
+        };
+
+        if (startDateInput && endDateInput && totalDaysInput && leaveTypeSelect && reasonTypeSelect) {
+            // 일수 계산 함수 먼저 정의
             const calculateDays = () => {
                 const startDate = new Date(startDateInput.value);
                 const endDate = new Date(endDateInput.value);
-                const leaveType = leaveTypeSelect.value;
+                const reasonType = reasonTypeSelect.value;
                 
-                if (leaveType === 'half-morning' || leaveType === 'half-afternoon' || 
-                    leaveType === 'welfare-half-morning' || leaveType === 'welfare-half-afternoon') {
-                    // 반차 선택 시 (법정연차 반차 + 복지휴가 반차)
+                if (reasonType && (reasonType.includes('half_morning') || reasonType.includes('half_afternoon'))) {
+                    // 반차 선택 시
                     totalDaysInput.value = 0.5;
-                    // 종료일을 시작일과 같게 설정
                     if (startDateInput.value) {
                         endDateInput.value = startDateInput.value;
                         endDateInput.disabled = true;
@@ -1065,10 +1099,39 @@ class LeaveStatus {
                 }
             };
 
-            startDateInput.addEventListener('change', calculateDays);
-            endDateInput.addEventListener('change', calculateDays);
-            leaveTypeSelect.addEventListener('change', calculateDays);
+            startDateInput.addEventListener('change', (e) => {
+                e.stopPropagation();
+                calculateDays();
+            });
+            endDateInput.addEventListener('change', (e) => {
+                e.stopPropagation();
+                calculateDays();
+            });
+            leaveTypeSelect.addEventListener('change', (e) => {
+                e.stopPropagation();
+                updateReasonOptions();
+            });
+            reasonTypeSelect.addEventListener('change', (e) => {
+                e.stopPropagation();
+                calculateDays();
+            });
         }
+
+        // 사유 옵션 업데이트 함수 정의
+        const updateReasonOptions = () => {
+            const selectedType = leaveTypeSelect.value;
+            reasonTypeSelect.innerHTML = '<option value="">사유를 선택하세요</option>';
+            
+            if (selectedType && reasonOptions[selectedType]) {
+                reasonOptions[selectedType].forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option.value;
+                    optionElement.textContent = option.text;
+                    reasonTypeSelect.appendChild(optionElement);
+                });
+            }
+            calculateDays();
+        };
 
         // 오늘 날짜를 기본값으로 설정
         const today = new Date().toISOString().split('T')[0];
@@ -1107,7 +1170,8 @@ class LeaveStatus {
 
         // 시작일 변경 시 종료일 최소값 업데이트
         if (startDateInput) {
-            startDateInput.addEventListener('change', () => {
+            startDateInput.addEventListener('change', (e) => {
+                e.stopPropagation();
                 if (startDateInput.value && endDateInput) {
                     endDateInput.min = startDateInput.value;
                     validateDates();
@@ -1117,7 +1181,10 @@ class LeaveStatus {
 
         // 종료일 변경 시 유효성 검증
         if (endDateInput) {
-            endDateInput.addEventListener('change', validateDates);
+            endDateInput.addEventListener('change', (e) => {
+                e.stopPropagation();
+                validateDates();
+            });
         }
 
         // 연차 유형이 '기타'일 때만 사유 입력 가능(사유 입력창 표시/숨김)
@@ -1134,8 +1201,30 @@ class LeaveStatus {
         };
         if (leaveTypeSelect && reasonTextarea && reasonGroup) {
             toggleReason();
-            leaveTypeSelect.addEventListener('change', toggleReason);
+            leaveTypeSelect.addEventListener('change', (e) => {
+                e.stopPropagation();
+                toggleReason();
+            });
         }
+
+        // 폼 전체 클릭 이벤트 버블링 방지
+        form.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // 폼 내 모든 입력 요소에 클릭 이벤트 버블링 방지
+        const formElements = form.querySelectorAll('input, select, textarea, button');
+        formElements.forEach(element => {
+            element.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            element.addEventListener('focus', (e) => {
+                e.stopPropagation();
+            });
+            element.addEventListener('blur', (e) => {
+                e.stopPropagation();
+            });
+        });
     }
 
     // 특정 연도의 월별 차트 로드
@@ -1404,43 +1493,40 @@ class LeaveStatus {
         const startDate = formData.get('startDate');
         let endDate = formData.get('endDate');
         const leaveType = formData.get('leaveType');
+        const reasonType = formData.get('reasonType');
         
         // 종료일이 없으면 시작일과 동일하게 설정 (반차의 경우)
         if (!endDate && startDate) {
             endDate = startDate;
         }
         
-        // disabled 필드는 FormData에 포함되지 않으므로 보정
-        let reason = formData.get('reason');
-        if (!reason && leaveType && leaveType !== 'other') {
-            reason = this.getLeaveTypeText(leaveType) || leaveType;
+        // 최종 연차 유형 결정
+        let finalLeaveType = '';
+        if (leaveType === 'annual') {
+            finalLeaveType = '법정연차';
+        } else if (leaveType === 'welfare') {
+            finalLeaveType = '복지휴가';
         }
         
         // 디버깅을 위한 로그
-        console.log('연차 신청 데이터:', { startDate, endDate, leaveType, reason, totalDays: formData.get('totalDays') });
+        console.log('연차 신청 데이터:', { startDate, endDate, leaveType, reasonType, finalLeaveType, totalDays: formData.get('totalDays') });
         const totalDays = parseFloat(formData.get('totalDays'));
 
         // 각 조건을 개별적으로 확인
-        const isOtherType = leaveType === 'other-statutory' || leaveType === 'other-welfare' || leaveType === 'other';
         console.log('검증 조건들:', {
             startDate: !!startDate,
             endDate: !!endDate,
             leaveType: !!leaveType,
-            reasonCheck: !(isOtherType && !reason),
+            reasonType: !!reasonType,
             totalDaysValid: !isNaN(totalDays) && totalDays > 0,
             totalDaysValue: totalDays
         });
 
-        // '기타'일 때만 사유를 필수로 요구, 다른 유형은 자동으로 사유 설정
-        if (!startDate || !endDate || !leaveType || (isOtherType && !reason) || isNaN(totalDays) || totalDays <= 0) {
+        // 모든 필수 필드 검증
+        if (!startDate || !endDate || !leaveType || !reasonType || isNaN(totalDays) || totalDays <= 0) {
             console.log('검증 실패 - 오류 메시지 표시');
-            this.showNotification('모든 필드를 입력해주세요.', 'error');
+            this.showNotification('모든 필수 항목을 입력해주세요.', 'error');
             return;
-        }
-        
-        // 사유가 없으면 연차 유형으로 자동 설정
-        if (!reason && !isOtherType) {
-            reason = this.getLeaveTypeText(leaveType) || leaveType;
         }
 
         // 날짜 유효성 검사
@@ -1460,7 +1546,7 @@ class LeaveStatus {
         }
 
         // 연차 일수 제한 검사 (복지휴가와 법정연차 구분)
-        if (leaveType.startsWith('welfare-')) {
+        if (leaveType === 'welfare') {
             // 복지휴가 신청 시 복지휴가 잔여일수로 체크
             const welfareData = this.getUserWelfareData(this.currentUser.id);
             if (totalDays > welfareData.remaining) {
@@ -1493,19 +1579,20 @@ class LeaveStatus {
             return;
         }
 
-        // 연차 신청 데이터 생성
+        // 연차 신청 데이터 생성 (직원 레코드 기준 ID 사용)
         const leaveRequest = {
-            id: Date.now(), // 임시 ID
-            employeeId: this.currentUser.id,
-            employeeName: this.currentUser.name,
+            id: Date.now().toString(),
+            employeeId: employee ? employee.id : this.currentUser.id,
+            employeeName: employee ? (employee.name || this.currentUser.name) : this.currentUser.name,
             startDate: startDate,
             endDate: endDate,
             days: totalDays,
-            leaveType: leaveType,
-            reason: reason,
+            leaveType: finalLeaveType,
+            reasonType: reasonType,
+            reason: formData.get('reason'),
             status: 'pending',
             requestDate: new Date().toISOString().split('T')[0],
-            department: this.getEmployeeDepartment(this.currentUser.id)
+            type: reasonType && (reasonType.includes('half_morning') || reasonType.includes('half_afternoon')) ? '반차' : '휴가'
         };
 
         // 데이터 매니저에 연차 신청 추가
@@ -1513,16 +1600,17 @@ class LeaveStatus {
 
         // 폼 초기화
         form.reset();
+        document.getElementById('total-days').value = '';
+        const reasonTypeSelect = document.getElementById('reason-type');
+        if (reasonTypeSelect) {
+            reasonTypeSelect.innerHTML = '<option value="">사유를 선택하세요</option>';
+        }
 
         // 대시보드 새로고침
         this.refreshDashboard();
 
-        // 성공 알림 (복지휴가와 법정연차 구분)
-        if (leaveType.startsWith('welfare-')) {
-            this.showNotification('휴가 신청이 완료되었습니다.', 'success');
-        } else {
-            this.showNotification('연차 신청이 완료되었습니다.', 'success');
-        }
+        // 성공 알림
+        this.showNotification('연차 신청이 완료되었습니다.', 'success');
     }
 
     // 대시보드 새로고침
