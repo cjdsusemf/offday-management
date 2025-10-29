@@ -322,7 +322,8 @@
                 phone: userData.phone || '',
                 hireDate: user.joindate, // hireDate로 변경
                 birthDate: user.birthdate, // 생년월일 추가
-                annualLeaveDays: 15 // 기본 연차 일수
+                annualLeaveDays: 15, // 기본 연차 일수
+                welfareLeaveDays: 0 // 복지휴가는 0으로 초기화 (지급하지 않음)
             };
             
             window.dataManager.addEmployee(employeeData);

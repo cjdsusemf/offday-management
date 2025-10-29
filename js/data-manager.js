@@ -16,6 +16,12 @@ class DataManager {
             this.createSampleData();
         }
         
+        // 기존 직원 데이터 마이그레이션 실행
+        this.migrateEmployeeData();
+        
+        // 복지휴가 지급 기록 초기화 (테스트 데이터 제거)
+        this.initializeWelfareLeaveGrants();
+        
         // 지점 데이터가 없으면 샘플 지점 데이터 생성
         if (this.branches.length === 0) {
             this.createSampleBranches();
@@ -508,11 +514,74 @@ class DataManager {
             ...employee,
             id: Date.now(),
             usedLeaveDays: 0,
-            remainingLeaveDays: employee.annualLeaveDays || 15
+            remainingLeaveDays: employee.annualLeaveDays || 15,
+            welfareLeaveDays: employee.welfareLeaveDays || 0 // 복지휴가는 0으로 초기화
         };
         this.employees.push(newEmployee);
         this.saveData('employees', this.employees);
         return newEmployee;
+    }
+
+    // 기존 직원 데이터 마이그레이션 (welfareLeaveDays 초기화)
+    migrateEmployeeData() {
+        let updated = false;
+        this.employees.forEach(employee => {
+            if (employee.welfareLeaveDays === undefined) {
+                employee.welfareLeaveDays = 0;
+                updated = true;
+            }
+        });
+        
+        if (updated) {
+            this.saveData('employees', this.employees);
+            console.log('직원 데이터 마이그레이션 완료: welfareLeaveDays 초기화');
+        }
+    }
+
+    // 복지휴가 지급 기록 초기화
+    clearWelfareLeaveGrants() {
+        this.welfareLeaveGrants = [];
+        this.saveData('welfareLeaveGrants', this.welfareLeaveGrants);
+        
+        // 모든 직원의 welfareLeaveDays도 0으로 초기화
+        this.employees.forEach(employee => {
+            employee.welfareLeaveDays = 0;
+        });
+        this.saveData('employees', this.employees);
+        
+        console.log('복지휴가 지급 기록이 모두 삭제되었습니다.');
+    }
+
+    // 복지휴가 지급 기록 초기화 (자동 실행)
+    initializeWelfareLeaveGrants() {
+        // welfareLeaveGrants 데이터 로드
+        this.welfareLeaveGrants = this.loadData('welfareLeaveGrants') || [];
+        
+        // 테스트용 데이터가 있으면 모두 삭제
+        if (this.welfareLeaveGrants.length > 0) {
+            console.log('테스트용 복지휴가 지급 기록을 초기화합니다.');
+            this.clearWelfareLeaveGrants();
+        }
+    }
+
+    // 특정 직원의 복지휴가 지급 기록 삭제
+    clearEmployeeWelfareLeaveGrants(employeeId) {
+        if (!this.welfareLeaveGrants) {
+            this.welfareLeaveGrants = [];
+        }
+        
+        // 해당 직원의 복지휴가 지급 기록 삭제
+        this.welfareLeaveGrants = this.welfareLeaveGrants.filter(grant => grant.employeeId !== employeeId);
+        this.saveData('welfareLeaveGrants', this.welfareLeaveGrants);
+        
+        // 해당 직원의 welfareLeaveDays도 0으로 초기화
+        const employee = this.employees.find(emp => emp.id === employeeId);
+        if (employee) {
+            employee.welfareLeaveDays = 0;
+            this.saveData('employees', this.employees);
+        }
+        
+        console.log(`직원 ID ${employeeId}의 복지휴가 지급 기록이 삭제되었습니다.`);
     }
 
     // 직원 업데이트

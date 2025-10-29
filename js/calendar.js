@@ -134,6 +134,11 @@
                 };
                 showLeaveDetail(eventData);
             },
+            dateClick: function(info) {
+                // 날짜 클릭 시 연차 신청 모달 열기
+                const clickedDate = info.dateStr;
+                openLeaveRequestModalWithDate(clickedDate);
+            },
             eventDidMount: function(info) {
                 // 이벤트 스타일링 (지점별 배경색을 직접 적용) - FullCalendar 내부 구조까지 적용
                 const event = info.event;
@@ -304,6 +309,8 @@
                 else if (rt.includes('vacation')) leaveTypeText = '휴가';
                 else if (rt.includes('family')) leaveTypeText = '가족사정';
                 else if (rt.includes('other')) leaveTypeText = '기타';
+                else if (rt.includes('half_morning')) leaveTypeText = '반차(오전)';
+                else if (rt.includes('half_afternoon')) leaveTypeText = '반차(오후)';
                 else if (leave.leaveType === '복지휴가' || leave.leaveType === '법정연차') {
                     // 카테고리만 있는 경우 보조표시
                     leaveTypeText = leave.leaveType;
@@ -311,7 +318,22 @@
                 
                 // 연차 승인 페이지와 동일한 직원명 사용
                 const employeeName = leave.employeeName || employee?.name || '알 수 없음';
-                const title = `${employeeName} (${leaveTypeText})`;
+                
+                // 연차/반차 여부 판단
+                let leaveCategory = '연차';
+                if (rt.includes('half_morning') || rt.includes('half_afternoon') || leave.days === 0.5 || leave.type === '반차') {
+                    leaveCategory = '반차';
+                    
+                    // 반차인 경우 오전/오후 구분 추가
+                    if (rt.includes('half_morning')) {
+                        leaveCategory = '오전반차';
+                    } else if (rt.includes('half_afternoon')) {
+                        leaveCategory = '오후반차';
+                    }
+                }
+                
+                // 새로운 형식: "[연차/반차 여부] 성명(소속지점)"
+                const title = `[${leaveCategory}] ${employeeName}(${branchName})`;
                 
                 // 날짜 변환 - FullCalendar의 배타적 end 날짜 처리
                 const startDate = leave.startDate;
@@ -557,7 +579,10 @@
         document.getElementById('leaveType')?.addEventListener('change', updateReasonOptions);
         document.getElementById('startDate')?.addEventListener('change', calculateDaysInModal);
         document.getElementById('endDate')?.addEventListener('change', calculateDaysInModal);
-        document.getElementById('reasonType')?.addEventListener('change', calculateDaysInModal);
+        document.getElementById('reasonType')?.addEventListener('change', () => {
+            calculateDaysInModal();
+            toggleReasonField();
+        });
     }
 
     // 현재 월 표시 업데이트
@@ -660,6 +685,16 @@
         const leaveTypeText = eventData.leave_type === '연차' ? '연차' : '복지휴가';
         const statusText = '승인됨'; // API에서 승인된 연차만 조회
 
+        // 사유 표시 로직 개선
+        let reasonDisplay = '사유 없음';
+        if (eventData.reason && eventData.reason.trim() !== '') {
+            // 상세 사유가 있는 경우
+            reasonDisplay = eventData.reason;
+        } else if (eventData.leave_type) {
+            // 상세 사유가 없으면 leave_type을 사유로 표시
+            reasonDisplay = eventData.leave_type;
+        }
+
         content.innerHTML = `
             <div class="leave-detail-item">
                 <div class="leave-detail-header">
@@ -671,7 +706,7 @@
                     <span><i class="fas fa-building"></i> ${eventData.branch_name}</span>
                     <span><i class="fas fa-users"></i> ${eventData.team_name}</span>
                     <span><i class="fas fa-calendar"></i> ${eventData.start.split('T')[0]} ~ ${eventData.end.split('T')[0]} (${eventData.days || 1}일)</span>
-                    <span><i class="fas fa-file-alt"></i> ${eventData.reason || '사유 없음'}</span>
+                    <span><i class="fas fa-file-alt"></i> ${reasonDisplay}</span>
                     <span><i class="fas fa-clock"></i> ${eventData.half_type || '전일'}</span>
                     <span><i class="fas fa-calendar-plus"></i> 신청일: ${eventData.requestDate || '-'}</span>
                 </div>
@@ -715,6 +750,54 @@
             // 폼 초기화
             document.getElementById('leaveRequestForm')?.reset();
             updateReasonOptions();
+            
+            // 상세 사유 필드 초기화 (숨김)
+            const reasonGroup = document.getElementById('reason-group');
+            if (reasonGroup) {
+                reasonGroup.style.display = 'none';
+            }
+        }
+    }
+    
+    // 특정 날짜로 연차 신청 모달 열기
+    function openLeaveRequestModalWithDate(selectedDate) {
+        const modal = document.getElementById('leaveRequestModal');
+        if (modal) {
+            modal.style.display = 'block';
+            
+            // 선택된 날짜로 기본값 설정
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            
+            if (startDateInput) {
+                startDateInput.min = selectedDate;
+                startDateInput.value = selectedDate;
+            }
+            if (endDateInput) {
+                endDateInput.min = selectedDate;
+                endDateInput.value = selectedDate;
+            }
+            
+            // 폼 초기화
+            document.getElementById('leaveRequestForm')?.reset();
+            
+            // 날짜 필드 다시 설정 (reset 후)
+            if (startDateInput) {
+                startDateInput.min = selectedDate;
+                startDateInput.value = selectedDate;
+            }
+            if (endDateInput) {
+                endDateInput.min = selectedDate;
+                endDateInput.value = selectedDate;
+            }
+            
+            updateReasonOptions();
+            
+            // 상세 사유 필드 초기화 (숨김)
+            const reasonGroup = document.getElementById('reason-group');
+            if (reasonGroup) {
+                reasonGroup.style.display = 'none';
+            }
         }
     }
     
@@ -726,7 +809,7 @@
         }
     }
     
-    // 사유 옵션 업데이트
+    // 사유 옵션 업데이트 (연차현황 메뉴와 동일한 옵션)
     function updateReasonOptions() {
         const leaveTypeSelect = document.getElementById('leaveType');
         const reasonTypeSelect = document.getElementById('reasonType');
@@ -740,12 +823,18 @@
             'annual': [
                 { value: 'personal', text: '개인사정' },
                 { value: 'sick', text: '병가' },
-                { value: 'other', text: '기타' }
+                { value: 'other', text: '기타' },
+                // 반차는 공통: 오전/오후만 제공
+                { value: 'half_morning', text: '반차(오전)' },
+                { value: 'half_afternoon', text: '반차(오후)' }
             ],
             'welfare': [
                 { value: 'vacation', text: '휴가' },
                 { value: 'family', text: '가족사정' },
-                { value: 'other', text: '기타' }
+                { value: 'other', text: '기타' },
+                // 반차는 공통: 오전/오후만 제공
+                { value: 'half_morning', text: '반차(오전)' },
+                { value: 'half_afternoon', text: '반차(오후)' }
             ]
         };
         
@@ -756,6 +845,28 @@
                 optionElement.textContent = option.text;
                 reasonTypeSelect.appendChild(optionElement);
             });
+        }
+        
+        // 상세 사유 필드 토글
+        toggleReasonField();
+    }
+    
+    // 상세 사유 필드 토글 함수
+    function toggleReasonField() {
+        const reasonTypeSelect = document.getElementById('reasonType');
+        const reasonGroup = document.getElementById('reason-group');
+        const reasonTextarea = document.getElementById('reason');
+        
+        if (!reasonTypeSelect || !reasonGroup || !reasonTextarea) return;
+        
+        const isOther = reasonTypeSelect.value === 'other';
+        reasonGroup.style.display = isOther ? '' : 'none';
+        reasonTextarea.disabled = !isOther;
+        reasonTextarea.required = isOther;
+        
+        if (!isOther) {
+            // 기타가 아닌 경우 상세 사유 초기화
+            reasonTextarea.value = '';
         }
     }
     
@@ -788,23 +899,79 @@
             finalLeaveType = '복지휴가';
         }
         
+        // 2024년 공휴일 목록
+        const holidays2024 = [
+            '2024-01-01', // 신정
+            '2024-02-09', '2024-02-10', '2024-02-11', '2024-02-12', // 설날 연휴
+            '2024-03-01', // 삼일절
+            '2024-04-10', // 국회의원선거
+            '2024-05-05', // 어린이날
+            '2024-05-15', // 부처님오신날
+            '2024-06-06', // 현충일
+            '2024-08-15', // 광복절
+            '2024-09-16', '2024-09-17', '2024-09-18', // 추석 연휴
+            '2024-10-03', // 개천절
+            '2024-10-09', // 한글날
+            '2024-12-25'  // 성탄절
+        ];
+        
+        // 2025년 공휴일 목록
         const holidays2025 = [
-            '2025-01-01', '2025-01-28', '2025-01-29', '2025-01-30', '2025-03-01', '2025-05-05',
-            '2025-05-12', '2025-06-06', '2025-08-15', '2025-09-17', '2025-09-18', '2025-10-03',
-            '2025-10-09', '2025-12-25'
+            '2025-01-01', // 신정
+            '2025-01-28', '2025-01-29', '2025-01-30', // 설날 연휴
+            '2025-03-01', // 삼일절
+            '2025-05-05', // 어린이날
+            '2025-05-12', // 부처님오신날
+            '2025-06-06', // 현충일
+            '2025-08-15', // 광복절
+            '2025-10-05', '2025-10-06', '2025-10-07', '2025-10-08', // 추석 연휴
+            '2025-10-03', // 개천절
+            '2025-10-09', // 한글날
+            '2025-12-25'  // 성탄절
         ];
         
         const isWeekendOrHoliday = (dateStr) => {
             const date = new Date(dateStr);
             const dayOfWeek = date.getDay();
+            const year = date.getFullYear();
+            
+            // 주말 검증 (토요일: 6, 일요일: 0)
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            const isHoliday = holidays2025.includes(dateStr);
+            
+            // 공휴일 검증
+            let isHoliday = false;
+            if (year === 2024) {
+                isHoliday = holidays2024.includes(dateStr);
+            } else if (year === 2025) {
+                isHoliday = holidays2025.includes(dateStr);
+            }
+            
             return isWeekend || isHoliday;
         };
         
         const startDate = formData.get('startDate');
         const endDate = formData.get('endDate');
         
+        if (isWeekendOrHoliday(startDate)) {
+            alert('시작일이 주말 또는 공휴일입니다. 평일을 선택해주세요.');
+            return;
+        }
+        
+        if (isWeekendOrHoliday(endDate)) {
+            alert('종료일이 주말 또는 공휴일입니다. 평일을 선택해주세요.');
+            return;
+        }
+        
+        // 기타 사유 선택 시 상세 사유 필수 검증
+        if (reasonType === 'other') {
+            const reasonText = formData.get('reason');
+            if (!reasonText || reasonText.trim() === '') {
+                alert('기타 사유를 선택하셨습니다. 상세 사유를 입력해주세요.');
+                return;
+            }
+        }
+        
+        // 주말 및 공휴일 검증
         if (isWeekendOrHoliday(startDate)) {
             alert('시작일이 주말 또는 공휴일입니다. 평일을 선택해주세요.');
             return;
@@ -827,7 +994,7 @@
             reason: formData.get('reason'),
             status: 'pending',
             requestDate: new Date().toISOString().split('T')[0],
-            type: reasonType && reasonType.includes('half') ? '반차' : '휴가'
+            type: reasonType && (reasonType.includes('half_morning') || reasonType.includes('half_afternoon')) ? '반차' : '휴가'
         };
         
         dm.leaveRequests.push(leaveRequest);
@@ -838,7 +1005,7 @@
         loadLeaveData();
     }
     
-    // 일수 계산
+    // 일수 계산 (반차 옵션 포함)
     function calculateDaysInModal() {
         const startDateInput = document.getElementById('startDate');
         const endDateInput = document.getElementById('endDate');
@@ -849,7 +1016,8 @@
         
         const reasonType = reasonTypeSelect?.value;
         
-        if (reasonType && reasonType.includes('half')) {
+        if (reasonType && (reasonType.includes('half_morning') || reasonType.includes('half_afternoon'))) {
+            // 반차 선택 시
             daysInput.value = 0.5;
             if (startDateInput.value) {
                 endDateInput.value = startDateInput.value;
@@ -858,6 +1026,7 @@
                 endDateInput.style.color = '#6c757d';
             }
         } else {
+            // 일반 연차 선택 시
             endDateInput.disabled = false;
             endDateInput.style.background = '';
             endDateInput.style.color = '';

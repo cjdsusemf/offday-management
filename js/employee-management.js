@@ -181,8 +181,8 @@
                 }
             });
 
-            // 총 복지휴가는 지급된 총량 또는 직원 데이터에서 가져오기
-            const total = totalGranted > 0 ? totalGranted : (employee.welfareLeaveDays || 0);
+            // 총 복지휴가는 지급된 총량만 사용 (직원 데이터의 welfareLeaveDays는 사용하지 않음)
+            const total = totalGranted;
             const remaining = Math.max(total - used - expiredDays, 0);
             
             // 디버깅을 위한 콘솔 로그
@@ -198,7 +198,7 @@
             return { total, used, remaining, expired: expiredDays };
         } catch (e) {
             console.error('복지휴가 계산 오류:', e);
-            return { total: employee.welfareLeaveDays || 0, used: 0, remaining: employee.welfareLeaveDays || 0, expired: 0 };
+            return { total: 0, used: 0, remaining: 0, expired: 0 };
         }
     }
 
@@ -1223,6 +1223,56 @@
         }
     }
 
+    // 부서 필터 옵션 로드
+    function loadDepartmentFilterOptions() {
+        const departmentFilter = document.getElementById('departmentFilter');
+        if (!departmentFilter) return;
+
+        // 이미 로드된 경우 재로드하지 않음
+        if (departmentFilter.options.length > 1) {
+            return;
+        }
+
+        // 직원 데이터에서 부서 정보 추출
+        const employeeDepartments = [...new Set(dm.employees.map(emp => emp.department).filter(Boolean))];
+        employeeDepartments.forEach(departmentName => {
+            const option = document.createElement('option');
+            option.value = departmentName;
+            option.textContent = departmentName;
+            departmentFilter.appendChild(option);
+        });
+    }
+
+    // 지점 필터 옵션 로드
+    function loadBranchFilterOptions() {
+        const branchFilter = document.getElementById('branchFilter');
+        if (!branchFilter) return;
+
+        // 이미 로드된 경우 재로드하지 않음
+        if (branchFilter.options.length > 1) {
+            return;
+        }
+
+        if (window.dataManager && window.dataManager.branches && window.dataManager.branches.length > 0) {
+            // 실제 등록된 지점 데이터로 옵션 생성
+            window.dataManager.branches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch.name;
+                option.textContent = branch.name;
+                branchFilter.appendChild(option);
+            });
+        } else {
+            // 직원 데이터에서 지점 정보 추출 (fallback)
+            const employeeBranches = [...new Set(dm.employees.map(emp => emp.branch).filter(Boolean))];
+            employeeBranches.forEach(branchName => {
+                const option = document.createElement('option');
+                option.value = branchName;
+                option.textContent = branchName;
+                branchFilter.appendChild(option);
+            });
+        }
+    }
+
     // 지점과 부서 데이터 로드 및 값 설정 (최적화)
     function loadBranchAndDepartmentDataWithValues(employeeData) {
         const branchSelect = document.getElementById('employeeBranch');
@@ -1533,9 +1583,11 @@
         dm = window.dataManager || new DataManager();
         window.dataManager = dm;
 
-        // 테스트용 복지휴가 데이터 추가 (개발 환경에서만)
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            addTestWelfareLeaveData();
+        // 테스트용 복지휴가 데이터 자동 추가 비활성화
+        // 기존 테스트 데이터가 있다면 초기화
+        if (dm.welfareLeaveGrants && dm.welfareLeaveGrants.length > 0) {
+            console.log('기존 복지휴가 지급 기록을 초기화합니다.');
+            dm.clearWelfareLeaveGrants();
         }
 
         // 페이지 로드 시 자동으로 회원 데이터 동기화 (한 번만 실행)
@@ -1547,6 +1599,26 @@
             window.authManager.forceSyncUsersToEmployees();
             window.employeeManagementInitialized = true;
         }
+
+        // 지점 필터 옵션 로드
+        loadBranchFilterOptions();
+
+        // 부서 필터 옵션 로드
+        loadDepartmentFilterOptions();
+
+        // 지점 데이터 변경 시 필터 업데이트
+        const originalSaveData = dm.saveData;
+        dm.saveData = function(key, data) {
+            const result = originalSaveData.call(this, key, data);
+            if (key === 'branches' || key === 'employees') {
+                setTimeout(() => {
+                    loadBranchFilterOptions();
+                    loadDepartmentFilterOptions();
+                    refreshEmployeeTable();
+                }, 100);
+            }
+            return result;
+        };
 
         // 이벤트 리스너 등록
         attachEventListeners();

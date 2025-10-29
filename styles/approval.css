@@ -1,53 +1,360 @@
-﻿/* 연차승인 스타일 - 일괄선택 기능 추가 */
-.approval-filters{margin-bottom:1.5rem;background:#f8f9fa;padding:1rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
-.bulk-actions{display:flex;align-items:center;gap:1rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid #dee2e6}
-.bulk-checkbox{display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:500}
-.bulk-checkbox input[type="checkbox"]{width:18px;height:18px;cursor:pointer}
-.btn-bulk{padding:.5rem 1rem;border-radius:6px;border:0;cursor:pointer;color:#fff;font-weight:500;transition:all 0.3s ease;display:flex;align-items:center;gap:0.5rem}
-.btn-bulk:disabled{opacity:0.5;cursor:not-allowed}
-.btn-bulk-approve{background:#28a745}
-.btn-bulk-approve:hover:not(:disabled){background:#218838;transform:translateY(-1px)}
-.btn-bulk-reject{background:#dc3545}
-.btn-bulk-reject:hover:not(:disabled){background:#c82333;transform:translateY(-1px)}
-.selected-count{color:#666;font-size:.9rem;margin-left:auto}
-.filter-group{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
-.form-input{padding:.5rem 1rem;border:1px solid #ddd;border-radius:5px;font-size:1rem;min-width:200px}
-.form-input:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 2px rgba(102,126,234,0.2)}
-.form-select{padding:.5rem 1rem;border:1px solid #ddd;border-radius:5px;font-size:1rem;background:white;cursor:pointer;min-width:120px}
-.approval-list{display:flex;flex-direction:column;gap:.75rem}
-.approval-item{background:#fff;border:1px solid #eee;border-radius:10px;padding:1rem;display:grid;grid-template-columns:auto 1fr auto;gap:.5rem;align-items:center;transition:all 0.3s ease}
-.approval-item:hover{box-shadow:0 4px 15px rgba(0,0,0,0.1);transform:translateY(-2px)}
-.approval-item.selected{border-color:#667eea;background:#f8f9ff}
-.item-checkbox{width:18px;height:18px;cursor:pointer}
-.approval-meta{color:#666;font-size:.9rem;margin-bottom:.25rem}
-.approval-branch{display:inline-block;background:#fff3cd;color:#856404;padding:.2rem .5rem;border-radius:15px;font-size:.75rem;margin-left:.5rem;border:1px solid #ffeaa7}
-/* 새로 추가: 소속 팀 배지 */
-.approval-dept{display:inline-block;background:#f1f5f9;color:#475569;padding:.2rem .5rem;border-radius:15px;font-size:.75rem;margin-left:.35rem}
-.approval-actions{display:flex;gap:.5rem}
-.btn-small{padding:.4rem .7rem;border-radius:6px;border:0;cursor:pointer;color:#fff;transition:all 0.3s ease}
-.btn-small:hover{transform:scale(1.05)}
-.btn-approve{background:#28a745}
-.btn-approve:hover{background:#218838}
-.btn-reject{background:#dc3545}
-.btn-reject:hover{background:#c82333}
-.status-badge{padding:.2rem .5rem;border-radius:999px;font-size:.75rem;color:#fff;font-weight:600}
-.status-badge.pending{background:#ff9800}
-.status-badge.approved{background:#28a745}
-.status-badge.rejected{background:#dc3545}
+﻿/* 연차승인 스타일 - 개선된 버전 */
+
+/* 승인 컨트롤 섹션 */
+.approval-controls {
+    background: var(--white);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+}
+
+/* 일괄 작업 섹션 */
+.bulk-actions-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.bulk-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.bulk-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.bulk-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--cornflower-blue-primary);
+}
+
+.checkbox-label {
+    font-size: 0.9rem;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-bulk {
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    border: 0;
+    cursor: pointer;
+    color: var(--white);
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.btn-bulk:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-bulk-approve {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.btn-bulk-approve:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-bulk-reject {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.btn-bulk-reject:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.selected-info {
+    margin-left: auto;
+}
+
+.selected-count {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: var(--gray-100);
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+/* 필터 섹션 */
+.filter-section {
+    background: var(--gray-50);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    border: 1px solid var(--gray-200);
+}
+
+.filter-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    align-items: end;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    font-size: 0.9rem;
+}
+
+.filter-label i {
+    color: var(--cornflower-blue-primary);
+    font-size: 0.9rem;
+}
+
+.form-input {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    background: var(--white);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--cornflower-blue-secondary);
+    box-shadow: 0 0 0 3px rgba(106, 130, 224, 0.1);
+    transform: translateY(-1px);
+}
+
+.form-select {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    background: var(--white);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--cornflower-blue-secondary);
+    box-shadow: 0 0 0 3px rgba(106, 130, 224, 0.1);
+    transform: translateY(-1px);
+}
+
+/* 승인 목록 */
+.approval-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.approval-item {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.approval-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--cornflower-blue-primary), var(--cornflower-blue-secondary));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.approval-item:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    border-color: var(--cornflower-blue-light);
+}
+
+.approval-item:hover::before {
+    opacity: 1;
+}
+
+.approval-item.selected {
+    border-color: var(--cornflower-blue-primary);
+    background: linear-gradient(135deg, var(--cornflower-blue-lightest) 0%, var(--white) 100%);
+    box-shadow: var(--shadow-md);
+}
+
+.approval-item.selected::before {
+    opacity: 1;
+}
+
+.item-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--cornflower-blue-primary);
+}
+
+.approval-meta {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.approval-branch {
+    display: inline-block;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #f59e0b;
+}
+
+.approval-dept {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
+    color: var(--gray-700);
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.approval-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    border: 0;
+    cursor: pointer;
+    color: var(--white);
+    transition: all 0.3s ease;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-small:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-approve {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.btn-approve:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+}
+
+.btn-reject {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.btn-reject:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    color: var(--white);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+}
+
+.status-badge.approved {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.status-badge.rejected {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
 
 /* 휴가 유형 배지 */
 .leave-type-badge {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-right: 0.5rem;
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
 }
 
 .leave-type-badge.welfare-vacation {
-  background: #fff3cd;
-  color: #856404;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.leave-type-badge.annual-vacation {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e40af;
+    border: 1px solid var(--cornflower-blue-primary);
+}
   border: 1px solid #ffeaa7;
 }
 

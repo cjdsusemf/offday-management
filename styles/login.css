@@ -1,4 +1,30 @@
-﻿/* 로그인/회원가입 통합 최적화 - 한 페이지 완전 표시 */
+﻿/* 로그인/회원가입 통합 최적화 - 코넬플라워 블루 기반 디자인 */
+
+/* 코넬플라워 블루 색상 팔레트 */
+:root {
+    --cornflower-blue-primary: #6A82E0;
+    --cornflower-blue-secondary: #7B8CE8;
+    --cornflower-blue-light: #8B9AEF;
+    --cornflower-blue-lighter: #A5B2F5;
+    --cornflower-blue-lightest: #E8EDF7;
+    --white: #ffffff;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+    --success: #10b981;
+    --error: #ef4444;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
 
 /* 애니메이션 키프레임 */
 @keyframes fadeIn {
@@ -167,7 +193,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    background: linear-gradient(135deg, var(--cornflower-blue-primary) 0%, var(--cornflower-blue-secondary) 50%, var(--cornflower-blue-light) 100%);
     padding: 1rem;
     position: relative;
     overflow: hidden;
@@ -194,24 +220,16 @@
 .login-card {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
-    border-radius: 20px;
-    box-shadow: 
-        0 20px 40px rgba(0,0,0,0.15),
-        0 0 0 1px rgba(255,255,255,0.2);
-    padding: 2.5rem;
+    border-radius: 1.5rem;
+    box-shadow: var(--shadow-xl);
+    padding: 3rem;
     width: 100%;
     max-width: 450px;
-    text-align: center;
-    position: relative;
-    z-index: 1;
-    transition: all 0.3s ease;
-}
-
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: slideDown 0.6s ease-out;
 .login-card:hover {
     transform: translateY(-3px);
-    box-shadow: 
-        0 25px 50px rgba(0,0,0,0.2),
-        0 0 0 1px rgba(255,255,255,0.3);
+    box-shadow: var(--shadow-xl);
 }
 
 .login-header {
@@ -254,16 +272,19 @@
 }
 
 .login-title {
-    color: #2c3e50;
-    font-size: 1.8rem;
+    color: var(--cornflower-blue-primary);
+    font-size: 2rem;
     font-weight: 700;
     margin-bottom: 0.75rem;
     letter-spacing: -0.5px;
+    text-align: center;
 }
 
 .login-subtitle {
-    color: #7f8c8d;
+    color: var(--gray-600);
     font-size: 1rem;
+    text-align: center;
+    margin-bottom: 2rem;
     font-weight: 400;
     line-height: 1.5;
 }

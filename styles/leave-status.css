@@ -1,15 +1,17 @@
-/* 연차현황 페이지 전용 스타일 */
+/* 연차현황 페이지 전용 스타일 - 글래스모피즘 디자인 */
 
-/* 개인 연차 현황 대시보드 스타일 - 깔끔한 버전 */
+/* 개인 연차 현황 대시보드 스타일 - 글래스모피즘 버전 */
 .personal-leave-dashboard {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 16px;
-    padding: 1.8rem;
-    margin-bottom: 1.5rem;
-    color: white;
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: #1f2937;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(20px);
+    border: 1px solid #e5e7eb;
 }
 
 .personal-leave-dashboard::before {
@@ -19,23 +21,44 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
     pointer-events: none;
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
 }
 
 .dashboard-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.8rem;
+    align-items: flex-start;
+    margin-bottom: 2rem;
     position: relative;
     z-index: 1;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-.dashboard-header h3 {
-    font-size: 1.4rem;
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-title i {
+    font-size: 1.5rem;
+    color: var(--cobalt-blue-primary);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.header-title h3 {
+    font-size: 1.5rem;
     font-weight: 600;
     margin: 0;
+    color: #1f2937;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     letter-spacing: -0.01em;
 }
@@ -43,56 +66,62 @@
 /* 헤더 정보 스타일 개선 */
 .header-info {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 16px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
     position: relative;
     z-index: 1;
 }
 
-.calculation-criteria {
-    font-size: 0.95rem;
-    color: #ffffff;
-    font-weight: 600;
-    background: rgba(255, 255, 255, 0.15);
-    padding: 8px 16px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-}
-
-.current-year {
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.9);
+.info-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f1f5f9;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
     font-weight: 500;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 6px 12px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #334155;
+    backdrop-filter: blur(10px);
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* 연차 통계 그리드 - 깔끔한 카드 디자인 */
+.info-badge:hover {
+    background: #e5e7eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.info-badge i {
+    font-size: 0.9rem;
+    color: var(--cobalt-blue-primary);
+}
+
+/* 연차 통계 그리드 개선 */
 .leave-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.2rem;
-    margin-bottom: 1.8rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
     position: relative;
     z-index: 1;
 }
 
 .leave-stat-card {
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(15px enterprise);
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border-radius: 1rem;
     padding: 1.5rem;
     text-align: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid #e5e7eb;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    color: #334155;
 }
 
 .leave-stat-card::before {
@@ -108,9 +137,10 @@
 }
 
 .leave-stat-card:hover {
-    transform: translateY(-4px) scale(1.01);
-    background: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px) scale(1.02);
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .leave-stat-card:hover::before {
@@ -124,6 +154,7 @@
 
 .leave-stat-card.earned .stat-icon {
     color: #4CAF50;
+    filter: drop-shadow(0 2px 8px rgba(76, 175, 80, 0.3));
 }
 
 .leave-stat-card.used {
@@ -132,6 +163,7 @@
 
 .leave-stat-card.used .stat-icon {
     color: #FF9800;
+    filter: drop-shadow(0 2px 8px rgba(255, 152, 0, 0.3));
 }
 
 .leave-stat-card.remaining {
@@ -140,6 +172,7 @@
 
 .leave-stat-card.remaining .stat-icon {
     color: #2196F3;
+    filter: drop-shadow(0 2px 8px rgba(33, 150, 243, 0.3));
 }
 
 .leave-stat-card.pending {
@@ -148,45 +181,85 @@
 
 .leave-stat-card.pending .stat-icon {
     color: #FF5722;
+    filter: drop-shadow(0 2px 8px rgba(255, 87, 34, 0.3));
 }
 
 .leave-stat-card .stat-icon {
     font-size: 2.2rem;
     margin-bottom: 1rem;
     opacity: 0.9;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    transition: all 0.3s ease;
+}
+
+.leave-stat-card:hover .stat-icon {
+    transform: scale(1.1) rotate(5deg);
 }
 
 .leave-stat-card .stat-content h3 {
     font-size: 2.2rem;
     font-weight: 700;
     margin: 0 0 0.6rem 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: #111827;
+    text-shadow: none;
     letter-spacing: -0.01em;
+    transition: all 0.3s ease;
+}
+
+.leave-stat-card:hover .stat-content h3 {
+    transform: scale(1.05);
 }
 
 .leave-stat-card .stat-content p {
     font-size: 1rem;
     font-weight: 600;
     margin: 0 0 0.4rem 0;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: #374151;
+    text-shadow: none;
 }
 
 .leave-stat-card .stat-detail {
     font-size: 0.85rem;
-    opacity: 0.8;
+    color: #64748b;
+    opacity: 1;
     font-weight: 500;
 }
 
-/* 연차 사용률 프로그레스 바 - 깔끔한 디자인 */
+.stat-trend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.stat-trend:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+}
+
+.stat-trend i {
+    font-size: 0.9rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* 연차 사용률 프로그레스 바 개선 */
 .leave-progress {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
+    background: #ffffff;
+    border-radius: 1rem;
     padding: 1.5rem;
     position: relative;
     z-index: 1;
     backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
 .progress-header {
@@ -194,23 +267,51 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+}
+
+.progress-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-weight: 600;
     font-size: 1rem;
 }
 
+.progress-title i {
+    font-size: 1.1rem;
+    animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.progress-percentage {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1f2937;
+    background: #f1f5f9;
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid #e2e8f0;
+}
+
 .progress-bar {
-    background: rgba(255, 255, 255, 0.2);
-    height: 16px;
-    border-radius: 12px;
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
     overflow: hidden;
-    position: relative;
+    margin-bottom: 0.75rem;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .progress-fill {
-    background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39);
     height: 100%;
-    border-radius: 12px;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39);
+    border-radius: 4px;
     transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
     position: relative;
@@ -233,36 +334,131 @@
     100% { transform: translateX(100%); }
 }
 
-/* 나의 연차 활동 섹션 - 깔끔한 디자인 */
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.used-text {
+    color: #475569;
+}
+
+.remaining-text {
+    color: #475569;
+}
+
+/* 복지 휴가 대시보드 스타일 */
+.welfare-leave-dashboard {
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: white;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.welfare-leave-dashboard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
+    pointer-events: none;
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+.welfare-leave-dashboard .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.welfare-leave-dashboard .dashboard-header h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.01em;
+}
+
+/* 복지 휴가 카드별 색상 테마 */
+.leave-stat-card.welfare-earned {
+    border-left: 5px solid #ff9ff3;
+}
+
+.leave-stat-card.welfare-earned .stat-icon {
+    color: #ff9ff3;
+    filter: drop-shadow(0 2px 8px rgba(255, 159, 243, 0.3));
+}
+
+.leave-stat-card.welfare-used {
+    border-left: 5px solid #ffa726;
+}
+
+.leave-stat-card.welfare-used .stat-icon {
+    color: #ffa726;
+    filter: drop-shadow(0 2px 8px rgba(255, 167, 38, 0.3));
+}
+
+.leave-stat-card.welfare-remaining {
+    border-left: 5px solid #42a5f5;
+}
+
+.leave-stat-card.welfare-remaining .stat-icon {
+    color: #42a5f5;
+    filter: drop-shadow(0 2px 8px rgba(66, 165, 245, 0.3));
+}
+
+.leave-stat-card.welfare-pending {
+    border-left: 5px solid #ef5350;
+}
+
+.leave-stat-card.welfare-pending .stat-icon {
+    color: #ef5350;
+    filter: drop-shadow(0 2px 8px rgba(239, 83, 80, 0.3));
+}
+
+/* 복지 휴가 프로그레스 바 */
+.welfare-progress-fill {
+    background: linear-gradient(90deg, #ff6b6b, #ffa726, #42a5f5);
+    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+}
+
+/* 나의 연차 활동 섹션 - 글래스모피즘 디자인 */
 .leave-activity-section {
     margin-bottom: 1.8rem;
 }
 
 .leave-activity-section .dashboard-card {
     border-left: 4px solid #28a745;
-    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
-    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(248, 255, 249, 0.8) 0%, rgba(232, 245, 232, 0.8) 100%);
+    border-radius: 1rem;
     box-shadow: 0 6px 20px rgba(40, 167, 69, 0.08);
     overflow: hidden;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(40, 167, 69, 0.1);
 }
-
-/* 새 모달 컴포넌트 */
-.lm-modal { display:none; position: fixed; inset:0; background: rgba(0,0,0,0.45); z-index: 1000; }
-.lm-modal-dialog { background:#fff; width: 560px; max-width: 92vw; margin: 12vh auto; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
-.lm-modal-header { display:flex; justify-content: space-between; align-items:center; padding: 14px 18px; background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
-.lm-modal-body { padding: 16px 18px; max-height: 62vh; overflow:auto; }
-.lm-close { background: transparent; border: 0; color:#fff; font-size: 22px; cursor: pointer; }
-.lm-list { display:flex; flex-direction: column; gap: 10px; }
-.lm-item { border:1px solid #eee; border-left:4px solid #667eea; border-radius: 8px; padding: 10px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-.lm-item .period { font-weight:600; margin-bottom: 4px; }
-.lm-summary { padding: 8px 10px; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc; margin-bottom: 12px; font-weight: 600; color:#334155; }
 
 .leave-activity-section .card-header {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     color: white;
     padding: 1.2rem 1.5rem;
     margin: 0;
-    border-radius: 16px 16px 0 0;
+    border-radius: 1rem 1rem 0 0;
+    backdrop-filter: blur(10px);
 }
 
 .leave-activity-section .card-header h3 {
@@ -273,7 +469,7 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* 탭 네비게이션 - 깔끔한 디자인 */
+/* 탭 네비게이션 - 글래스모피즘 디자인 */
 .tab-navigation {
     display: flex;
     gap: 0.6rem;
@@ -294,6 +490,7 @@
     align-items: center;
     gap: 0.5rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
 }
 
 .tab-btn:hover {
@@ -314,7 +511,7 @@
     font-size: 0.9rem;
 }
 
-/* 탭 콘텐츠 - 깔끔한 애니메이션 */
+/* 탭 콘텐츠 - 부드러운 애니메이션 */
 .tab-content {
     display: none;
     animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -336,25 +533,28 @@
     }
 }
 
-/* 연차 신청 섹션 - 깔끔한 디자인 */
+/* 연차 신청 섹션 - 글래스모피즘 디자인 */
 .leave-request-section {
     margin-bottom: 1.8rem;
 }
 
 .leave-request-section .dashboard-card {
     border-left: 4px solid #667eea;
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
-    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(248, 249, 255, 0.8) 0%, rgba(232, 236, 255, 0.8) 100%);
+    border-radius: 1rem;
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.08);
     overflow: hidden;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(102, 126, 234, 0.1);
 }
 
 .leave-request-section .card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--cobalt-blue-secondary) 0%, var(--cobalt-blue-primary) 100%);
     color: white;
     padding: 1.2rem 1.5rem;
     margin: 0;
-    border-radius: 16px 16px 0 0;
+    border-radius: 1rem 1rem 0 0;
+    backdrop-filter: blur(10px);
 }
 
 .leave-request-section .card-header h3 {
@@ -376,68 +576,16 @@
     align-items: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
 }
 
-/* 연차 계획 및 통계 섹션 - 깔끔한 디자인 */
-.leave-planning-section {
-    margin-bottom: 1.8rem;
+.leave-request-section .view-all-label:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
 }
 
-.planning-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.8rem;
-}
-
-.planning-card {
-    border-left: 4px solid #ff6b6b;
-    background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
-    border-radius: 16px;
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.08);
-    overflow: hidden;
-}
-
-.planning-card .card-header {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
-    color: white;
-    padding: 1.2rem 1.5rem;
-    margin: 0;
-    border-radius: 16px 16px 0 0;
-}
-
-.planning-card .card-header h3 {
-    color: white;
-    margin-bottom: 0;
-    font-weight: 600;
-    font-size: 1.1rem;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.pattern-card {
-    border-left: 4px solid #6c5ce7;
-    background: linear-gradient(135deg, #f8f7ff 0%, #f0edff 100%);
-    border-radius: 16px;
-    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.08);
-    overflow: hidden;
-}
-
-.pattern-card .card-header {
-    background: linear-gradient(135deg, #6c5ce7 0%, #5f3dc4 100%);
-    color: white;
-    padding: 1.2rem 1.5rem;
-    margin: 0;
-    border-radius: 16px 16px 0 0;
-}
-
-.pattern-card .card-header h3 {
-    color: white;
-    margin-bottom: 0;
-    font-weight: 600;
-    font-size: 1.1rem;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* 연차 신청 폼 - 깔끔한 스타일 */
+/* 연차 신청 폼 - 글래스모피즘 스타일 */
 .leave-request-form {
     display: flex;
     flex-direction: column;
@@ -472,8 +620,9 @@
     border-radius: 10px;
     font-size: 0.9rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: white;
+    background: rgba(255, 255, 255, 0.8);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(5px);
 }
 
 .form-group input:focus,
@@ -483,10 +632,11 @@
     border-color: #667eea;
     box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
     transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.95);
 }
 
 .form-group input[readonly] {
-    background: #f8f9fa;
+    background: rgba(248, 249, 250, 0.8);
     color: #6c757d;
     cursor: not-allowed;
 }
@@ -513,10 +663,11 @@
     gap: 0.6rem;
     text-decoration: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--cobalt-blue-secondary) 0%, var(--cobalt-blue-primary) 100%);
     color: white;
     position: relative;
     overflow: hidden;
@@ -553,7 +704,7 @@
     box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3);
 }
 
-/* 반응형 디자인 - 깔끔한 모바일 지원 */
+/* 반응형 디자인 - 글래스모피즘 모바일 지원 */
 @media (max-width: 768px) {
     .personal-leave-dashboard {
         padding: 1.5rem;
@@ -596,11 +747,6 @@
     
     .leave-stat-card .stat-content p {
         font-size: 0.95rem;
-    }
-    
-    .planning-grid {
-        grid-template-columns: 1fr;
-        gap: 1.2rem;
     }
     
     .form-row {
@@ -657,15 +803,10 @@
         font-size: 1.8rem;
     }
     
-    .calculation-criteria {
-        font-size: 0.85rem;
-        padding: 6px 12px;
+    .info-badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
         white-space: nowrap;
-    }
-    
-    .current-year {
-        font-size: 0.9rem;
-        padding: 6px 12px;
     }
 }
 
@@ -706,1030 +847,108 @@
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: rgba(241, 241, 241, 0.5);
     border-radius: 4px;
+    backdrop-filter: blur(5px);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--cobalt-blue-secondary) 0%, var(--cobalt-blue-primary) 100%);
     border-radius: 4px;
+    backdrop-filter: blur(10px);
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
 }
 
-/* 신청 내역 페이지네이션 스타일 */
-.requests-pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
-    padding: 1rem 0;
+/* 새 모달 컴포넌트 - 글래스모피즘 */
+.lm-modal { 
+    display: none; 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0, 0, 0, 0.45); 
+    z-index: 1000; 
+    backdrop-filter: blur(5px);
 }
 
-.requests-pagination .pagination-btn {
-    padding: 0.5rem 1rem;
-    border: 1px solid #e5e7eb;
-    background: white;
-    color: #374151;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.lm-modal-dialog { 
+    background: rgba(255, 255, 255, 0.95); 
+    width: 560px; 
+    max-width: 92vw; 
+    margin: 12vh auto; 
+    border-radius: 14px; 
+    overflow: hidden; 
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); 
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.requests-pagination .pagination-btn:hover:not(:disabled) {
-    background: #f9fafb;
-    border-color: #d1d5db;
-    transform: translateY(-1px);
+.lm-modal-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 14px 18px; 
+    background: linear-gradient(135deg, var(--cobalt-blue-secondary), var(--cobalt-blue-primary)); 
+    color: #fff; 
+    backdrop-filter: blur(10px);
 }
 
-.requests-pagination .pagination-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
+.lm-modal-body { 
+    padding: 16px 18px; 
+    max-height: 62vh; 
+    overflow: auto; 
 }
 
-.requests-pagination .page-numbers {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.requests-pagination .page-number {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #e5e7eb;
-    background: white;
-    color: #374151;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    min-width: 40px;
-    text-align: center;
-}
-
-.requests-pagination .page-number:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
-    transform: translateY(-1px);
-}
-
-.requests-pagination .page-number.active {
-    background: #667eea;
-    border-color: #667eea;
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
-}
-
-.requests-pagination .page-number.active:hover {
-    background: #5a67d8;
-    border-color: #5a67d8;
-}
-
-.requests-pagination .page-dots {
-    padding: 0.5rem 0.25rem;
-    color: #9ca3af;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-/* 모바일 반응형 */
-@media (max-width: 768px) {
-    .requests-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.5rem;
-    }
-    
-    .requests-filters {
-        justify-content: center;
-    }
-    
-    .requests-pagination {
-        flex-wrap: wrap;
-        gap: 0.25rem;
-    }
-    
-    .requests-pagination .pagination-btn {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.8rem;
-    }
-    
-    .requests-pagination .page-number {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.8rem;
-        min-width: 35px;
-    }
-}
-
-/* 월별 상세 모달 토글 필터 스타일 */
-.monthly-requests-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.monthly-requests-header h4 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #374151;
-}
-
-.status-filter-buttons {
-    display: flex;
-    gap: 0.25rem;
-    background: #f3f4f6;
-    padding: 0.25rem;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-}
-
-.filter-btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    border: none;
-    background: transparent;
-    color: #6b7280;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.filter-btn:hover {
-    background: #e5e7eb;
-    color: #374151;
-}
-
-.filter-btn.active {
-    background: #3b82f6;
-    color: white;
-    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
-}
-
-.filter-btn.active:hover {
-    background: #2563eb;
-}
-
-/* 모바일에서 토글 필터 반응형 */
-@media (max-width: 768px) {
-    .monthly-requests-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .status-filter-buttons {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .filter-btn {
-        flex: 1;
-        min-width: 60px;
-        text-align: center;
-    }
-}
-
-/* 신청 내역 섹션 필터 스타일 */
-.requests-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-
-.requests-filters {
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.filter-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.filter-label {
-    font-size: 0.9rem;
-    color: #64748b;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.filter-select {
-    min-width: 100px;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: white;
-    color: #374151;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.filter-select:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.status-filter-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.status-filter-group .status-filter-buttons {
-    display: flex;
-    gap: 0.25rem;
-    background: #f1f5f9;
-    padding: 0.25rem;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.status-filter-group .filter-btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    border: none;
-    background: transparent;
-    color: #64748b;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    position: relative;
-}
-
-.status-filter-group .filter-btn:hover {
-    background: #e2e8f0;
-    color: #475569;
-    transform: translateY(-1px);
-}
-
-.status-filter-group .filter-btn.active {
-    background: #3b82f6;
-    color: white;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-    transform: translateY(-1px);
-}
-
-.status-filter-group .filter-btn.active:hover {
-    background: #2563eb;
-    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
-}
-
-.requests-pagination-info {
-    font-size: 0.9rem;
-    color: #64748b;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-/* 신청 내역 필터 반응형 */
-@media (max-width: 1024px) {
-    .requests-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-    }
-    
-    .requests-filters {
-        justify-content: center;
-        gap: 1rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .requests-toolbar {
-        padding: 0.5rem;
-    }
-    
-    .requests-filters {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.75rem;
-    }
-    
-    .filter-group,
-    .status-filter-group {
-        justify-content: center;
-    }
-    
-    .status-filter-group .status-filter-buttons {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .status-filter-group .filter-btn {
-        flex: 1;
-        min-width: 60px;
-        text-align: center;
-        font-size: 0.8rem;
-        padding: 0.4rem 0.6rem;
-    }
-    
-    .filter-select {
-        min-width: 80px;
-        font-size: 0.85rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .requests-toolbar {
-        padding: 0.5rem;
-        margin-bottom: 0.75rem;
-    }
-    
-    .requests-filters {
-        gap: 0.5rem;
-    }
-    
-    .filter-group {
-        flex-direction: column;
-        align-items: center;
-        gap: 0.25rem;
-    }
-    
-    .status-filter-group {
-        flex-direction: column;
-        align-items: center;
-        gap: 0.25rem;
-    }
-    
-    .status-filter-group .status-filter-buttons {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .status-filter-group .filter-btn {
-        flex: 1;
-        min-width: 50px;
-        font-size: 0.75rem;
-        padding: 0.35rem 0.5rem;
-    }
-}
-
-/* 복지 휴가 대시보드 스타일 */
-.welfare-leave-dashboard {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-    border-radius: 16px;
-    padding: 1.8rem;
-    margin-bottom: 1.5rem;
-    color: white;
-    box-shadow: 0 8px 24px rgba(255, 107, 107, 0.15);
-    position: relative;
-    overflow: hidden;
-}
-
-.welfare-leave-dashboard::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
-    pointer-events: none;
-}
-
-.welfare-leave-dashboard .dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.8rem;
-    position: relative;
-    z-index: 1;
-}
-
-.welfare-leave-dashboard .dashboard-header h3 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin: 0;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    letter-spacing: -0.01em;
-}
-
-/* 복지 휴가 카드별 색상 테마 */
-.leave-stat-card.welfare-earned {
-    border-left: 5px solid #ff9ff3;
-}
-
-.leave-stat-card.welfare-earned .stat-icon {
-    color: #ff9ff3;
-}
-
-.leave-stat-card.welfare-used {
-    border-left: 5px solid #ffa726;
-}
-
-.leave-stat-card.welfare-used .stat-icon {
-    color: #ffa726;
-}
-
-.leave-stat-card.welfare-remaining {
-    border-left: 5px solid #42a5f5;
-}
-
-.leave-stat-card.welfare-remaining .stat-icon {
-    color: #42a5f5;
-}
-
-.leave-stat-card.welfare-pending {
-    border-left: 5px solid #ef5350;
-}
-
-.leave-stat-card.welfare-pending .stat-icon {
-    color: #ef5350;
-}
-
-/* 복지 휴가 프로그레스 바 */
-.welfare-progress-fill {
-    background: linear-gradient(90deg, #ff6b6b, #ffa726, #42a5f5);
-    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
-}
-
-/* 휴가 유형 필터 스타일 */
-.type-filter-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.type-filter-group .type-filter-buttons {
-    display: flex;
-    gap: 0.25rem;
-    background: #f1f5f9;
-    padding: 0.25rem;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.type-filter-group .filter-btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    border: none;
-    background: transparent;
-    color: #64748b;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    position: relative;
-}
-
-.type-filter-group .filter-btn:hover {
-    background: #e2e8f0;
-    color: #475569;
-    transform: translateY(-1px);
-}
-
-.type-filter-group .filter-btn.active {
-    background: #3b82f6;
-    color: white;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-    transform: translateY(-1px);
-}
-
-.type-filter-group .filter-btn.active:hover {
-    background: #2563eb;
-    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
-}
-
-/* 연차 유형 드롭다운 그룹 스타일 */
-optgroup {
-    font-weight: 600;
-    color: #374151;
-    background: #f8fafc;
-    padding: 0.5rem 0;
-}
-
-optgroup[label="법정 연차"] {
-    color: #059669;
-}
-
-optgroup[label="복지 휴가"] {
-    color: #dc2626;
-}
-
-/* 반응형 디자인 - 복지 휴가 */
-@media (max-width: 768px) {
-    .welfare-leave-dashboard {
-        padding: 1.5rem;
-        margin-bottom: 1.2rem;
-    }
-    
-    .welfare-leave-dashboard .dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1.2rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .welfare-leave-dashboard .dashboard-header h3 {
-        font-size: 1.3rem;
-    }
-    
-    .type-filter-group {
-        flex-direction: column;
-        align-items: center;
-        gap: 0.25rem;
-    }
-    
-    .type-filter-group .type-filter-buttons {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .type-filter-group .filter-btn {
-        flex: 1;
-        min-width: 50px;
-        font-size: 0.8rem;
-        padding: 0.4rem 0.6rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .welfare-leave-dashboard {
-        padding: 1.2rem;
-    }
-    
-    .type-filter-group .filter-btn {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.5rem;
-    }
-}
-
-/* 월별 차트 세로 막대 스타일 - 2번째 사진과 같은 디자인 */
-.monthly-bars {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    height: 200px;
-    padding: 20px 10px 50px 10px;
-    position: relative;
-    background: #ffffff;
-    border-radius: 8px;
-    margin: 10px 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.month-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    width: calc(100% / 12);
-    padding: 0 3px;
-    box-sizing: border-box;
-    cursor: pointer;
+.lm-close { 
+    background: transparent; 
+    border: 0; 
+    color: #fff; 
+    font-size: 22px; 
+    cursor: pointer; 
     transition: all 0.3s ease;
-    position: relative;
-    min-height: 200px;
 }
 
-.month-group:hover {
-    background-color: rgba(0, 0, 0, 0.03);
-    border-radius: 4px;
+.lm-close:hover {
+    transform: scale(1.1);
+    color: rgba(255, 255, 255, 0.8);
 }
 
-.month-chart-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    width: 100%;
-    height: 140px;
-    position: relative;
+.lm-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
 }
 
-/* 0일인 경우 스타일 */
-.zero-days-text {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #999;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.month-bar-placeholder {
-    width: 20px;
-    height: 20px;
-    background: #f0f0f0;
-    border-radius: 50%;
-    border: 2px solid #ddd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.month-bar-placeholder::after {
-    content: "0";
-    font-size: 0.7rem;
-    color: #999;
-    font-weight: 600;
-}
-
-/* 막대가 있는 경우 스타일 */
-.total-days-text {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 2px 6px;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.month-bars-container {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.3rem;
-    width: 100%;
-    height: 120px;
-    position: relative;
-    justify-content: center;
-}
-
-.month-bar-wrapper {
-    display: block;
-    width: 50%;
-    height: 100%;
-    position: relative;
-    min-height: 100px; /* 최소 높이 설정 */
-}
-
-.month-bar {
-    width: 100%;
-    border-radius: 4px 4px 0 0;
+.lm-item { 
+    border: 1px solid rgba(238, 238, 238, 0.5); 
+    border-left: 4px solid var(--cobalt-blue-secondary); 
+    border-radius: 8px; 
+    padding: 10px 12px; 
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); 
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
     transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    min-height: 2px; /* 최소 높이 보장 */
 }
 
-.annual-bar {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 법정 연차 - 보라색 그라데이션 */
-}
-
-.welfare-bar {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); /* 복지 휴가 - 빨간색 그라데이션 */
-}
-
-.bar-value {
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #333;
-    white-space: nowrap;
-    z-index: 10;
+.lm-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     background: rgba(255, 255, 255, 0.9);
-    padding: 2px 4px;
-    border-radius: 3px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* 0일인 경우 텍스트 위치 조정 */
-.bar-value.zero-value {
-    top: 5px;
-    color: #999;
-    font-size: 0.65rem;
-    background: rgba(255, 255, 255, 0.7);
+.lm-item .period { 
+    font-weight: 600; 
+    margin-bottom: 4px; 
 }
 
-.month-label {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #666;
-    margin-top: 8px;
-    text-align: center;
-    white-space: nowrap;
-    width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* 월별 차트 범례 */
-.monthly-chart-legend {
-    display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #374151;
-}
-
-.legend-color {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.legend-color.annual {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.legend-color.welfare {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-}
-
-/* 반응형 디자인 - 월별 차트 */
-@media (max-width: 768px) {
-    .monthly-bars {
-        height: 180px;
-        padding: 15px 5px 40px 5px;
-    }
-    
-    .month-group {
-        min-height: 180px;
-        padding: 0 1px;
-    }
-    
-    .month-chart-area {
-        height: 120px;
-    }
-    
-    .month-bars-container {
-        height: 100px;
-        gap: 0.2rem;
-    }
-    
-    .month-bar-wrapper {
-        width: 48%;
-    }
-    
-    .total-days-text, .zero-days-text {
-        font-size: 0.7rem;
-    }
-    
-    .bar-value {
-        font-size: 0.65rem;
-        top: -15px;
-    }
-    
-    .month-label {
-        font-size: 0.7rem;
-        margin-top: 6px;
-    }
-    
-    .monthly-chart-legend {
-        flex-direction: column;
-        gap: 0.75rem;
-        align-items: center;
-    }
-}
-
-/* 월별 상세 모달 UI 개선 */
-.summary-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.stat-item:last-child {
-    border-bottom: none;
-}
-
-.stat-label {
-    font-size: 0.9rem;
-    color: #666;
-    font-weight: 500;
-}
-
-.stat-value {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #333;
-}
-
-.stat-value.annual {
-    color: #667eea;
-}
-
-.stat-value.welfare {
-    color: #ff6b6b;
-}
-
-.stat-value.count {
-    color: #28a745;
-    background: #d4edda;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
-/* 하위 항목 시각적 표시 - 깔끔한 디자인 */
-.stat-item.sub-item {
-    margin-left: 1rem;
-    padding: 0.5rem 0;
-    border-left: 2px solid #dee2e6;
-    padding-left: 1rem;
-    position: relative;
-}
-
-.stat-item.sub-item::before {
-    content: '';
-    position: absolute;
-    left: -1px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: #6c757d;
-}
-
-.sub-indicator {
-    color: #6c757d;
-    margin-right: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.stat-item.sub-item .stat-label {
-    color: #6c757d;
-    font-size: 0.9rem;
-    font-weight: 400;
-}
-
-.stat-item.sub-item .stat-value {
-    font-weight: 500;
-    font-size: 0.95rem;
-}
-
-
-.monthly-request-item {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    transition: all 0.2s ease;
-}
-
-.monthly-request-item:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border-color: #d0d0d0;
-}
-
-.monthly-request-item.annual {
-    border-left: 4px solid #667eea;
-}
-
-.monthly-request-item.welfare {
-    border-left: 4px solid #ff6b6b;
-}
-
-.request-main {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.request-date {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-}
-
-.request-status {
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.request-status.approved {
-    background: #d4edda;
-    color: #155724;
-}
-
-.request-status.rejected {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.request-status.pending {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.request-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.request-type {
-    font-size: 0.85rem;
-    color: #666;
-    flex: 1;
-}
-
-.request-days {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-    background: #f8f9fa;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-}
-
-
-@media (max-width: 480px) {
-    .monthly-bars {
-        height: 160px;
-        padding: 10px 2px 35px 2px;
-    }
-    
-    .month-group {
-        min-height: 160px;
-        padding: 0;
-    }
-    
-    .month-chart-area {
-        height: 100px;
-    }
-    
-    .month-bars-container {
-        height: 80px;
-        gap: 0.15rem;
-    }
-    
-    .month-bar-wrapper {
-        width: 45%;
-    }
-    
-    .total-days-text, .zero-days-text {
-        font-size: 0.65rem;
-    }
-    
-    .bar-value {
-        font-size: 0.6rem;
-        top: -12px;
-    }
-    
-    .month-label {
-        font-size: 0.65rem;
-        margin-top: 4px;
-    }
-    
-    .month-bar-placeholder {
-        width: 16px;
-        height: 16px;
-    }
-}
-
+.lm-summary { 
+    padding: 8px 10px; 
+    border: 1px dashed rgba(203, 213, 225, 0.5); 
+    border-radius: 8px; 
+    background: rgba(248, 250, 252, 0.8); 
+    margin-bottom: 12px; 
+    font-weight: 600; 
+    color: #334155; 
+    backdrop-filter: blur(5px);
 }

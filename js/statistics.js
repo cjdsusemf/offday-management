@@ -203,7 +203,14 @@ class Statistics {
         // 실제 사용된 연차 일수 계산 (승인된 연차 신청의 일수 합계)
         const usedLeaveDays = leaveRequests
             .filter(request => request.status === 'approved')
-            .reduce((sum, request) => sum + request.days, 0);
+            .reduce((sum, request) => {
+                // 반차인지 확인하여 올바른 일수 계산
+                let actualDays = request.days;
+                if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                    actualDays = 0.5;
+                }
+                return sum + actualDays;
+            }, 0);
         
         const usageRate = totalLeaveDays > 0 ? Math.round((usedLeaveDays / totalLeaveDays) * 100) : 0;
 
@@ -356,7 +363,14 @@ class Statistics {
             }
 
             const month = requestDate.getMonth();
-            monthlyData[month].days += request.days;
+            
+            // 반차인지 확인하여 올바른 일수 계산
+            let actualDays = request.days;
+            if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                actualDays = 0.5;
+            }
+            
+            monthlyData[month].days += actualDays;
             monthlyData[month].count += 1;
             
             console.log(`요청 ${processedRequests}: 처리됨 - ${requestDate.getMonth() + 1}월, ${request.days}일`);
@@ -422,7 +436,14 @@ class Statistics {
             if (!emp) return;
             const bucket = departmentData[emp.department];
             if (!bucket) return;
-            if (request.status === 'approved') bucket.usedLeaveDays += (request.days || 0);
+            if (request.status === 'approved') {
+                // 반차인지 확인하여 올바른 일수 계산
+                let actualDays = request.days || 0;
+                if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                    actualDays = 0.5;
+                }
+                bucket.usedLeaveDays += actualDays;
+            }
             else if (request.status === 'pending') bucket.pendingRequests += 1;
         });
 

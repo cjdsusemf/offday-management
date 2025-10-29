@@ -11,6 +11,67 @@
   // 지점별 색상 캐시 (동적 생성)
   const branchColorCache = {};
 
+  // 지점 필터 동적 로드 함수
+  function loadBranchFilter() {
+    const branchFilter = document.getElementById('branchFilter');
+    if (!branchFilter || !dm) return;
+    
+    // 기존 옵션 제거 (전체 지점 제외)
+    const allOption = branchFilter.querySelector('option[value="all"]');
+    branchFilter.innerHTML = '';
+    if (allOption) {
+      branchFilter.appendChild(allOption);
+    }
+    
+    // 실제 등록된 지점들 추가
+    const branches = dm.branches || [];
+    console.log('로드된 지점 데이터:', branches);
+    
+    branches.forEach(branch => {
+      const option = document.createElement('option');
+      option.value = branch.name;
+      option.textContent = branch.name;
+      branchFilter.appendChild(option);
+    });
+    
+    // 직원 데이터에서 지점 추출 (fallback)
+    if (branches.length === 0) {
+      const employeeBranches = [...new Set(dm.employees.map(emp => emp.branch).filter(Boolean))];
+      console.log('직원 데이터에서 추출한 지점:', employeeBranches);
+      
+      employeeBranches.forEach(branchName => {
+        const option = document.createElement('option');
+        option.value = branchName;
+        option.textContent = branchName;
+        branchFilter.appendChild(option);
+      });
+    }
+  }
+
+  // 부서 필터 동적 로드 함수
+  function loadDepartmentFilter() {
+    const departmentFilter = document.getElementById('departmentFilter');
+    if (!departmentFilter || !dm) return;
+    
+    // 기존 옵션 제거 (전체 부서 제외)
+    const allOption = departmentFilter.querySelector('option[value="all"]');
+    departmentFilter.innerHTML = '';
+    if (allOption) {
+      departmentFilter.appendChild(allOption);
+    }
+    
+    // 직원 데이터에서 부서 정보 추출
+    const employeeDepartments = [...new Set(dm.employees.map(emp => emp.department).filter(Boolean))];
+    console.log('등록된 부서들:', employeeDepartments);
+    
+    employeeDepartments.forEach(departmentName => {
+      const option = document.createElement('option');
+      option.value = departmentName;
+      option.textContent = departmentName;
+      departmentFilter.appendChild(option);
+    });
+  }
+
   function generateBranchColor(branch) {
     // 이미 캐시된 색상이 있으면 반환
     if (branchColorCache[branch]) {
@@ -115,6 +176,7 @@
   function getFiltered(){
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const branchFilter = document.getElementById('branchFilter').value;
+    const departmentFilter = document.getElementById('departmentFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
     const leaveTypeFilter = document.getElementById('leaveTypeFilter').value;
     const reqs = dm.leaveRequests || [];
@@ -122,9 +184,11 @@
     return reqs.filter(r => {
       const employee = resolveEmployee(r);
       const branch = employee ? (employee.branch || '') : '';
+      const department = employee ? (employee.department || '') : '';
       
       const matchesSearch = !searchTerm || r.employeeName.toLowerCase().includes(searchTerm);
       const matchesBranch = branchFilter === 'all' || branch === branchFilter;
+      const matchesDepartment = departmentFilter === 'all' || department === departmentFilter;
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
       let matchesLeaveType = true;
       if (leaveTypeFilter !== 'all') {
@@ -135,7 +199,7 @@
         }
       }
       
-      return matchesSearch && matchesBranch && matchesStatus && matchesLeaveType;
+      return matchesSearch && matchesBranch && matchesDepartment && matchesStatus && matchesLeaveType;
     });
   }
 
@@ -643,9 +707,16 @@
     dm = window.dataManager || new DataManager(); 
     window.dataManager = dm;
 
+    // 지점 필터 초기화
+    loadBranchFilter();
+
+    // 부서 필터 초기화
+    loadDepartmentFilter();
+
     // 이벤트 리스너 설정 - 각각 분리된 핸들러 사용
     document.getElementById('searchInput').addEventListener('input', refresh);
     document.getElementById('branchFilter').addEventListener('change', refresh);
+    document.getElementById('departmentFilter').addEventListener('change', refresh);
     document.getElementById('statusFilter').addEventListener('change', refresh);
     document.getElementById('leaveTypeFilter').addEventListener('change', refresh);
     document.getElementById('itemsPerPageFilter').addEventListener('change', handleItemsPerPageChange);
@@ -662,76 +733,6 @@
     const btnTpl = document.getElementById('btnDownloadTemplate');
     if(btnTpl) btnTpl.addEventListener('click', downloadTemplate);
 
-    // 디버깅: 현재 등록된 직원 목록 확인
-    const debugEmployees = () => {
-      console.log('=== 현재 등록된 직원 목록 ===');
-      console.log('총 직원 수:', dm.employees.length);
-      dm.employees.forEach((emp, index) => {
-        console.log(`${index + 1}. ${emp.name} (${emp.email}) - ${emp.department || '부서미정'}`);
-      });
-      
-      if(dm.employees.length === 0) {
-        alert('등록된 직원이 없습니다. 먼저 직원을 등록해주세요.');
-      } else {
-        const employeeList = dm.employees.map(emp => `${emp.name} (${emp.email})`).join('\n');
-        alert(`현재 등록된 직원 목록:\n\n${employeeList}`);
-      }
-    };
-
-    // 잘못된 날짜 형식 데이터 수정
-    const fixDateFormats = () => {
-      if (!dm.leaveRequests) return;
-      
-      let fixedCount = 0;
-      const fixedRequests = dm.leaveRequests.map(req => {
-        // 숫자로 된 날짜를 실제 날짜로 변환
-        if (typeof req.startDate === 'number' && req.startDate > 40000) {
-          const excelEpoch = new Date(1900, 0, 1);
-          const jsDate = new Date(excelEpoch.getTime() + (req.startDate - 1) * 86400000);
-          req.startDate = jsDate.toISOString().split('T')[0];
-          fixedCount++;
-        }
-        
-        if (typeof req.endDate === 'number' && req.endDate > 40000) {
-          const excelEpoch = new Date(1900, 0, 1);
-          const jsDate = new Date(excelEpoch.getTime() + (req.endDate - 1) * 86400000);
-          req.endDate = jsDate.toISOString().split('T')[0];
-          fixedCount++;
-        }
-        
-        return req;
-      });
-      
-      if (fixedCount > 0) {
-        dm.leaveRequests = fixedRequests;
-        dm.saveData('leaveRequests', dm.leaveRequests);
-        alert(`날짜 형식을 수정했습니다. 수정된 항목: ${fixedCount}개`);
-        refresh();
-      } else {
-        alert('수정할 날짜 형식이 없습니다.');
-      }
-    };
-
-    // 디버깅 버튼 추가 (개발용)
-    const debugBtn = document.createElement('button');
-    debugBtn.textContent = '직원 목록 확인';
-    debugBtn.className = 'btn-bulk btn-admin';
-    debugBtn.style.marginLeft = '0.5rem';
-    debugBtn.addEventListener('click', debugEmployees);
-    
-    // 날짜 수정 버튼 추가
-    const fixDateBtn = document.createElement('button');
-    fixDateBtn.textContent = '날짜 형식 수정';
-    fixDateBtn.className = 'btn-bulk btn-admin';
-    fixDateBtn.style.marginLeft = '0.5rem';
-    fixDateBtn.style.backgroundColor = '#ff6b6b';
-    fixDateBtn.addEventListener('click', fixDateFormats);
-    
-    const rightActions = document.querySelector('.right-actions');
-    if(rightActions) {
-      rightActions.appendChild(debugBtn);
-      rightActions.appendChild(fixDateBtn);
-    }
 
     // 엑셀 업로드
     const excelInput = document.getElementById('excelUpload');
@@ -1013,6 +1014,21 @@
         refresh();
       });
     }
+
+    // 지점 데이터 변경 감지 및 필터 업데이트
+    const originalSaveData = dm.saveData;
+    dm.saveData = function(key, data) {
+      const result = originalSaveData.call(this, key, data);
+      if (key === 'branches' || key === 'employees') {
+        // 지점 데이터나 직원 데이터가 변경되면 필터 업데이트
+        setTimeout(() => {
+          loadBranchFilter();
+          loadDepartmentFilter();
+          refresh();
+        }, 100);
+      }
+      return result;
+    };
 
     // 로그아웃 처리는 auth.js에서 전역으로 처리됨
     refresh();

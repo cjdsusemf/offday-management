@@ -149,12 +149,26 @@ class LeaveStatus {
         // 사용한 복지 휴가 (승인된 복지 휴가)
         const used = userWelfareRequests
             .filter(request => request.status === 'approved')
-            .reduce((total, request) => total + request.days, 0);
+            .reduce((total, request) => {
+                // 반차인지 확인하여 올바른 일수 계산
+                let actualDays = request.days;
+                if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                    actualDays = 0.5;
+                }
+                return total + actualDays;
+            }, 0);
         
         // 대기 중인 복지 휴가
         const pending = userWelfareRequests
             .filter(request => request.status === 'pending')
-            .reduce((total, request) => total + request.days, 0);
+            .reduce((total, request) => {
+                // 반차인지 확인하여 올바른 일수 계산
+                let actualDays = request.days;
+                if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                    actualDays = 0.5;
+                }
+                return total + actualDays;
+            }, 0);
         
         // 남은 복지 휴가
         const remaining = earned - used - pending;
@@ -186,12 +200,26 @@ class LeaveStatus {
         // 사용한 연차 (승인된 연차)
         const used = userRequests
             .filter(request => request.status === 'approved')
-            .reduce((total, request) => total + request.days, 0);
+            .reduce((total, request) => {
+                // 반차인지 확인하여 올바른 일수 계산
+                let actualDays = request.days;
+                if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                    actualDays = 0.5;
+                }
+                return total + actualDays;
+            }, 0);
         
         // 대기 중인 연차
         const pending = userRequests
             .filter(request => request.status === 'pending')
-            .reduce((total, request) => total + request.days, 0);
+            .reduce((total, request) => {
+                // 반차인지 확인하여 올바른 일수 계산
+                let actualDays = request.days;
+                if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                    actualDays = 0.5;
+                }
+                return total + actualDays;
+            }, 0);
         
         // 남은 연차
         const remaining = earned - used - pending;
@@ -306,7 +334,7 @@ class LeaveStatus {
             <div class="my-request-item">
                 <div class="request-period">${request.startDate} ~ ${request.endDate}</div>
                 <div class="request-details">
-                    <span>${request.days}일 | ${getDisplayReason(request)}</span>
+                    <span>${this.getDisplayDays(request)}일 | ${getDisplayReason(request)}</span>
                     <span class="request-status ${request.status}">${this.getStatusText(request.status)}</span>
                 </div>
             </div>
@@ -518,7 +546,12 @@ class LeaveStatus {
                     // 겹치는 일수 계산
                     const overlapStart = new Date(Math.max(startDate.getTime(), monthStart.getTime()));
                     const overlapEnd = new Date(Math.min(endDate.getTime(), monthEnd.getTime()));
-                    const overlapDays = Math.floor((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+                    let overlapDays = Math.floor((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    // 반차인지 확인하여 올바른 일수 계산
+                    if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                        overlapDays = 0.5;
+                    }
                     
                     monthlyData[month] += overlapDays;
                 }
@@ -570,7 +603,12 @@ class LeaveStatus {
                     // 겹치는 일수 계산
                     const overlapStart = new Date(Math.max(startDate.getTime(), monthStart.getTime()));
                     const overlapEnd = new Date(Math.min(endDate.getTime(), monthEnd.getTime()));
-                    const overlapDays = Math.floor((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+                    let overlapDays = Math.floor((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    // 반차인지 확인하여 올바른 일수 계산
+                    if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                        overlapDays = 0.5;
+                    }
                     
                     monthlyData[month] += overlapDays;
                 }
@@ -668,8 +706,22 @@ class LeaveStatus {
         const annualRequests = approvedRequests.filter(request => !request.leaveType || !request.leaveType.startsWith('welfare-'));
         const welfareRequests = approvedRequests.filter(request => request.leaveType && request.leaveType.startsWith('welfare-'));
         
-        const annualDays = annualRequests.reduce((sum, request) => sum + (request.daysInMonth || 0), 0);
-        const welfareDays = welfareRequests.reduce((sum, request) => sum + (request.daysInMonth || 0), 0);
+        const annualDays = annualRequests.reduce((sum, request) => {
+            // 반차인지 확인하여 올바른 일수 계산
+            let actualDays = request.daysInMonth || 0;
+            if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                actualDays = 0.5;
+            }
+            return sum + actualDays;
+        }, 0);
+        const welfareDays = welfareRequests.reduce((sum, request) => {
+            // 반차인지 확인하여 올바른 일수 계산
+            let actualDays = request.daysInMonth || 0;
+            if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+                actualDays = 0.5;
+            }
+            return sum + actualDays;
+        }, 0);
         const totalDays = annualDays + welfareDays;
         
         // 깔끔한 요약 표시 (신청건수 포함)
@@ -757,7 +809,7 @@ class LeaveStatus {
                         </div>
                         <div class="request-info">
                             <div class="request-type">${reason}</div>
-                            <div class="request-days">${daysInMonth}일</div>
+                            <div class="request-days">${this.getDisplayDays(request)}일</div>
                         </div>
                     </div>
                 `;
@@ -884,6 +936,15 @@ class LeaveStatus {
             'rejected': '거부됨'
         };
         return statusMap[status] || status;
+    }
+
+    // 표시용 일수 계산 (반차 고려)
+    getDisplayDays(request) {
+        // 반차인지 확인하여 올바른 일수 반환
+        if (request.type === '반차' || request.reasonType === 'half_morning' || request.reasonType === 'half_afternoon') {
+            return 0.5;
+        }
+        return request.days || 0;
     }
 
     // 연차 유형 텍스트 변환
@@ -1187,21 +1248,29 @@ class LeaveStatus {
             });
         }
 
-        // 연차 유형이 '기타'일 때만 사유 입력 가능(사유 입력창 표시/숨김)
+        // 사유가 '기타'일 때만 상세 사유 입력 가능(사유 입력창 표시/숨김)
         const toggleReason = () => {
-            if (!leaveTypeSelect || !reasonTextarea || !reasonGroup) return;
-            const isOther = leaveTypeSelect.value === 'other-statutory' || leaveTypeSelect.value === 'other-welfare' || leaveTypeSelect.value === 'other';
+            if (!reasonTypeSelect || !reasonTextarea || !reasonGroup) return;
+            const isOther = reasonTypeSelect.value === 'other';
             reasonGroup.style.display = isOther ? '' : 'none';
             reasonTextarea.disabled = !isOther;
             reasonTextarea.required = isOther;
             if (!isOther) {
                 // 기타가 아닌 경우 해당 유형을 사유에 자동 입력
-                reasonTextarea.value = this.getLeaveTypeText(leaveTypeSelect.value) || '';
+                reasonTextarea.value = '';
             }
         };
         if (leaveTypeSelect && reasonTextarea && reasonGroup) {
             toggleReason();
             leaveTypeSelect.addEventListener('change', (e) => {
+                e.stopPropagation();
+                toggleReason();
+            });
+        }
+        
+        // 사유 타입 변경 시에도 상세 사유 필드 토글
+        if (reasonTypeSelect && reasonTextarea && reasonGroup) {
+            reasonTypeSelect.addEventListener('change', (e) => {
                 e.stopPropagation();
                 toggleReason();
             });
@@ -1312,7 +1381,7 @@ class LeaveStatus {
                             <strong>기간:</strong> ${request.startDate} ~ ${request.endDate}
                         </div>
                         <div>
-                            <strong>일수:</strong> ${request.days}일
+                            <strong>일수:</strong> ${this.getDisplayDays(request)}일
                         </div>
                         <div>
                             <strong>사유:</strong> ${request.reason}
@@ -1528,6 +1597,26 @@ class LeaveStatus {
             this.showNotification('모든 필수 항목을 입력해주세요.', 'error');
             return;
         }
+        
+        // 기타 사유 선택 시 상세 사유 필수 검증
+        if (reasonType === 'other') {
+            const reasonText = formData.get('reason');
+            if (!reasonText || reasonText.trim() === '') {
+                this.showNotification('기타 사유를 선택하셨습니다. 상세 사유를 입력해주세요.', 'error');
+                return;
+            }
+        }
+        
+        // 주말 및 공휴일 검증
+        if (this.isWeekendOrHoliday(startDate)) {
+            this.showNotification('시작일이 주말 또는 공휴일입니다. 평일을 선택해주세요.', 'error');
+            return;
+        }
+        
+        if (this.isWeekendOrHoliday(endDate)) {
+            this.showNotification('종료일이 주말 또는 공휴일입니다. 평일을 선택해주세요.', 'error');
+            return;
+        }
 
         // 날짜 유효성 검사
         const start = new Date(startDate);
@@ -1620,6 +1709,63 @@ class LeaveStatus {
         this.loadMyRequests();
         this.loadMonthlyChart();
         this.loadPlanningStats();
+    }
+
+    // 주말 및 공휴일 검증 함수
+    isWeekendOrHoliday(dateString) {
+        const date = new Date(dateString);
+        const dayOfWeek = date.getDay();
+        
+        // 주말 검증 (토요일: 6, 일요일: 0)
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            return true;
+        }
+        
+        // 공휴일 검증 (2024년 기준)
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        
+        // 2024년 공휴일 목록
+        const holidays2024 = [
+            '2024-01-01', // 신정
+            '2024-02-09', '2024-02-10', '2024-02-11', '2024-02-12', // 설날 연휴
+            '2024-03-01', // 삼일절
+            '2024-04-10', // 국회의원선거
+            '2024-05-05', // 어린이날
+            '2024-05-15', // 부처님오신날
+            '2024-06-06', // 현충일
+            '2024-08-15', // 광복절
+            '2024-09-16', '2024-09-17', '2024-09-18', // 추석 연휴
+            '2024-10-03', // 개천절
+            '2024-10-09', // 한글날
+            '2024-12-25'  // 성탄절
+        ];
+        
+        // 2025년 공휴일 목록
+        const holidays2025 = [
+            '2025-01-01', // 신정
+            '2025-01-28', '2025-01-29', '2025-01-30', // 설날 연휴
+            '2025-03-01', // 삼일절
+            '2025-05-05', // 어린이날
+            '2025-05-12', // 부처님오신날
+            '2025-06-06', // 현충일
+            '2025-08-15', // 광복절
+            '2025-10-05', '2025-10-06', '2025-10-07', '2025-10-08', // 추석 연휴
+            '2025-10-03', // 개천절
+            '2025-10-09', // 한글날
+            '2025-12-25'  // 성탄절
+        ];
+        
+        const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        
+        if (year === 2024) {
+            return holidays2024.includes(dateStr);
+        } else if (year === 2025) {
+            return holidays2025.includes(dateStr);
+        }
+        
+        return false;
     }
 
     // 알림 표시
