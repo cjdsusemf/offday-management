@@ -711,6 +711,10 @@
   
   window.addEventListener('DOMContentLoaded', function(){
     if(!window.AuthGuard || !AuthGuard.checkAuth()) return;
+    
+    // 관리자 권한 체크
+    if (!AuthGuard.checkAdminAccess()) return;
+    
     dm = window.dataManager || new DataManager(); 
     window.dataManager = dm;
 

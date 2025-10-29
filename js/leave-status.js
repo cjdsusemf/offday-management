@@ -790,8 +790,25 @@ class LeaveStatus {
                 const isSameDay = startDate.getTime() === endDate.getTime();
                 const period = isSameDay ? startDate.toLocaleDateString() : `${startDate.toLocaleDateString()} ~ ${endDate.toLocaleDateString()}`;
                 
-                // 안전한 데이터 처리
-                const reason = this.safeText(request.reason, this.getLeaveTypeText(request.type || request.leaveType) || '사유없음');
+                // 사유 표시 텍스트 생성 (reasonType 기반, 비어있으면 reason 사용)
+                const getDisplayReason = (req) => {
+                    const map = {
+                        'personal': '개인사정',
+                        'sick': '병가',
+                        'other': '기타',
+                        'vacation': '휴가',
+                        'family': '가족사정',
+                        'half_morning': '반차(오전)',
+                        'half_afternoon': '반차(오후)'
+                    };
+                    const byType = map[String(req.reasonType || '').trim()] || '';
+                    const base = (req.reason && req.reason !== 'null' && req.reason !== 'undefined') ? req.reason : '';
+                    // 둘 다 있으면 "사유 - 상세" 형태로 합성
+                    if (byType && base) return `${byType} - ${base}`;
+                    return byType || base || '-';
+                };
+                
+                const reason = getDisplayReason(request);
                 const statusText = this.getStatusText(request.status) || '알수없음';
                 const daysInMonth = request.daysInMonth || 0;
                 const totalDays = request.days || 0;

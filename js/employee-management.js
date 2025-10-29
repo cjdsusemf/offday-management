@@ -14,7 +14,7 @@
         if (employees.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="15" class="empty-state">
+                    <td colspan="16" class="empty-state">
                         <i class="fas fa-users"></i>
                         <p>검색 조건에 맞는 직원이 없습니다.</p>
                     </td>
@@ -88,6 +88,20 @@
                             <div class="welfare-leave-remaining">잔여: ${welfareStats.remaining}일</div>
                             <div class="welfare-leave-expired">만기: ${welfareStats.expired}일</div>
                         </div>
+                    </td>
+                    <td>
+                        ${(() => {
+                            const userRole = (() => {
+                                if (typeof window.authManager !== 'undefined') {
+                                    const user = window.authManager.getStoredUsers().find(u => u.email === emp.email);
+                                    return user ? user.role : 'user';
+                                }
+                                return 'user';
+                            })();
+                            const roleText = userRole === 'admin' ? '관리자' : '일반';
+                            const roleClass = userRole === 'admin' ? 'status-badge status-active' : 'status-badge status-resigned';
+                            return `<span class="${roleClass}">${roleText}</span>`;
+                        })()}
                     </td>
                     <td class="actions-column">
                         <div class="employee-actions-btns">
@@ -330,6 +344,18 @@
             document.getElementById('employeePosition').value = employeeData.position || '';
             document.getElementById('employeeHireDate').value = employeeData.hireDate || employeeData.joindate || '';
             document.getElementById('employeeBirthDate').value = employeeData.birthDate || '';
+            
+            // 권한 필드 설정
+            const roleSelect = document.getElementById('employeeRole');
+            if (roleSelect && typeof window.authManager !== 'undefined') {
+                const user = window.authManager.getStoredUsers().find(u => u.email === employeeData.email);
+                if (user && user.role) {
+                    roleSelect.value = user.role;
+                } else {
+                    roleSelect.value = 'user';
+                }
+            }
+            
             // annualLeaveDays는 지점 기준 계산을 사용하므로 편집 제외
             
             // 지점과 부서 데이터 로드 및 설정
@@ -337,6 +363,11 @@
         } else {
             // 추가 모드 - 폼 초기화
             form.reset();
+            // 권한 필드 기본값 설정
+            const roleSelect = document.getElementById('employeeRole');
+            if (roleSelect) {
+                roleSelect.value = 'user';
+            }
             // annualLeaveDays 입력 제거
             // 추가 모드에서도 지점 데이터 로드
             loadBranchAndDepartmentData();
@@ -494,6 +525,11 @@
                         user.branch = employeeData.branch;
                         user.department = employeeData.department;
                         user.position = employeeData.position;
+                        // 권한 업데이트
+                        const newRole = formData.get('role');
+                        if (newRole && (newRole === 'admin' || newRole === 'user')) {
+                            user.role = newRole;
+                        }
                         // 입사일이 변경되었는지 확인
                         const hireDateChanged = user.joindate !== employeeData.hireDate;
                         user.joindate = employeeData.hireDate;
@@ -510,7 +546,7 @@
                             }
                         }
                         
-                        console.log('직원 수정 시 사용자 데이터 동기화 완료:', user.email);
+                        console.log('직원 수정 시 사용자 데이터 동기화 완료:', user.email, '권한:', user.role);
                     }
                 }
                 alert('직원 정보가 수정되었습니다.');
@@ -519,6 +555,47 @@
             // 추가
             const newEmployee = dm.addEmployee(employeeData);
             if (newEmployee) {
+                // 사용자 계정 생성 또는 업데이트 (권한 포함)
+                if (typeof window.authManager !== 'undefined') {
+                    const users = window.authManager.getStoredUsers();
+                    let user = users.find(u => u.email === employeeData.email);
+                    const newRole = formData.get('role') || 'user';
+                    
+                    if (user) {
+                        // 기존 사용자 계정이 있으면 권한 업데이트
+                        user.name = employeeData.name;
+                        user.phone = employeeData.phone;
+                        user.branch = employeeData.branch;
+                        user.department = employeeData.department;
+                        user.position = employeeData.position;
+                        user.joindate = employeeData.hireDate;
+                        user.birthdate = employeeData.birthDate;
+                        if (newRole === 'admin' || newRole === 'user') {
+                            user.role = newRole;
+                        }
+                        window.authManager.saveUsers(users);
+                        console.log('기존 사용자 계정 업데이트 및 권한 설정:', user.email, '권한:', user.role);
+                    } else {
+                        // 사용자 계정이 없으면 생성 (권한 포함)
+                        const newUser = {
+                            id: Date.now().toString(),
+                            username: employeeData.email.split('@')[0],
+                            password: '', // 비밀번호는 회원가입 시에만 설정
+                            name: employeeData.name,
+                            email: employeeData.email,
+                            phone: employeeData.phone || '',
+                            branch: employeeData.branch,
+                            department: employeeData.department,
+                            position: employeeData.position,
+                            joindate: employeeData.hireDate,
+                            birthdate: employeeData.birthDate || '',
+                            role: (newRole === 'admin' || newRole === 'user') ? newRole : 'user'
+                        };
+                        users.push(newUser);
+                        window.authManager.saveUsers(users);
+                        console.log('새 사용자 계정 생성 및 권한 설정:', newUser.email, '권한:', newUser.role);
+                    }
+                }
                 alert('새 직원이 추가되었습니다.');
             }
         }
@@ -1802,6 +1879,9 @@
 
     window.addEventListener('DOMContentLoaded', function() {
         if (!window.AuthGuard || !AuthGuard.checkAuth()) return;
+        
+        // 관리자 권한 체크
+        if (!AuthGuard.checkAdminAccess()) return;
         
         dm = window.dataManager || new DataManager();
         window.dataManager = dm;

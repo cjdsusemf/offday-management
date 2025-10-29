@@ -45,6 +45,27 @@ class AuthGuard {
         
         return window.authManager.getCurrentUser();
     }
+    
+    // 관리자 권한 체크
+    static isAdmin() {
+        const currentUser = this.getCurrentUser();
+        return currentUser && currentUser.role === 'admin';
+    }
+    
+    // 관리자 페이지 접근 체크 (비관리자 접근 시 대시보드로 리다이렉트)
+    static checkAdminAccess() {
+        if (!this.checkAuth()) {
+            return false;
+        }
+        
+        if (!this.isAdmin()) {
+            alert('관리자만 접근할 수 있는 페이지입니다.');
+            window.location.href = 'index.html';
+            return false;
+        }
+        
+        return true;
+    }
 }
 
 // 전역 AuthGuard 인스턴스 생성
