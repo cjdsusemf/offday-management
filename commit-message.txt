@@ -1,8 +1,0 @@
-UI 개선 및 기능 업데이트
-
-- 승인/캘린더/직원관리/연차현황/통계 페이지 개선
-- auth, data-manager, approval 등 JS 모듈 업데이트
-- CSS 정리 및 레이아웃 조정
-- 백업 파일 정리, start-server.ps1 추가
-
-
