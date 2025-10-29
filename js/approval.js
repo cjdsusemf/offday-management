@@ -153,8 +153,8 @@
         <div class="approval-item ${isSelected ? 'selected' : ''}" data-id="${r.id}">
           <input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} data-id="${r.id}">
           <div>
-            <div><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch" style="${branchStyle}">${branch}</span> <span class="approval-dept">${department}</span></div>
-            <div class="approval-meta">기간: ${r.startDate} ~ ${r.endDate} (${r.days}일)  신청일: ${r.requestDate || '-'}</div>
+            <div style="margin-bottom: 0.25rem;"><strong>${r.employeeName}</strong> <span class="status-badge ${r.status}">${statusText(r.status)}</span> <span class="approval-branch" style="${branchStyle}">${branch}</span> <span class="approval-dept">${department}</span></div>
+            <div class="approval-meta" style="margin-bottom: 0.15rem;">기간: ${r.startDate} ~ ${r.endDate} (${r.days}일)  신청일: ${r.requestDate || '-'}</div>
             <div class="approval-meta">유형: <span class="leave-type-badge ${r.leaveType}">${leaveTypeText}</span>  사유: ${reasonText}</div>
           </div>
           <div class="approval-actions">
@@ -354,42 +354,49 @@
 
   // 템플릿 다운로드(Excel) - 한국어 헤더
   function downloadTemplate(){
-    // SheetJS 라이브러리가 로드되었는지 확인
-    if (typeof XLSX === 'undefined') {
-      alert('엑셀 라이브러리를 로드하는 중입니다. 잠시 후 다시 시도해주세요.');
-      return;
+    try {
+      // SheetJS 라이브러리가 로드되었는지 확인
+      if (typeof XLSX === 'undefined') {
+        alert('엑셀 라이브러리를 로드하는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+      
+      const header = ['이메일','시작일','종료일','일수','유형','사유'];
+      const examples = [
+        ['user1@company.com','2025-01-15','2025-01-17','3','법정연차','가족 행사'],
+        ['user2@company.com','2025-01-20','2025-01-20','1','복지휴가','복지휴가 사용'],
+        ['user3@company.com','2025-01-25','2025-01-25','1','개인사정','개인 용무'],
+        ['user4@company.com','2025-02-01','2025-02-03','3','병가','감기로 인한 휴가']
+      ];
+      
+      // 워크북 생성
+      const wb = XLSX.utils.book_new();
+      
+      // 데이터 시트 생성
+      const ws_data = [header, ...examples];
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      
+      // 컬럼 너비 설정
+      ws['!cols'] = [
+        { wch: 25 }, // 이메일
+        { wch: 12 }, // 시작일
+        { wch: 12 }, // 종료일
+        { wch: 8 },  // 일수
+        { wch: 12 }, // 유형
+        { wch: 20 }  // 사유
+      ];
+      
+      // 시트를 워크북에 추가
+      XLSX.utils.book_append_sheet(wb, ws, '연차등록');
+      
+      // 파일 다운로드
+      XLSX.writeFile(wb, '연차등록_양식.xlsx');
+      
+      console.log('양식 다운로드 완료');
+    } catch (error) {
+      console.error('양식 다운로드 오류:', error);
+      alert('양식 다운로드 중 오류가 발생했습니다: ' + error.message);
     }
-    
-    const header = ['이메일','시작일','종료일','일수','유형','사유'];
-    const examples = [
-      ['user1@company.com','2025-01-15','2025-01-17','3','법정연차','가족 행사'],
-      ['user2@company.com','2025-01-20','2025-01-20','1','복지휴가','복지휴가 사용'],
-      ['user3@company.com','2025-01-25','2025-01-25','1','개인사정','개인 용무'],
-      ['user4@company.com','2025-02-01','2025-02-03','3','병가','감기로 인한 휴가']
-    ];
-    
-    // 워크북 생성
-    const wb = XLSX.utils.book_new();
-    
-    // 데이터 시트 생성
-    const ws_data = [header, ...examples];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    
-    // 컬럼 너비 설정
-    ws['!cols'] = [
-      { wch: 25 }, // 이메일
-      { wch: 12 }, // 시작일
-      { wch: 12 }, // 종료일
-      { wch: 8 },  // 일수
-      { wch: 12 }, // 유형
-      { wch: 20 }  // 사유
-    ];
-    
-    // 시트를 워크북에 추가
-    XLSX.utils.book_append_sheet(wb, ws, '연차등록');
-    
-    // 파일 다운로드
-    XLSX.writeFile(wb, '연차등록_양식.xlsx');
   }
 
   // 엑셀/CSV 업로드 파서(간단 CSV 지원) - 한국어/영어 헤더 모두 지원

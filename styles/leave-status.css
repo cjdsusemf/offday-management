@@ -1077,12 +1077,56 @@
 .monthly-detail-modal .monthly-requests-header h4 { margin: 0; font-size: 0.95rem; color: #1f2937; font-weight: 800; }
 
 /* 필터 버튼 - 모달 스코프 */
-.monthly-detail-modal .status-filter-buttons { display: flex; gap: 6px; }
-.monthly-detail-modal .status-filter-buttons .filter-btn {
-    background: #fff; border: 1px solid #e5e7eb; border-radius: 999px; padding: 6px 12px; font-weight: 700; color: #334155; cursor: pointer; transition: all .2s ease; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+.monthly-detail-modal .status-filter-buttons {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    transition: all 0.2s ease;
 }
-.monthly-detail-modal .status-filter-buttons .filter-btn:hover { background: #f8fafc; }
-.monthly-detail-modal .status-filter-buttons .filter-btn.active { background: #e0e7ff; border-color: #c7d2fe; color: #1e40af; }
+
+.monthly-detail-modal .status-filter-buttons:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,.06);
+}
+
+.monthly-detail-modal .status-filter-buttons .filter-btn {
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border: none;
+    border-radius: 0;
+    background: #fff;
+    color: #334155;
+    font-weight: 700;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.monthly-detail-modal .status-filter-buttons .filter-btn:not(:last-child) {
+    border-right: 1px solid #e5e7eb;
+}
+
+.monthly-detail-modal .status-filter-buttons .filter-btn:hover {
+    background: #f8fafc;
+}
+
+.monthly-detail-modal .status-filter-buttons .filter-btn.active {
+    background: #2563eb;
+    color: #fff;
+    z-index: 1;
+    box-shadow: 0 2px 4px rgba(37,99,235,.2);
+}
+
+.monthly-detail-modal .status-filter-buttons .filter-btn.active:hover {
+    background: #1d4ed8;
+}
 
 /* 요청 카드 */
 .monthly-detail-modal .monthly-request-item {
