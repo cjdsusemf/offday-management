@@ -49,6 +49,9 @@
                     <button id="addEmployeeBtn" class="btn btn-primary">
                         <i class="fas fa-plus"></i> 직원 추가
                     </button>
+                    <button id="bulkWelfareLeaveBtn" class="btn btn-success">
+                        <i class="fas fa-gift"></i> 복지휴가 일괄지급
+                    </button>
                     <button id="syncUsersBtn" class="btn btn-info">
                         <i class="fas fa-sync"></i> 회원 동기화
                     </button>
@@ -88,6 +91,9 @@
                 <table class="employee-table" id="employeeTable">
                     <thead>
                         <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="selectAllEmployees" title="전체 선택">
+                            </th>
                             <th class="sortable" data-sort="name">
                                 <span>이름</span>
                                 <i class="fas fa-sort"></i>
@@ -293,6 +299,44 @@
                 <div id="welfareHistoryContent">
                     <!-- 복지휴가 이력이 여기에 동적으로 생성됩니다 -->
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 복지휴가 일괄지급 모달 -->
+    <div id="bulkWelfareLeaveModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>복지휴가 일괄지급</h3>
+                <span class="close" id="closeBulkWelfareModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="bulkWelfareLeaveForm">
+                    <div class="form-group">
+                        <label>선택된 직원 수</label>
+                        <input type="text" id="selectedEmployeeCount" readonly class="form-input" value="0명">
+                    </div>
+                    <div class="form-group">
+                        <label for="bulkWelfareLeaveDays">지급할 복지휴가 일수 *</label>
+                        <input type="number" id="bulkWelfareLeaveDays" name="welfareLeaveDays" min="0" step="0.5" required class="form-input" placeholder="예: 5">
+                    </div>
+                    <div class="form-group">
+                        <label for="bulkWelfareLeaveReason">지급 사유</label>
+                        <textarea id="bulkWelfareLeaveReason" name="welfareLeaveReason" rows="3" class="form-input" placeholder="복지휴가 일괄지급 사유를 입력하세요"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="bulkWelfareLeaveEffectiveDate">유효 시작일 *</label>
+                        <input type="date" id="bulkWelfareLeaveEffectiveDate" name="welfareLeaveEffectiveDate" required class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="bulkWelfareLeaveExpiryDate">유효 만기일 *</label>
+                        <input type="date" id="bulkWelfareLeaveExpiryDate" name="welfareLeaveExpiryDate" required class="form-input">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancelBulkWelfareBtn" class="btn btn-secondary">취소</button>
+                        <button type="submit" id="saveBulkWelfareBtn" class="btn btn-success">일괄지급</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

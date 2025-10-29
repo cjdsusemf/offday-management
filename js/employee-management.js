@@ -14,7 +14,7 @@
         if (employees.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="14" class="empty-state">
+                    <td colspan="15" class="empty-state">
                         <i class="fas fa-users"></i>
                         <p>검색 조건에 맞는 직원이 없습니다.</p>
                     </td>
@@ -53,6 +53,9 @@
             }
             return `
                 <tr data-id="${emp.id}" class="${status}">
+                    <td>
+                        ${status === 'active' ? `<input type="checkbox" class="employee-checkbox" data-id="${emp.id}">` : ''}
+                    </td>
                     <td><strong>${emp.name}</strong></td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><span class="badge ${leaveStandard === '회계연도' ? 'badge-std-fiscal' : 'badge-std-hire'}">${leaveStandard}</span></td>
@@ -623,6 +626,168 @@
         alert(`${employee.name} 직원에게 복지휴가 ${welfareLeaveDays}일이 지급되었습니다.`);
         
         closeWelfareModal();
+        refreshEmployeeTable();
+        return true;
+    }
+
+    // 복지휴가 일괄지급 모달 열기
+    function openBulkWelfareLeaveModal() {
+        const selectedIds = getSelectedEmployeeIds();
+        
+        if (selectedIds.length === 0) {
+            alert('일괄지급할 직원을 선택해주세요.\n재직 중인 직원만 선택할 수 있습니다.');
+            return;
+        }
+
+        const modal = document.getElementById('bulkWelfareLeaveModal');
+        const form = document.getElementById('bulkWelfareLeaveForm');
+        
+        if (!modal || !form) return;
+
+        // 폼 초기화
+        form.reset();
+        
+        // 선택된 직원 수 표시
+        document.getElementById('selectedEmployeeCount').value = `${selectedIds.length}명`;
+        
+        // 오늘 날짜를 기본값으로 설정
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('bulkWelfareLeaveEffectiveDate').value = today;
+        
+        // 기본 만기일을 1년 후로 설정
+        const oneYearLater = new Date();
+        oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+        document.getElementById('bulkWelfareLeaveExpiryDate').value = oneYearLater.toISOString().split('T')[0];
+        
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    // 복지휴가 일괄지급 모달 닫기
+    function closeBulkWelfareModal() {
+        const modal = document.getElementById('bulkWelfareLeaveModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // 선택된 직원 ID 가져오기
+    function getSelectedEmployeeIds() {
+        const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+        return Array.from(checkboxes).map(cb => parseInt(cb.getAttribute('data-id')));
+    }
+
+    // 선택된 직원 수 업데이트
+    function updateSelectedEmployeeCount() {
+        const selectedIds = getSelectedEmployeeIds();
+        const countElement = document.getElementById('selectedEmployeeCount');
+        if (countElement) {
+            countElement.value = `${selectedIds.length}명`;
+        }
+    }
+
+    // 전체 선택 체크박스 상태 업데이트
+    function updateSelectAllCheckbox() {
+        const selectAllCheckbox = document.getElementById('selectAllEmployees');
+        const checkboxes = document.querySelectorAll('.employee-checkbox');
+        if (selectAllCheckbox && checkboxes.length > 0) {
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = someChecked && !allChecked;
+        }
+    }
+
+    // 복지휴가 일괄지급 처리
+    function saveBulkWelfareLeave(formData) {
+        const selectedIds = getSelectedEmployeeIds();
+        
+        if (selectedIds.length === 0) {
+            alert('일괄지급할 직원을 선택해주세요.');
+            return false;
+        }
+
+        const welfareLeaveDays = parseFloat(formData.get('welfareLeaveDays'));
+        const welfareLeaveReason = formData.get('welfareLeaveReason') || '';
+        const welfareLeaveEffectiveDate = formData.get('welfareLeaveEffectiveDate');
+        const welfareLeaveExpiryDate = formData.get('welfareLeaveExpiryDate');
+
+        if (welfareLeaveDays <= 0) {
+            alert('복지휴가 일수는 0보다 커야 합니다.');
+            return false;
+        }
+
+        if (!welfareLeaveEffectiveDate || !welfareLeaveExpiryDate) {
+            alert('유효 시작일과 만기일을 모두 입력해주세요.');
+            return false;
+        }
+
+        if (new Date(welfareLeaveExpiryDate) < new Date(welfareLeaveEffectiveDate)) {
+            alert('만기일은 시작일보다 늦어야 합니다.');
+            return false;
+        }
+
+        // 확인 메시지
+        const employeeNames = selectedIds.map(id => {
+            const emp = dm.employees.find(e => e.id === id);
+            return emp ? emp.name : '';
+        }).filter(Boolean);
+
+        if (!confirm(`선택된 ${selectedIds.length}명의 직원에게 복지휴가 ${welfareLeaveDays}일을 일괄지급하시겠습니까?\n\n선택된 직원:\n${employeeNames.slice(0, 10).join(', ')}${employeeNames.length > 10 ? ` 외 ${employeeNames.length - 10}명` : ''}`)) {
+            return false;
+        }
+
+        const grantedBy = getCurrentUser()?.email || 'admin';
+        let successCount = 0;
+        let failCount = 0;
+        const grantedDate = new Date().toISOString().split('T')[0];
+
+        // 복지휴가 지급 기록 저장을 위한 배열 초기화
+        if (!dm.welfareLeaveGrants) {
+            dm.welfareLeaveGrants = [];
+        }
+
+        // 선택된 각 직원에게 복지휴가 지급
+        selectedIds.forEach(employeeId => {
+            const employee = dm.employees.find(emp => emp.id === employeeId);
+            if (!employee) {
+                failCount++;
+                return;
+            }
+
+            // 복지휴가 지급 기록 생성
+            const welfareGrant = {
+                id: Date.now() + Math.floor(Math.random() * 10000) + successCount,
+                employeeId: employee.id,
+                employeeName: employee.name,
+                employeeEmail: employee.email,
+                grantedDays: welfareLeaveDays,
+                reason: welfareLeaveReason,
+                effectiveDate: welfareLeaveEffectiveDate,
+                expiryDate: welfareLeaveExpiryDate,
+                grantedDate: grantedDate,
+                grantedBy: grantedBy
+            };
+
+            dm.welfareLeaveGrants.push(welfareGrant);
+            successCount++;
+        });
+
+        // 데이터 저장
+        dm.saveData('welfareLeaveGrants', dm.welfareLeaveGrants);
+
+        // 체크박스 초기화
+        document.querySelectorAll('.employee-checkbox').forEach(cb => cb.checked = false);
+        const selectAllCheckbox = document.getElementById('selectAllEmployees');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+
+        alert(`복지휴가 일괄지급이 완료되었습니다.\n\n지급 성공: ${successCount}명\n지급 실패: ${failCount}명`);
+        
+        closeBulkWelfareModal();
         refreshEmployeeTable();
         return true;
     }
@@ -1501,6 +1666,64 @@
                 e.preventDefault();
                 const formData = new FormData(this);
                 saveWelfareLeave(formData);
+            });
+        }
+
+        // 복지휴가 일괄지급 버튼 이벤트
+        const bulkWelfareLeaveBtn = document.getElementById('bulkWelfareLeaveBtn');
+        if (bulkWelfareLeaveBtn) {
+            bulkWelfareLeaveBtn.addEventListener('click', function() {
+                openBulkWelfareLeaveModal();
+            });
+        }
+
+        // 전체 선택 체크박스 이벤트
+        const selectAllCheckbox = document.getElementById('selectAllEmployees');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.employee-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                });
+                updateSelectedEmployeeCount();
+            });
+        }
+
+        // 개별 체크박스 변경 이벤트 (이벤트 위임 사용)
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('employee-checkbox')) {
+                updateSelectedEmployeeCount();
+                updateSelectAllCheckbox();
+            }
+        });
+
+        // 복지휴가 일괄지급 모달 이벤트 리스너
+        const closeBulkWelfareModalBtn = document.getElementById('closeBulkWelfareModal');
+        if (closeBulkWelfareModalBtn) {
+            closeBulkWelfareModalBtn.addEventListener('click', closeBulkWelfareModal);
+        }
+
+        const cancelBulkWelfareBtn = document.getElementById('cancelBulkWelfareBtn');
+        if (cancelBulkWelfareBtn) {
+            cancelBulkWelfareBtn.addEventListener('click', closeBulkWelfareModal);
+        }
+
+        const bulkWelfareModal = document.getElementById('bulkWelfareLeaveModal');
+        if (bulkWelfareModal) {
+            bulkWelfareModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeBulkWelfareModal();
+                }
+            });
+        }
+
+        // 복지휴가 일괄지급 폼 제출 처리
+        const bulkWelfareForm = document.getElementById('bulkWelfareLeaveForm');
+        if (bulkWelfareForm) {
+            bulkWelfareForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                saveBulkWelfareLeave(formData);
             });
         }
 
