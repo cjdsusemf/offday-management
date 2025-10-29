@@ -547,6 +547,42 @@
             calendar.today();
             updateCurrentMonth();
         });
+        
+        // 현재 월 표시 클릭 이벤트 - 날짜 선택 모달 열기
+        document.getElementById('currentMonth')?.addEventListener('click', () => {
+            openDatePickerModal();
+        });
+        
+        // 날짜 선택 모달 관련 이벤트
+        document.getElementById('closeDatePickerModal')?.addEventListener('click', closeDatePickerModal);
+        document.getElementById('prevDecade')?.addEventListener('click', () => {
+            const yearRange = document.getElementById('yearRange');
+            if (!yearRange) return;
+            const currentStart = parseInt(yearRange.textContent.split(' - ')[0]);
+            const newStart = currentStart - 10;
+            const selectedYearItem = document.querySelector('.calendar-year-item.selected');
+            const selectedYear = selectedYearItem ? parseInt(selectedYearItem.dataset.year) : currentStart;
+            yearRange.textContent = `${newStart} - ${newStart + 9}`;
+            renderYearGrid(newStart, selectedYear);
+        });
+        
+        document.getElementById('nextDecade')?.addEventListener('click', () => {
+            const yearRange = document.getElementById('yearRange');
+            if (!yearRange) return;
+            const currentStart = parseInt(yearRange.textContent.split(' - ')[0]);
+            const newStart = currentStart + 10;
+            const selectedYearItem = document.querySelector('.calendar-year-item.selected');
+            const selectedYear = selectedYearItem ? parseInt(selectedYearItem.dataset.year) : currentStart;
+            yearRange.textContent = `${newStart} - ${newStart + 9}`;
+            renderYearGrid(newStart, selectedYear);
+        });
+        
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('datePickerModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'datePickerModal') {
+                closeDatePickerModal();
+            }
+        });
 
         // 필터 변경
         document.getElementById('branchFilter')?.addEventListener('change', applyFilters);
@@ -583,6 +619,149 @@
             calculateDaysInModal();
             toggleReasonField();
         });
+    }
+    
+    // 날짜 선택 모달 열기 - Windows 스타일
+    function openDatePickerModal() {
+        const modal = document.getElementById('datePickerModal');
+        if (!modal || !calendar) return;
+        
+        const currentDate = calendar.getDate();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth();
+        
+        selectedYearForPicker = currentYear;
+        
+        // 10년 단위로 시작 연도 계산
+        const startDecade = Math.floor(currentYear / 10) * 10;
+        const endDecade = startDecade + 9;
+        
+        // 연도 범위 표시 업데이트
+        const yearRange = document.getElementById('yearRange');
+        if (yearRange) {
+            yearRange.textContent = `${startDecade} - ${endDecade}`;
+        }
+        
+        // 연도 그리드 생성 (이전/다음 10년 연도 포함)
+        renderYearGrid(startDecade, currentYear);
+        
+        // 월 그리드 선택 상태 업데이트
+        updateMonthSelection(currentMonth);
+        
+        // 월 클릭 이벤트 재설정
+        document.querySelectorAll('.calendar-month-item').forEach(item => {
+            item.removeEventListener('click', handleMonthClick);
+            item.addEventListener('click', handleMonthClick);
+        });
+        
+        modal.style.display = 'flex';
+    }
+    
+    // 월 클릭 핸들러
+    function handleMonthClick(e) {
+        document.querySelectorAll('.calendar-month-item').forEach(m => m.classList.remove('selected'));
+        e.target.classList.add('selected');
+        applyDatePicker();
+    }
+    
+    // 연도 그리드 렌더링
+    function renderYearGrid(startDecade, selectedYear) {
+        const yearGrid = document.getElementById('yearGrid');
+        if (!yearGrid) return;
+        
+        yearGrid.innerHTML = '';
+        
+        // 이전 연도 3개 + 현재 10년 + 다음 연도 3개
+        for (let year = startDecade - 3; year <= startDecade + 12; year++) {
+            const yearItem = document.createElement('div');
+            yearItem.className = 'calendar-year-item';
+            yearItem.textContent = year;
+            yearItem.dataset.year = year;
+            
+            // 현재 10년 범위 밖이면 다른 스타일
+            if (year < startDecade || year > startDecade + 9) {
+                yearItem.classList.add('other-decade');
+            }
+            
+            // 선택된 연도 표시
+            if (year === selectedYear) {
+                yearItem.classList.add('selected');
+            }
+            
+            yearItem.addEventListener('click', () => {
+                selectYear(year);
+            });
+            
+            yearGrid.appendChild(yearItem);
+        }
+    }
+    
+    // 전역 변수로 선택된 연도 저장
+    let selectedYearForPicker = null;
+    
+    // 연도 선택
+    function selectYear(year) {
+        selectedYearForPicker = year;
+        
+        // 모든 연도 선택 해제
+        document.querySelectorAll('.calendar-year-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        
+        // 선택된 연도 표시
+        const selectedYearItem = document.querySelector(`.calendar-year-item[data-year="${year}"]`);
+        if (selectedYearItem) {
+            selectedYearItem.classList.add('selected');
+        }
+        
+        // 10년 범위가 변경되면 그리드 업데이트
+        const currentStartDecade = Math.floor(year / 10) * 10;
+        const yearRange = document.getElementById('yearRange');
+        if (yearRange) {
+            const currentText = yearRange.textContent;
+            const currentStart = parseInt(currentText.split(' - ')[0]);
+            
+            if (currentStart !== currentStartDecade) {
+                yearRange.textContent = `${currentStartDecade} - ${currentStartDecade + 9}`;
+                renderYearGrid(currentStartDecade, year);
+            }
+        }
+    }
+    
+    // 월 선택 상태 업데이트
+    function updateMonthSelection(selectedMonth) {
+        document.querySelectorAll('.calendar-month-item').forEach(item => {
+            item.classList.remove('selected');
+            if (parseInt(item.dataset.month) === selectedMonth) {
+                item.classList.add('selected');
+            }
+        });
+    }
+    
+    // 날짜 선택 모달 닫기
+    function closeDatePickerModal() {
+        const modal = document.getElementById('datePickerModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // 날짜 선택 적용
+    function applyDatePicker() {
+        const selectedYearItem = document.querySelector('.calendar-year-item.selected');
+        const selectedMonthItem = document.querySelector('.calendar-month-item.selected');
+        
+        if (!calendar) return;
+        
+        // 연도가 선택되지 않았으면 현재 연도 사용
+        const selectedYear = selectedYearItem ? parseInt(selectedYearItem.dataset.year) : (selectedYearForPicker || new Date().getFullYear());
+        const selectedMonth = selectedMonthItem ? parseInt(selectedMonthItem.dataset.month) : new Date().getMonth();
+        
+        // FullCalendar에 날짜 설정 (월은 0부터 시작)
+        calendar.gotoDate(new Date(selectedYear, selectedMonth, 1));
+        updateCurrentMonth();
+        
+        closeDatePickerModal();
     }
 
     // 현재 월 표시 업데이트

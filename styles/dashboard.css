@@ -1,10 +1,10 @@
 ﻿/* 개선된 페이지 헤더 */
 .page-header {
-    margin-bottom: 2rem;
-    padding: 2rem 0;
-    background: linear-gradient(135deg, var(--cornflower-blue-lightest) 0%, var(--white) 100%);
-    border-radius: 1rem;
-    box-shadow: var(--shadow-md);
+    margin-bottom: 1.25rem;
+    padding: 0.75rem 0 1rem;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .header-content {

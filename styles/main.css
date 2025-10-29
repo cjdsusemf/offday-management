@@ -39,7 +39,7 @@
     box-sizing: border-box;
 }
 
-body {
+html, body {
     font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     line-height: 1.6;
     color: var(--gray-800);
@@ -260,7 +260,7 @@ body {
 
 /* 메인 콘텐츠 */
 .main {
-    padding: 2rem 0;
+    padding: 1rem 0;
     min-height: calc(100vh - 80px);
 }
 

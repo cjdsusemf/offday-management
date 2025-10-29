@@ -61,6 +61,42 @@
                         </button>
                     </div>
                     <h3 id="currentMonth" class="current-month">2025년 10월</h3>
+                    <!-- 연도/월 선택 모달 - Windows 스타일 -->
+                    <div id="datePickerModal" class="modal" style="display: none;">
+                        <div class="modal-content windows-calendar-modal" style="max-width: 320px;">
+                            <div class="modal-header windows-calendar-header">
+                                <button type="button" class="close-btn" id="closeDatePickerModal">&times;</button>
+                            </div>
+                            <div class="modal-body windows-calendar-body">
+                                <div class="windows-calendar-nav">
+                                    <button type="button" class="calendar-nav-btn" id="prevDecade">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <div class="calendar-year-range" id="yearRange">2020 - 2029</div>
+                                    <button type="button" class="calendar-nav-btn" id="nextDecade">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                                <div class="calendar-year-grid" id="yearGrid">
+                                    <!-- JavaScript로 동적 생성 -->
+                                </div>
+                                <div class="calendar-month-grid" id="monthGrid">
+                                    <div class="calendar-month-item" data-month="0">1월</div>
+                                    <div class="calendar-month-item" data-month="1">2월</div>
+                                    <div class="calendar-month-item" data-month="2">3월</div>
+                                    <div class="calendar-month-item" data-month="3">4월</div>
+                                    <div class="calendar-month-item" data-month="4">5월</div>
+                                    <div class="calendar-month-item" data-month="5">6월</div>
+                                    <div class="calendar-month-item" data-month="6">7월</div>
+                                    <div class="calendar-month-item" data-month="7">8월</div>
+                                    <div class="calendar-month-item" data-month="8">9월</div>
+                                    <div class="calendar-month-item" data-month="9">10월</div>
+                                    <div class="calendar-month-item" data-month="10">11월</div>
+                                    <div class="calendar-month-item" data-month="11">12월</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="toolbar-actions">
                         <button id="addLeaveBtn" class="btn btn-success">
                             <i class="fas fa-plus"></i> 연차 신청
@@ -101,37 +137,40 @@
                 </div>
             </div>
 
-            <!-- FullCalendar 컨테이너 -->
-            <div class="calendar-container">
-                <div id="calendar"></div>
-            </div>
+            <!-- 캘린더와 범례 레이아웃 -->
+            <div class="calendar-layout">
+                <!-- 통합 범례 (왼쪽) -->
+                <div class="unified-legend">
+                    <h4>캘린더 범례</h4>
+                    <div class="legend-sections-vertical">
+                        <!-- 연차 상태 섹션 -->
+                        <div class="legend-section">
+                            <h5>연차 상태</h5>
+                            <div class="legend-items">
+                                <div class="legend-item">
+                                    <div class="legend-status-box approved">승인됨</div>
+                                    <span class="legend-description">실선으로 표시</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-status-box pending">대기중</div>
+                                    <span class="legend-description">점선으로 표시</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 지점별 색상 섹션 -->
+                        <div class="legend-section">
+                            <h5>지점별 색상</h5>
+                            <div class="legend-items" id="branchLegend">
+                                <!-- 지점별 색상 범례가 여기에 동적으로 생성됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- 통합 범례 -->
-            <div class="unified-legend">
-                <h4>캘린더 범례</h4>
-                <div class="legend-sections-horizontal">
-                    <!-- 지점별 색상 섹션 -->
-                    <div class="legend-section">
-                        <h5>지점별 색상</h5>
-                        <div class="legend-items" id="branchLegend">
-                            <!-- 지점별 색상 범례가 여기에 동적으로 생성됩니다 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 연차 상태 섹션 -->
-                    <div class="legend-section">
-                        <h5>연차 상태</h5>
-                        <div class="legend-items">
-                            <div class="legend-item">
-                                <div class="legend-status-box approved">승인됨</div>
-                                <span class="legend-description">실선으로 표시</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-status-box pending">대기중</div>
-                                <span class="legend-description">점선으로 표시</span>
-                            </div>
-                        </div>
-                    </div>
+                <!-- FullCalendar 컨테이너 (오른쪽) -->
+                <div class="calendar-container">
+                    <div id="calendar"></div>
                 </div>
             </div>
         </div>
