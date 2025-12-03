@@ -37,14 +37,34 @@ class DataManager {
     // 🔥 Supabase와 동기화
     async syncFromSupabase() {
         try {
+            // Supabase 클라이언트가 준비될 때까지 대기
+            if (!window.supabaseClient) {
+                console.log('[DataManager] ⏳ Supabase 클라이언트 대기 중...');
+                // 최대 5초 대기
+                for (let i = 0; i < 10; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    if (window.supabaseClient) break;
+                }
+            }
+            
+            if (!window.supabaseClient) {
+                console.warn('[DataManager] ⚠️ Supabase 타임아웃 - LocalStorage만 사용');
+                return;
+            }
+            
+            console.log('[DataManager] 📥 Supabase에서 데이터 로드 시작...');
             const supabaseData = await this.loadLeaveRequestsFromSupabase();
+            
             if (supabaseData.length > 0) {
-                console.log('[DataManager] 🔄 Supabase에서 동기화:', supabaseData.length, '개');
+                console.log('[DataManager] ✅ Supabase에서 로드:', supabaseData.length, '개');
                 this.leaveRequests = supabaseData;
-                this.saveData('leaveRequests', this.leaveRequests);
+                // LocalStorage에도 저장 (캐시)
+                localStorage.setItem('leaveRequests', JSON.stringify(this.leaveRequests));
+            } else {
+                console.log('[DataManager] 📭 Supabase에 데이터 없음');
             }
         } catch (err) {
-            console.warn('[DataManager] Supabase 동기화 실패, LocalStorage 사용:', err);
+            console.error('[DataManager] Supabase 동기화 오류:', err);
         }
     }
     
@@ -75,7 +95,7 @@ class DataManager {
                     start_date: leaveRequest.startDate,
                     end_date: leaveRequest.endDate,
                     days: leaveRequest.days,
-                    reason: leaveRequest.reason,
+                    reason: leaveRequest.reason || '사유 없음',  // ✅ 기본값 추가
                     status: leaveRequest.status,
                     request_date: leaveRequest.requestDate,
                     approval_date: leaveRequest.approvalDate || null,
@@ -316,15 +336,24 @@ class DataManager {
     // 🔥 모든 연차 신청을 Supabase에 동기화
     async syncLeaveRequestsToSupabase(leaveRequests) {
         try {
-            if (!window.supabaseClient) return;
+            if (!window.supabaseClient) {
+                console.warn('[DataManager] ⚠️ Supabase 연결 안 됨 - 저장 대기 중');
+                // Supabase가 로드되면 다시 시도
+                setTimeout(() => this.syncLeaveRequestsToSupabase(leaveRequests), 1000);
+                return;
+            }
             
-            // 비동기로 처리 (UI 블로킹 방지)
-            setTimeout(async () => {
-                for (const leave of leaveRequests) {
-                    await this.saveLeaveRequestToSupabase(leave);
+            console.log('[DataManager] 🔄 Supabase 동기화 시작:', leaveRequests.length, '개');
+            
+            // 순차적으로 저장
+            for (const leave of leaveRequests) {
+                const success = await this.saveLeaveRequestToSupabase(leave);
+                if (!success) {
+                    console.error('[DataManager] ❌ 저장 실패:', leave.id);
                 }
-                console.log('[DataManager] 🔄 Supabase 동기화 완료:', leaveRequests.length, '개');
-            }, 100);
+            }
+            
+            console.log('[DataManager] ✅ Supabase 동기화 완료:', leaveRequests.length, '개');
         } catch (err) {
             console.error('[DataManager] Supabase 동기화 오류:', err);
         }
