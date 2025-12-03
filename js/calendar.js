@@ -273,10 +273,23 @@
                 const branch = branches.find(br => br.id === (employee?.branchId || 1));
                 console.log(`  지점 정보:`, branch);
                 
-                // 날짜 변환 과정 확인
-                const startDate = leave.startDate + 'T00:00:00';
-                const endDate = new Date(new Date(leave.endDate + 'T00:00:00').getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] + 'T00:00:00';
-                console.log(`  날짜 변환: ${leave.startDate} → ${startDate}, ${leave.endDate} → ${endDate}`);
+                // 날짜 변환 과정 확인 (유효성 검사 추가)
+                if (leave.startDate && leave.endDate) {
+                    try {
+                        const startDate = leave.startDate + 'T00:00:00';
+                        const endDateObj = new Date(leave.endDate + 'T00:00:00');
+                        if (!isNaN(endDateObj.getTime())) {
+                            const endDate = new Date(endDateObj.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] + 'T00:00:00';
+                            console.log(`  날짜 변환: ${leave.startDate} → ${startDate}, ${leave.endDate} → ${endDate}`);
+                        } else {
+                            console.warn(`  유효하지 않은 종료 날짜: ${leave.endDate}`);
+                        }
+                    } catch (error) {
+                        console.error(`  날짜 변환 오류:`, error);
+                    }
+                } else {
+                    console.warn(`  날짜 정보 없음: startDate=${leave.startDate}, endDate=${leave.endDate}`);
+                }
             });
 
             // FullCalendar 이벤트 형식으로 변환
@@ -416,56 +429,76 @@
         }
     }
 
-    // API에서 연차 데이터 가져오기 (폴백)
-    function loadLeaveDataFromAPI() {
-        fetch('/api/leaves')
-            .then(response => response.json())
-            .then(data => {
-                console.log('API에서 연차 데이터 로드:', data);
-                allEvents = data || [];
+    // Supabase에서 연차 데이터 가져오기 (폴백)
+    async function loadLeaveDataFromAPI() {
+        try {
+            if (!window.supabaseClient) {
+                console.warn('Supabase client가 초기화되지 않았습니다. LocalStorage 데이터만 사용합니다.');
+                return;
+            }
+            
+            console.log('Supabase에서 연차 데이터 로드 중...');
+            
+            // Supabase에서 승인된 연차 신청 가져오기
+            const { data, error } = await window.supabaseClient
+                .from('leave_requests')
+                .select(`
+                    *,
+                    users!leave_requests_employee_id_fkey (
+                        name,
+                        branch,
+                        team
+                    )
+                `)
+                .eq('status', 'approved');
+            
+            if (error) {
+                console.error('Supabase 연차 데이터 로드 오류:', error);
+                return;
+            }
+            
+            console.log('Supabase에서 로드한 데이터:', data);
+            
+            // FullCalendar 이벤트 형식으로 변환
+            const calendarEvents = (data || []).map(leave => {
+                // end 날짜를 포함적으로 처리하기 위해 하루 추가
+                const endDateObj = new Date(leave.end_date + 'T00:00:00');
+                endDateObj.setDate(endDateObj.getDate() + 1);
+                const inclusiveEndDate = endDateObj.toISOString().split('T')[0];
                 
-                // FullCalendar 이벤트 형식으로 변환
-                const calendarEvents = allEvents.map(event => {
-                    // end 날짜를 포함적으로 처리하기 위해 하루 추가
-                    const endDateObj = new Date(event.end);
-                    endDateObj.setDate(endDateObj.getDate() + 1);
-                    const inclusiveEndDate = endDateObj.toISOString().split('T')[0];
-                    
-                    return {
-                        id: event.id,
-                        title: event.title,
-                        start: event.start,
-                        end: inclusiveEndDate,
-                        allDay: true,
-                        backgroundColor: getBranchColor(event.branch_name),
-                        borderColor: getBranchColor(event.branch_name),
-                        textColor: '#333',
-                        extendedProps: {
-                            leave_type: event.leave_type,
-                            half_type: event.half_type,
-                            reason: event.reason,
-                            user_name: event.user_name,
-                            team_name: event.team_name,
-                            branch_name: event.branch_name,
-                            branch_id: event.branch_id,
-                            team_id: event.team_id
-                        }
-                    };
-                });
-                
-                console.log('변환된 캘린더 이벤트:', calendarEvents);
-                
-                // 캘린더에서 모든 이벤트 제거 후 새로 추가
-                calendar.removeAllEvents();
-                calendar.addEventSource(calendarEvents);
-                console.log('캘린더에 이벤트 추가 완료:', calendarEvents.length, '개');
-                
-                // 필터 옵션 업데이트
-                updateFilterOptions();
-            })
-            .catch(error => {
-                console.error('API 연차 데이터 로드 실패:', error);
+                return {
+                    id: leave.id,
+                    title: `${leave.users?.name || leave.employee_name} - ${leave.leave_type}`,
+                    start: leave.start_date,
+                    end: inclusiveEndDate,
+                    allDay: true,
+                    backgroundColor: getBranchColor(leave.users?.branch || '기타'),
+                    borderColor: getBranchColor(leave.users?.branch || '기타'),
+                    textColor: '#333',
+                    extendedProps: {
+                        leave_type: leave.leave_type,
+                        reason: leave.reason,
+                        user_name: leave.users?.name || leave.employee_name,
+                        team_name: leave.users?.team || '',
+                        branch_name: leave.users?.branch || '기타',
+                        days: leave.days
+                    }
+                };
             });
+            
+            console.log('변환된 캘린더 이벤트:', calendarEvents);
+            
+            // 캘린더에 이벤트 추가
+            if (calendar && calendarEvents.length > 0) {
+                calendar.addEventSource(calendarEvents);
+                console.log('Supabase 이벤트 추가 완료:', calendarEvents.length, '개');
+            }
+            
+            // 필터 옵션 업데이트
+            updateFilterOptions();
+        } catch (error) {
+            console.error('Supabase 연차 데이터 로드 실패:', error);
+        }
     }
 
     // 주의: 상단에 이미 getBranchColor가 정의되어 있으므로 여기서 재정의하지 않습니다.
