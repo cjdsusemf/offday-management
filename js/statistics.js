@@ -44,8 +44,7 @@ class Statistics {
         });
 
         // 신청 필터 + employeeId/userId 혼재 매핑
-        const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
-        const users = this.dataManager?.users || JSON.parse(usersStorage);
+        const users = this.dataManager.getUsers();
         const employeeById = new Map(this.dataManager.employees.map(e => [e.id, e]));
         const employeeByEmail = new Map(this.dataManager.employees.map(e => [normalize(e.email), e]));
         const userById = new Map(users.map(u => [u.id, u]));
@@ -314,8 +313,7 @@ class Statistics {
             let employee = employees.find(emp => emp.id === request.employeeId);
             if (!employee) {
                 // 사용자 테이블에서 조회 후 이메일로 직원 매핑
-                const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
-                const users = this.dataManager?.users || JSON.parse(usersStorage);
+                const users = this.dataManager.getUsers();
                 const user = users.find(u => u.id === request.employeeId);
                 if (user) {
                     employee = employees.find(emp => emp.email === user.email);

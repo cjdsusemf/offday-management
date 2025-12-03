@@ -158,8 +158,7 @@
             const today = new Date().toISOString().split('T')[0];
             
             // employeeId 혼재 대응(user.id/employee.id)
-            const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
-            const users = dm?.users || JSON.parse(usersStorage);
+            const users = dm.getUsers();
             const user = users.find(u => u.email === employee.email);
             const identifiers = new Set([employee.id]);
             if (user) identifiers.add(user.id);
@@ -224,8 +223,7 @@
         try {
             const currentYear = new Date().getFullYear();
             // employeeId 혼재 대응(user.id/employee.id)
-            const usersStorage = localStorage.getItem('offday_users') || localStorage.getItem('users') || '[]';
-            const users = dm?.users || JSON.parse(usersStorage);
+            const users = dm.getUsers();
             const user = users.find(u => u.email === employee.email);
             const identifiers = new Set([employee.id]);
             if (user) identifiers.add(user.id);
@@ -674,7 +672,7 @@
 
         // 직원 데이터에 복지휴가 추가
         const currentWelfareLeave = employee.welfareLeaveDays || 0;
-        employee.welfareLeaveDays = currentWelfareLeave + welfareLeaveDays;
+        const updatedWelfareDays = currentWelfareLeave + welfareLeaveDays;
         
         // 복지휴가 지급 기록 생성
         const welfareGrant = {
@@ -696,8 +694,8 @@
         }
         dm.welfareLeaveGrants.push(welfareGrant);
         
-        // 직원 데이터 저장
-        dm.saveData('employees', dm.employees);
+        // 사용자 데이터 업데이트 (users 테이블)
+        dm.updateEmployee(employee.id, { welfareLeaveDays: updatedWelfareDays });
         dm.saveData('welfareLeaveGrants', dm.welfareLeaveGrants);
 
         alert(`${employee.name} 직원에게 복지휴가 ${welfareLeaveDays}일이 지급되었습니다.`);
@@ -1893,13 +1891,9 @@
             dm.clearWelfareLeaveGrants();
         }
 
-        // 페이지 로드 시 자동으로 회원 데이터 동기화 (한 번만 실행)
-        if (typeof window.authManager !== 'undefined' && !window.employeeManagementInitialized) {
-            console.log('직원관리 페이지에서 자동 동기화 실행');
-            // 기존 삭제된 사용자 정리 (일회성)
-            window.authManager.cleanupDeletedUsers();
-            // 강제 동기화로 모든 데이터 일치시키기
-            window.authManager.forceSyncUsersToEmployees();
+        // 페이지 초기화 플래그 설정 (통합 완료로 동기화 불필요)
+        if (!window.employeeManagementInitialized) {
+            console.log('직원관리 페이지 초기화 완료 (users 테이블 통합)');
             window.employeeManagementInitialized = true;
         }
 

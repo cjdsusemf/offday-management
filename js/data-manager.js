@@ -1,23 +1,20 @@
 ﻿// 데이터 관리자 클래스
 class DataManager {
     constructor() {
-        this.employees = this.loadData('employees') || [];
+        // users는 authManager에서 관리하므로 참조만 사용
         this.leaveRequests = this.loadData('leaveRequests') || [];
         this.settings = this.loadData('settings') || {};
-        this.deletedEmployees = this.loadData('deletedEmployees') || []; // 삭제된 직원 추적
         this.branchTeams = this.loadData('branchTeams') || {}; // 지점별 팀 관리
         this.branches = this.loadData('branches') || []; // 지점 데이터
         
         // 샘플 데이터 자동 생성 비활성화 (사용자가 명시적으로 허용한 경우에만 생성)
         // 로컬스토리지에 offday_auto_seed === '1' 일 때만 시드 생성
         const allowAutoSeed = localStorage.getItem('offday_auto_seed') === '1';
-        if (allowAutoSeed && this.employees.length === 0 && this.leaveRequests.length === 0) {
+        const users = this.getUsers();
+        if (allowAutoSeed && users.length === 0 && this.leaveRequests.length === 0) {
             console.log('샘플 데이터 자동 시드 허용됨 - 테스트 데이터 생성');
             this.createSampleData();
         }
-        
-        // 기존 직원 데이터 마이그레이션 실행
-        this.migrateEmployeeData();
         
         // 복지휴가 지급 기록 초기화 (테스트 데이터 제거)
         this.initializeWelfareLeaveGrants();
@@ -29,12 +26,18 @@ class DataManager {
         
         // 지점별 팀 데이터 초기화
         this.initializeBranchTeams();
-        
-        // 기존 직원 데이터 마이그레이션
-        this.migrateEmployeeDataToBranchTeams();
 
         // 데이터 정리 로직 비활성화 (사용자가 명시적으로 요청할 때만 실행)
         // this.cleanLeaveRequests();
+    }
+    
+    // users 참조 (authManager에서 관리)
+    getUsers() {
+        return JSON.parse(localStorage.getItem('users') || '[]');
+    }
+    
+    saveUsers(users) {
+        localStorage.setItem('users', JSON.stringify(users));
     }
     
     // 수동 데이터 정리 (사용자가 명시적으로 요청할 때만)
@@ -46,29 +49,33 @@ class DataManager {
     
     // 모든 데이터 클리어 (개발용)
     clearAllData() {
-        localStorage.removeItem('employees');
+        localStorage.removeItem('users');
         localStorage.removeItem('leaveRequests');
         localStorage.removeItem('settings');
-        localStorage.removeItem('deletedEmployees');
+        localStorage.removeItem('deletedUsers');
         localStorage.removeItem('branchTeams');
         localStorage.removeItem('branches');
         console.log('✅ 모든 데이터가 클리어되었습니다.');
     }
 
-    // 고아/테스트 연차신청 정리: 직원 존재하지 않거나 테스트 이메일이면 제거 (관리자 계정 보호)
+    // 고아/테스트 연차신청 정리: 사용자 존재하지 않거나 테스트 이메일이면 제거 (관리자 계정 보호)
     cleanLeaveRequests() {
         try {
-            const employeesById = new Map((this.employees || []).map(e => [String(e.id), e]));
+            const users = this.getUsers();
+            const usersById = new Map(users.map(u => [String(u.id), u]));
             const before = (this.leaveRequests || []).length;
             this.leaveRequests = (this.leaveRequests || []).filter(req => {
-                const emp = employeesById.get(String(req.employeeId));
-                if (!emp) return false; // 고아 데이터 제거
+                const user = usersById.get(String(req.employeeId));
+                if (!user) return false; // 고아 데이터 제거
                 
-                // 관리자 계정은 보호 (admin@test.com도 유지)
-                if (emp.email === 'admin@test.com') return true;
+                // 관리자 계정은 보호
+                if (user.role === 'admin') return true;
                 
-                // 나머지 테스트 계정만 제거
-                if (typeof emp.email === 'string' && emp.email.endsWith('@test.com')) return false;
+                // 삭제된 사용자의 연차는 제거
+                if (user.status === 'deleted') return false;
+                
+                // 테스트 계정만 제거
+                if (typeof user.email === 'string' && user.email.endsWith('@test.com')) return false;
                 return true;
             });
             const after = this.leaveRequests.length;
@@ -84,31 +91,47 @@ class DataManager {
     // 관리자 계정 복구 및 연차 신청 복구
     restoreAdminAccount() {
         try {
-            // 관리자 직원 데이터 확인/생성
-            let adminEmployee = this.employees.find(emp => emp.email === 'admin@test.com');
-            if (!adminEmployee) {
-                adminEmployee = {
-                    id: 2,
-                    name: 'admin',
-                    email: 'admin@test.com',
+            const users = this.getUsers();
+            // 관리자 사용자 데이터 확인/생성
+            let adminUser = users.find(u => u.email === 'admin@offday.com' || u.email === 'admin@test.com');
+            if (!adminUser) {
+                adminUser = {
+                    id: 'admin',
+                    username: 'admin',
+                    password: 'admin123',
+                    role: 'admin',
+                    roleId: 1,  // 관리자 역할
+                    name: '관리자',
+                    email: 'admin@offday.com',
+                    phone: '010-0000-0000',
+                    birthDate: '1990-01-01',
+                    profileImage: '',
                     branch: '본사',
                     branchId: 1,
                     department: '경영관리팀',
                     team: '경영관리팀',
                     position: '관리자',
-                    hireDate: '2022-01-01',
-                    phone: '010-2345-6789'
+                    hireDate: '2020-01-01',
+                    annualLeaveDays: 15,
+                    usedLeaveDays: 0,
+                    remainingLeaveDays: 15,
+                    welfareLeaveDays: 0,
+                    status: 'active',
+                    resignationDate: null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    deletedAt: null
                 };
-                this.employees.push(adminEmployee);
-                this.saveData('employees', this.employees);
-                console.log('✅ 관리자 직원 계정이 복구되었습니다.');
+                users.push(adminUser);
+                this.saveUsers(users);
+                console.log('✅ 관리자 사용자 계정이 복구되었습니다.');
             }
             
             // 관리자 연차 신청 복구 (샘플 데이터에서)
             const adminLeaveRequest = {
                 id: 2,
-                employeeId: adminEmployee.id,
-                employeeName: adminEmployee.name,
+                employeeId: adminUser.id,
+                employeeName: adminUser.name,
                 leaveType: '개인사정',
                 startDate: '2025-10-29',
                 endDate: '2025-10-29',
@@ -134,23 +157,23 @@ class DataManager {
         }
     }
     
-    // 모든 직원 관련 데이터 강제 삭제
-    clearAllEmployeeData() {
-        localStorage.removeItem('employees');
+    // 모든 사용자 관련 데이터 강제 삭제
+    clearAllUserData() {
         localStorage.removeItem('leaveRequests');
-        localStorage.removeItem('deletedEmployees');
-        localStorage.removeItem('deletedUsers'); // 삭제된 사용자 목록도 삭제
+        localStorage.removeItem('deletedUsers');
         
         // 사용자 계정도 함께 삭제 (admin 제외)
-        const users = JSON.parse(localStorage.getItem("offday_users") || "[]");
+        const users = this.getUsers();
         const adminUser = users.find(u => u.role === 'admin');
         if (adminUser) {
-            localStorage.setItem("offday_users", JSON.stringify([adminUser]));
+            this.saveUsers([adminUser]);
             console.log('🗑️ 관리자 계정 제외하고 모든 사용자 계정이 삭제되었습니다.');
+        } else {
+            this.saveUsers([]);
+            console.log('🗑️ 모든 사용자 계정이 삭제되었습니다.');
         }
         
-        console.log('🗑️ 모든 직원 데이터와 삭제된 사용자 목록이 삭제되었습니다.');
-        console.log('✅ 회원가입 시 자동 직원 데이터 추가 기능은 유지됩니다.');
+        console.log('🗑️ 모든 사용자 데이터와 삭제된 사용자 목록이 삭제되었습니다.');
     }
 
     // 로컬 스토리지에서 데이터 로드
@@ -186,73 +209,148 @@ class DataManager {
     // 샘플 데이터 생성 (빈 배열로 시작)
     createSampleData() {
         // 빈 배열로 초기화
-        this.employees = [];
         this.leaveRequests = [];
-        this.deletedEmployees = [];
         
-        // 테스트용 직원 데이터 추가 (다양한 지점)
-        this.employees = [
+        // 테스트용 사용자 데이터 추가 (다양한 지점)
+        const sampleUsers = [
             {
-                id: 1,
+                id: '1',
+                username: 'jang@test.com',
+                password: 'test123',
+                role: 'user',
+                roleId: 4,
                 name: '장경민',
                 email: 'jang@test.com',
+                phone: '010-1234-5678',
+                birthDate: '1990-01-01',
+                profileImage: '',
                 branch: '본사',
                 branchId: 1,
                 department: '개발팀',
                 team: '개발팀',
                 position: '개발자',
                 hireDate: '2023-01-01',
-                phone: '010-1234-5678'
+                annualLeaveDays: 15,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 15,
+                welfareLeaveDays: 0,
+                status: 'active',
+                resignationDate: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                deletedAt: null
             },
             {
-                id: 2,
-                name: 'admin',
-                email: 'admin@test.com',
+                id: 'admin',
+                username: 'admin',
+                password: 'admin123',
+                role: 'admin',
+                roleId: 1,
+                name: '관리자',
+                email: 'admin@offday.com',
+                phone: '010-0000-0000',
+                birthDate: '1990-01-01',
+                profileImage: '',
                 branch: '본사',
                 branchId: 1,
                 department: '경영관리팀',
                 team: '경영관리팀',
                 position: '관리자',
-                hireDate: '2022-01-01',
-                phone: '010-2345-6789'
+                hireDate: '2020-01-01',
+                annualLeaveDays: 15,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 15,
+                welfareLeaveDays: 0,
+                status: 'active',
+                resignationDate: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                deletedAt: null
             },
             {
-                id: 3,
+                id: '3',
+                username: 'kim@test.com',
+                password: 'test123',
+                role: 'user',
+                roleId: 4,
                 name: '김강남',
                 email: 'kim@test.com',
+                phone: '010-3456-7890',
+                birthDate: '1992-03-15',
+                profileImage: '',
                 branch: '강남점',
                 branchId: 2,
                 department: '영업팀',
                 team: '영업팀',
                 position: '영업사원',
                 hireDate: '2023-03-01',
-                phone: '010-3456-7890'
+                annualLeaveDays: 15,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 15,
+                welfareLeaveDays: 0,
+                status: 'active',
+                resignationDate: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                deletedAt: null
             },
             {
-                id: 4,
+                id: '4',
+                username: 'park@test.com',
+                password: 'test123',
+                role: 'user',
+                roleId: 4,
                 name: '박부산',
                 email: 'park@test.com',
+                phone: '010-4567-8901',
+                birthDate: '1988-07-22',
+                profileImage: '',
                 branch: '부산점',
                 branchId: 3,
                 department: '컨설팅팀',
                 team: '컨설팅팀',
                 position: '컨설턴트',
                 hireDate: '2023-05-01',
-                phone: '010-4567-8901'
+                annualLeaveDays: 15,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 15,
+                welfareLeaveDays: 0,
+                status: 'active',
+                resignationDate: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                deletedAt: null
             },
             {
-                id: 5,
+                id: '5',
+                username: 'lee@test.com',
+                password: 'test123',
+                role: 'user',
+                roleId: 4,
                 name: '이대구',
                 email: 'lee@test.com',
+                phone: '010-5678-9012',
+                birthDate: '1995-11-30',
+                profileImage: '',
                 branch: '대구점',
                 branchId: 4,
                 department: '지원팀',
                 team: '지원팀',
                 position: '지원직',
                 hireDate: '2023-07-01',
-                phone: '010-5678-9012'
+                annualLeaveDays: 15,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 15,
+                welfareLeaveDays: 0,
+                status: 'active',
+                resignationDate: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                deletedAt: null
             }
         ];
+        
+        this.saveUsers(sampleUsers);
         
         // 테스트용 연차 데이터 추가 (다양한 지점)
         this.leaveRequests = [
@@ -350,11 +448,10 @@ class DataManager {
         ];
         
         // localStorage에 데이터 저장
-        this.saveData('employees', this.employees);
         this.saveData('leaveRequests', this.leaveRequests);
-        this.saveData('deletedEmployees', []);
+        this.saveData('deletedUsers', []);
         
-        console.log('✅ 테스트용 직원 및 연차 데이터가 생성되었습니다.');
+        console.log('✅ 테스트용 사용자 및 연차 데이터가 생성되었습니다.');
     }
 
     // 샘플 지점 데이터 생성
@@ -491,51 +588,73 @@ class DataManager {
             this.leaveRequests[index].approvedDate = new Date().toISOString().split('T')[0];
             this.leaveRequests[index].approvedBy = approvedBy;
             
-            // 승인된 경우 직원의 사용 연차일 업데이트
+            // 승인된 경우 사용자의 사용 연차일 업데이트
             if (status === 'approved') {
                 const request = this.leaveRequests[index];
-                const employee = this.employees.find(emp => emp.id === request.employeeId);
-                if (employee) {
-                    employee.usedLeaveDays += request.days;
-                    employee.remainingLeaveDays -= request.days;
+                const users = this.getUsers();
+                const userIndex = users.findIndex(u => u.id === request.employeeId);
+                if (userIndex !== -1) {
+                    users[userIndex].usedLeaveDays = (users[userIndex].usedLeaveDays || 0) + request.days;
+                    users[userIndex].remainingLeaveDays = (users[userIndex].remainingLeaveDays || 15) - request.days;
+                    users[userIndex].updatedAt = new Date().toISOString();
+                    this.saveUsers(users);
                 }
             }
             
             this.saveData('leaveRequests', this.leaveRequests);
-            this.saveData('employees', this.employees);
             return this.leaveRequests[index];
         }
         return null;
     }
 
-    // 직원 추가
-    addEmployee(employee) {
-        const newEmployee = {
-            ...employee,
-            id: Date.now(),
+    // 사용자 추가 (이전 addEmployee와의 호환성)
+    addEmployee(employeeData) {
+        // users 테이블에 추가
+        const users = this.getUsers();
+        const newUser = {
+            // 인증 정보
+            id: Date.now().toString(),
+            username: employeeData.email || employeeData.username,
+            password: null, // 비밀번호는 별도 설정 필요
+            role: 'user',
+            roleId: 4,  // 일반 사용자 역할
+            
+            // 개인 정보
+            name: employeeData.name,
+            email: employeeData.email,
+            phone: employeeData.phone || '',
+            birthDate: employeeData.birthDate || '',
+            profileImage: '',
+            
+            // 회사 정보
+            branch: employeeData.branch || '',
+            branchId: employeeData.branchId || null,
+            department: employeeData.department || '',
+            team: employeeData.team || employeeData.department || '',
+            position: employeeData.position || '',
+            hireDate: employeeData.hireDate || '',
+            
+            // 연차 정보
+            annualLeaveDays: employeeData.annualLeaveDays || 15,
             usedLeaveDays: 0,
-            remainingLeaveDays: employee.annualLeaveDays || 15,
-            welfareLeaveDays: employee.welfareLeaveDays || 0 // 복지휴가는 0으로 초기화
+            remainingLeaveDays: employeeData.annualLeaveDays || 15,
+            welfareLeaveDays: employeeData.welfareLeaveDays || 0,
+            
+            // 상태 정보
+            status: 'active',
+            resignationDate: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            deletedAt: null
         };
-        this.employees.push(newEmployee);
-        this.saveData('employees', this.employees);
-        return newEmployee;
+        users.push(newUser);
+        this.saveUsers(users);
+        return newUser;
     }
 
-    // 기존 직원 데이터 마이그레이션 (welfareLeaveDays 초기화)
+    // 기존 사용자 데이터 마이그레이션 - 더 이상 필요 없음 (통합 완료)
     migrateEmployeeData() {
-        let updated = false;
-        this.employees.forEach(employee => {
-            if (employee.welfareLeaveDays === undefined) {
-                employee.welfareLeaveDays = 0;
-                updated = true;
-            }
-        });
-        
-        if (updated) {
-            this.saveData('employees', this.employees);
-            console.log('직원 데이터 마이그레이션 완료: welfareLeaveDays 초기화');
-        }
+        console.log('사용자 데이터 마이그레이션: 통합 완료로 인해 스킵');
     }
 
     // 복지휴가 지급 기록 초기화
@@ -543,11 +662,13 @@ class DataManager {
         this.welfareLeaveGrants = [];
         this.saveData('welfareLeaveGrants', this.welfareLeaveGrants);
         
-        // 모든 직원의 welfareLeaveDays도 0으로 초기화
-        this.employees.forEach(employee => {
-            employee.welfareLeaveDays = 0;
+        // 모든 사용자의 welfareLeaveDays도 0으로 초기화
+        const users = this.getUsers();
+        users.forEach(user => {
+            user.welfareLeaveDays = 0;
+            user.updatedAt = new Date().toISOString();
         });
-        this.saveData('employees', this.employees);
+        this.saveUsers(users);
         
         console.log('복지휴가 지급 기록이 모두 삭제되었습니다.');
     }
@@ -564,89 +685,103 @@ class DataManager {
         }
     }
 
-    // 특정 직원의 복지휴가 지급 기록 삭제
+    // 특정 사용자의 복지휴가 지급 기록 삭제
     clearEmployeeWelfareLeaveGrants(employeeId) {
         if (!this.welfareLeaveGrants) {
             this.welfareLeaveGrants = [];
         }
         
-        // 해당 직원의 복지휴가 지급 기록 삭제
+        // 해당 사용자의 복지휴가 지급 기록 삭제
         this.welfareLeaveGrants = this.welfareLeaveGrants.filter(grant => grant.employeeId !== employeeId);
         this.saveData('welfareLeaveGrants', this.welfareLeaveGrants);
         
-        // 해당 직원의 welfareLeaveDays도 0으로 초기화
-        const employee = this.employees.find(emp => emp.id === employeeId);
-        if (employee) {
-            employee.welfareLeaveDays = 0;
-            this.saveData('employees', this.employees);
+        // 해당 사용자의 welfareLeaveDays도 0으로 초기화
+        const users = this.getUsers();
+        const user = users.find(u => u.id === employeeId);
+        if (user) {
+            user.welfareLeaveDays = 0;
+            user.updatedAt = new Date().toISOString();
+            this.saveUsers(users);
         }
         
-        console.log(`직원 ID ${employeeId}의 복지휴가 지급 기록이 삭제되었습니다.`);
+        console.log(`사용자 ID ${employeeId}의 복지휴가 지급 기록이 삭제되었습니다.`);
     }
 
-    // 직원 업데이트
+    // 사용자 업데이트 (이전 updateEmployee와의 호환성)
     updateEmployee(id, employeeData) {
-        const index = this.employees.findIndex(emp => emp.id === id);
+        const users = this.getUsers();
+        const index = users.findIndex(u => u.id === id);
         if (index !== -1) {
-            this.employees[index] = { ...this.employees[index], ...employeeData };
-            this.saveData('employees', this.employees);
-            return this.employees[index];
+            users[index] = { ...users[index], ...employeeData };
+            users[index].updatedAt = new Date().toISOString();
+            this.saveUsers(users);
+            return users[index];
         }
         return null;
     }
 
-    // 직원 삭제
+    // 사용자 삭제 (이전 deleteEmployee와의 호환성)
     deleteEmployee(id) {
-        const index = this.employees.findIndex(emp => emp.id === id);
+        const users = this.getUsers();
+        const index = users.findIndex(u => u.id === id);
         if (index !== -1) {
-            const deletedEmployee = this.employees[index];
+            const deletedUser = users[index];
             
-            // 삭제된 직원을 추적 목록에 추가
-            this.deletedEmployees.push({
-                email: deletedEmployee.email,
-                deletedAt: new Date().toISOString()
-            });
+            // 소프트 삭제
+            users[index].status = 'deleted';
+            users[index].deletedAt = new Date().toISOString();
             
-            // 직원 목록에서 제거
-            this.employees.splice(index, 1);
-            
-            // 사용자 계정도 함께 삭제
+            // 사용자 계정도 함께 삭제 (authManager 사용)
             if (typeof window.authManager !== 'undefined') {
-                window.authManager.deleteUserByEmail(deletedEmployee.email);
+                window.authManager.deleteUserByEmail(deletedUser.email);
             }
             
             // 데이터 저장
-            this.saveData('employees', this.employees);
-            this.saveData('deletedEmployees', this.deletedEmployees);
+            this.saveUsers(users);
             
             return true;
         }
         return false;
     }
 
-    // 삭제된 직원 목록 조회
+    // 삭제된 사용자 목록 조회 (이전 getDeletedEmployees와의 호환성)
     getDeletedEmployees() {
-        return this.deletedEmployees;
+        const users = this.getUsers();
+        return users.filter(u => u.status === 'deleted');
     }
 
-    // 삭제된 직원 복원
+    // 삭제된 사용자 복원
     restoreEmployee(email) {
-        const deletedIndex = this.deletedEmployees.findIndex(deleted => deleted.email === email);
-        if (deletedIndex !== -1) {
-            // 삭제 목록에서 제거
-            this.deletedEmployees.splice(deletedIndex, 1);
-            this.saveData('deletedEmployees', this.deletedEmployees);
+        const users = this.getUsers();
+        const user = users.find(u => u.email === email && u.status === 'deleted');
+        if (user) {
+            user.status = 'active';
+            user.deletedAt = null;
+            user.updatedAt = new Date().toISOString();
+            this.saveUsers(users);
+            
+            // authManager의 삭제 목록에서도 제거
+            if (typeof window.authManager !== 'undefined') {
+                window.authManager.restoreUserByEmail(email);
+            }
             return true;
         }
         return false;
     }
 
-    // 삭제된 직원 영구 삭제
+    // 삭제된 사용자 영구 삭제
     permanentlyDeleteEmployee(email) {
-        const deletedIndex = this.deletedEmployees.findIndex(deleted => deleted.email === email);
-        if (deletedIndex !== -1) {
-            this.deletedEmployees.splice(deletedIndex, 1);
-            this.saveData('deletedEmployees', this.deletedEmployees);
+        const users = this.getUsers();
+        const userIndex = users.findIndex(u => u.email === email && u.status === 'deleted');
+        if (userIndex !== -1) {
+            // 완전히 제거
+            users.splice(userIndex, 1);
+            this.saveUsers(users);
+            
+            // authManager의 삭제 목록에서도 제거
+            if (typeof window.authManager !== 'undefined') {
+                window.authManager.permanentlyDeleteUserByEmail(email);
+            }
             return true;
         }
         return false;
@@ -654,11 +789,13 @@ class DataManager {
 
     // 퇴사 처리
     resignEmployee(id, resignationDate = null) {
-        const employeeIndex = this.employees.findIndex(emp => emp.id === id);
-        if (employeeIndex !== -1) {
-            this.employees[employeeIndex].status = 'resigned';
-            this.employees[employeeIndex].resignationDate = resignationDate || new Date().toISOString().split('T')[0];
-            this.saveData('employees', this.employees);
+        const users = this.getUsers();
+        const userIndex = users.findIndex(u => u.id === id);
+        if (userIndex !== -1) {
+            users[userIndex].status = 'resigned';
+            users[userIndex].resignationDate = resignationDate || new Date().toISOString().split('T')[0];
+            users[userIndex].updatedAt = new Date().toISOString();
+            this.saveUsers(users);
             return true;
         }
         return false;
@@ -666,27 +803,36 @@ class DataManager {
 
     // 재직 처리 (퇴사 취소)
     reactivateEmployee(id) {
-        const employeeIndex = this.employees.findIndex(emp => emp.id === id);
-        if (employeeIndex !== -1) {
-            this.employees[employeeIndex].status = 'active';
-            delete this.employees[employeeIndex].resignationDate;
-            this.saveData('employees', this.employees);
+        const users = this.getUsers();
+        const userIndex = users.findIndex(u => u.id === id);
+        if (userIndex !== -1) {
+            users[userIndex].status = 'active';
+            users[userIndex].resignationDate = null;
+            users[userIndex].updatedAt = new Date().toISOString();
+            this.saveUsers(users);
             return true;
         }
         return false;
     }
 
-    // 활성 직원 목록 조회
+    // 활성 사용자 목록 조회 (이전 getActiveEmployees와의 호환성)
     getActiveEmployees() {
-        return this.employees.filter(emp => emp.status === 'active');
+        const users = this.getUsers();
+        return users.filter(u => u.status === 'active');
+    }
+    
+    // employees 속성 getter (호환성)
+    get employees() {
+        return this.getActiveEmployees();
     }
 
     // 퇴사자 목록 조회
     getResignedEmployees() {
-        return this.employees.filter(emp => emp.status === 'resigned');
+        const users = this.getUsers();
+        return users.filter(u => u.status === 'resigned');
     }
 
-    // 직원이 연차 신청 내역이 있는지 확인
+    // 사용자가 연차 신청 내역이 있는지 확인
     hasLeaveRequests(employeeId) {
         return this.leaveRequests.some(request => request.employeeId === employeeId);
     }
@@ -783,13 +929,14 @@ class DataManager {
         return false;
     }
 
-    // 기존 직원 데이터 마이그레이션 (지점별 팀 구조에 맞게)
+    // 기존 사용자 데이터 마이그레이션 (지점별 팀 구조에 맞게)
     migrateEmployeeDataToBranchTeams() {
         let migrated = false;
+        const users = this.getUsers();
         
-        this.employees.forEach(employee => {
-            const branchName = employee.branch;
-            const departmentName = employee.department;
+        users.forEach(user => {
+            const branchName = user.branch;
+            const departmentName = user.department;
             
             // 해당 지점에 팀이 없으면 추가
             if (branchName && departmentName) {
@@ -807,7 +954,7 @@ class DataManager {
         
         if (migrated) {
             this.saveData('branchTeams', this.branchTeams);
-            console.log('직원 데이터가 지점별 팀 구조로 마이그레이션되었습니다.');
+            console.log('사용자 데이터가 지점별 팀 구조로 마이그레이션되었습니다.');
         }
     }
 
@@ -830,7 +977,8 @@ class DataManager {
 
     // 통계 데이터 가져오기
     getStatistics() {
-        const totalEmployees = this.employees.length;
+        const users = this.getActiveEmployees();
+        const totalEmployees = users.length;
         const totalLeaveRequests = this.leaveRequests.length;
         const pendingRequests = this.leaveRequests.filter(req => req.status === 'pending').length;
         const approvedRequests = this.leaveRequests.filter(req => req.status === 'approved').length;
@@ -840,8 +988,8 @@ class DataManager {
             .filter(req => req.status === 'approved')
             .reduce((sum, req) => sum + req.days, 0);
         
-        const averageRemainingDays = this.employees.length > 0 
-            ? this.employees.reduce((sum, emp) => sum + emp.remainingLeaveDays, 0) / this.employees.length 
+        const averageRemainingDays = users.length > 0 
+            ? users.reduce((sum, user) => sum + (user.remainingLeaveDays || 0), 0) / users.length 
             : 0;
 
         return {

@@ -1,0 +1,29 @@
+{
+  "name": "offday-management-system",
+  "version": "2.0.0",
+  "description": "현대적인 연차 관리 시스템 - Supabase & Vercel",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx http-server -p 3000 -o",
+    "start": "npx http-server -p 8080",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel"
+  },
+  "keywords": [
+    "leave-management",
+    "offday",
+    "hr",
+    "supabase",
+    "vercel"
+  ],
+  "author": "Your Company",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/offday-management"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
+}
+

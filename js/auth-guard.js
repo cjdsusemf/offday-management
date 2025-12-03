@@ -49,7 +49,67 @@ class AuthGuard {
     // 관리자 권한 체크
     static isAdmin() {
         const currentUser = this.getCurrentUser();
-        return currentUser && currentUser.role === 'admin';
+        if (!currentUser) return false;
+        
+        // roleManager가 있으면 사용
+        if (window.roleManager) {
+            return window.roleManager.isAdmin(currentUser);
+        }
+        
+        // 폴백: role 문자열로 확인
+        return currentUser.role === 'admin';
+    }
+    
+    // 매니저 이상 권한 체크
+    static isManagerOrAbove() {
+        const currentUser = this.getCurrentUser();
+        if (!currentUser) return false;
+        
+        if (window.roleManager) {
+            return window.roleManager.isManagerOrAbove(currentUser);
+        }
+        
+        // 폴백
+        return currentUser.role === 'admin' || currentUser.role === 'manager';
+    }
+    
+    // 특정 권한 체크
+    static hasPermission(permission) {
+        const currentUser = this.getCurrentUser();
+        if (!currentUser) return false;
+        
+        if (window.roleManager) {
+            return window.roleManager.hasPermission(currentUser, permission);
+        }
+        
+        // 폴백: 관리자는 모든 권한
+        return currentUser.role === 'admin';
+    }
+    
+    // 여러 권한 중 하나라도 있는지 체크
+    static hasAnyPermission(permissions) {
+        const currentUser = this.getCurrentUser();
+        if (!currentUser) return false;
+        
+        if (window.roleManager) {
+            return window.roleManager.hasAnyPermission(currentUser, permissions);
+        }
+        
+        // 폴백
+        return currentUser.role === 'admin';
+    }
+    
+    // 모든 권한을 가지고 있는지 체크
+    static hasAllPermissions(permissions) {
+        const currentUser = this.getCurrentUser();
+        if (!currentUser) return false;
+        
+        if (window.roleManager) {
+            return window.roleManager.hasAllPermissions(currentUser, permissions);
+        }
+        
+        // 폴백
+        return currentUser.role === 'admin';
     }
     
     // 관리자 페이지 접근 체크 (비관리자 접근 시 대시보드로 리다이렉트)
@@ -61,6 +121,36 @@ class AuthGuard {
         if (!this.isAdmin()) {
             alert('관리자만 접근할 수 있는 페이지입니다.');
             window.location.href = 'index.html';
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // 특정 권한이 필요한 페이지 접근 체크
+    static checkPermissionAccess(permission, redirectUrl = 'index.html') {
+        if (!this.checkAuth()) {
+            return false;
+        }
+        
+        if (!this.hasPermission(permission)) {
+            alert('이 페이지에 접근할 권한이 없습니다.');
+            window.location.href = redirectUrl;
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // 여러 권한 중 하나라도 있어야 하는 페이지 접근 체크
+    static checkAnyPermissionAccess(permissions, redirectUrl = 'index.html') {
+        if (!this.checkAuth()) {
+            return false;
+        }
+        
+        if (!this.hasAnyPermission(permissions)) {
+            alert('이 페이지에 접근할 권한이 없습니다.');
+            window.location.href = redirectUrl;
             return false;
         }
         
