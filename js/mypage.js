@@ -1,5 +1,5 @@
 ﻿// 마이페이지 JavaScript 기능
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // 인증 확인
     if (!checkAuth()) {
         window.location.href = 'login.html';
@@ -9,6 +9,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // 초기화
     initializeMyPage();
     loadUserProfile();
+    
+    // 🔥 Supabase 로드 대기
+    if (window.dataManager && window.dataManager.isSupabaseLoading) {
+        console.log('⏳ [MyPage] Supabase 데이터 로드 대기 중...');
+        await new Promise(resolve => {
+            const checkInterval = setInterval(() => {
+                if (!window.dataManager.isSupabaseLoading) {
+                    clearInterval(checkInterval);
+                    console.log('✅ [MyPage] Supabase 데이터 로드 완료!');
+                    resolve();
+                }
+            }, 100);
+            
+            // 타임아웃: 5초 후에는 강제로 진행
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                console.warn('⚠️ [MyPage] Supabase 로드 타임아웃 - 진행');
+                resolve();
+            }, 5000);
+        });
+    }
+    
     loadLeaveInfo();
     // 데이터 변경 시 휴가 정보와 신청 내역도 즉시 동기화
     window.addEventListener('dm:updated', (e) => {

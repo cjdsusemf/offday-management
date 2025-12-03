@@ -7,6 +7,9 @@ class DataManager {
         this.branchTeams = this.loadData('branchTeams') || {}; // 지점별 팀 관리
         this.branches = this.loadData('branches') || []; // 지점 데이터
         
+        // 🔥 Supabase 로딩 플래그
+        this.isSupabaseLoading = false;
+        
         // 🔥 Supabase에서 연차 데이터 동기화
         this.syncFromSupabase();
         
@@ -36,6 +39,7 @@ class DataManager {
     
     // 🔥 Supabase와 동기화
     async syncFromSupabase() {
+        this.isSupabaseLoading = true;  // ✅ 로딩 시작
         try {
             // Supabase 클라이언트가 준비될 때까지 대기
             if (!window.supabaseClient) {
@@ -65,6 +69,8 @@ class DataManager {
             }
         } catch (err) {
             console.error('[DataManager] Supabase 동기화 오류:', err);
+        } finally {
+            this.isSupabaseLoading = false;  // ✅ 로딩 완료
         }
     }
     

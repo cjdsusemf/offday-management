@@ -505,13 +505,38 @@
             if (!AuthGuard.checkAuth()) return;
             
             // 데이터 동기화 및 연차현황 초기화
-            const initializeLeaveStatus = () => {
+            const initializeLeaveStatus = async () => {
                 if (typeof window.dataManager !== 'undefined' && typeof window.authManager !== 'undefined') {
                     console.log('연차현황 페이지 - 데이터 동기화 실행');
                     
+                    // 🔥 Supabase 로드가 완료될 때까지 대기
+                    if (window.supabaseClient && window.dataManager.isSupabaseLoading) {
+                        console.log('⏳ Supabase 데이터 로드 대기 중...');
+                        await new Promise(resolve => {
+                            const checkInterval = setInterval(() => {
+                                if (!window.dataManager.isSupabaseLoading) {
+                                    clearInterval(checkInterval);
+                                    console.log('✅ Supabase 데이터 로드 완료!');
+                                    resolve();
+                                }
+                            }, 100);
+                            
+                            // 타임아웃: 5초 후에는 강제로 진행
+                            setTimeout(() => {
+                                clearInterval(checkInterval);
+                                console.warn('⚠️ Supabase 로드 타임아웃 - 진행');
+                                resolve();
+                            }, 5000);
+                        });
+                    }
+                    
                     // 데이터 일관성 검증 및 동기화
-                    window.authManager.validateAndFixDataConsistency();
-                    window.authManager.forceSyncUsersToEmployees();
+                    if (window.authManager.validateAndFixDataConsistency) {
+                        window.authManager.validateAndFixDataConsistency();
+                    }
+                    if (window.authManager.forceSyncUsersToEmployees) {
+                        window.authManager.forceSyncUsersToEmployees();
+                    }
                     
                     // 연차현황 클래스 초기화
                     if (typeof LeaveStatus !== 'undefined') {
