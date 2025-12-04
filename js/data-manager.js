@@ -745,8 +745,8 @@ class DataManager {
         this.saveData('branches', this.branches);
     }
 
-    // 연차 신청 상태 업데이트
-    updateLeaveRequestStatus(id, status, approvedBy = '관리자') {
+    // 연차 신청 상태 업데이트 (Supabase 우선, LocalStorage 병행)
+    async updateLeaveRequestStatus(id, status, approvedBy = '관리자') {
         const index = this.leaveRequests.findIndex(req => req.id === id);
         if (index !== -1) {
             this.leaveRequests[index].status = status;
@@ -766,7 +766,20 @@ class DataManager {
                 }
             }
             
+            // LocalStorage 업데이트
             this.saveData('leaveRequests', this.leaveRequests);
+            
+            // Supabase 업데이트 (백그라운드)
+            this.updateLeaveRequestInSupabase(id, status, approvedBy)
+                .then((ok) => {
+                    if (!ok) {
+                        console.warn('[DataManager] Supabase 연차 상태 업데이트 실패 (로컬 데이터는 유지됨)');
+                    }
+                })
+                .catch(err => {
+                    console.error('[DataManager] Supabase 연차 상태 업데이트 중 예외:', err);
+                });
+            
             return this.leaveRequests[index];
         }
         return null;
@@ -1151,6 +1164,166 @@ class DataManager {
             });
         
         return newRequest;
+    }
+
+    // Supabase에 연차 신청 저장
+    async saveLeaveRequestToSupabase(leaveRequest) {
+        try {
+            if (!window.supabaseClient || !window.supabaseClient.auth) {
+                console.warn('[DataManager] Supabase 연결 안 됨 - LocalStorage만 사용');
+                return false;
+            }
+
+            // RLS 정책을 만족하기 위해 auth.uid()와 employee_id를 일치시켜야 함
+            const { data: userData, error: userError } = await window.supabaseClient.auth.getUser();
+            if (userError || !userData || !userData.user) {
+                console.warn('[DataManager] Supabase 사용자 정보를 가져오지 못해 연차를 DB에 저장하지 않습니다.', userError);
+                return false;
+            }
+            const authUser = userData.user;
+
+            const payload = {
+                // id는 SERIAL이므로 명시하지 않으면 자동 생성됨
+                employee_id: authUser.id,                              // 🔥 auth.uid() 와 동일
+                employee_name: leaveRequest.employeeName,
+                leave_type: leaveRequest.leaveType,
+                start_date: leaveRequest.startDate,
+                end_date: leaveRequest.endDate,
+                days: leaveRequest.days,
+                reason: leaveRequest.reason || '사유 없음',            // ✅ 기본값
+                status: leaveRequest.status,
+                request_date: leaveRequest.requestDate,
+                approval_date: leaveRequest.approvalDate || null,
+                approver: leaveRequest.approver || null,
+                rejection_reason: leaveRequest.rejectionReason || null,
+                type: leaveRequest.type || '휴가'
+            };
+
+            const { data, error } = await window.supabaseClient
+                .from('leave_requests')
+                .insert([payload])
+                .select()
+                .single();
+            
+            if (error) {
+                console.error('[DataManager] ❌ Supabase 연차 저장 실패:', error);
+                return false;
+            }
+            
+            console.log('[DataManager] ✅ Supabase에 연차 저장 완료 (employee:', authUser.id, ', DB ID:', data.id, ')');
+            
+            // LocalStorage의 ID를 Supabase ID로 업데이트 (동기화를 위해)
+            const localIndex = this.leaveRequests.findIndex(r => r.id === leaveRequest.id);
+            if (localIndex !== -1) {
+                this.leaveRequests[localIndex].supabaseId = data.id;
+                this.saveData('leaveRequests', this.leaveRequests);
+            }
+            
+            return true;
+        } catch (err) {
+            console.error('[DataManager] Supabase 저장 오류:', err);
+            return false;
+        }
+    }
+
+    // Supabase에서 연차 신청 업데이트
+    async updateLeaveRequestInSupabase(requestId, status, approvedBy = '관리자') {
+        try {
+            if (!window.supabaseClient) {
+                console.warn('[DataManager] Supabase 연결 안 됨 - LocalStorage만 업데이트');
+                return false;
+            }
+
+            // LocalStorage에서 Supabase ID 찾기
+            const localRequest = this.leaveRequests.find(r => r.id === requestId);
+            if (!localRequest) {
+                console.warn('[DataManager] LocalStorage에서 연차 신청을 찾을 수 없음:', requestId);
+                return false;
+            }
+
+            const supabaseId = localRequest.supabaseId || requestId;
+            const approvalDate = new Date().toISOString().split('T')[0];
+
+            const { error } = await window.supabaseClient
+                .from('leave_requests')
+                .update({
+                    status: status,
+                    approval_date: approvalDate,
+                    approver: approvedBy
+                })
+                .eq('id', supabaseId);
+
+            if (error) {
+                console.error('[DataManager] ❌ Supabase 연차 상태 업데이트 실패:', error);
+                return false;
+            }
+
+            console.log('[DataManager] ✅ Supabase 연차 상태 업데이트 완료:', supabaseId, status);
+            return true;
+        } catch (err) {
+            console.error('[DataManager] Supabase 업데이트 중 오류:', err);
+            return false;
+        }
+    }
+
+    // Supabase에서 연차 데이터 동기화 (페이지 로드 시 호출)
+    async syncLeaveRequestsFromSupabase() {
+        try {
+            if (!window.supabaseClient || !window.supabaseClient.auth) {
+                console.warn('[DataManager] Supabase 연결 안 됨 - 동기화 건너뜀');
+                return false;
+            }
+
+            const { data: userData, error: userError } = await window.supabaseClient.auth.getUser();
+            if (userError || !userData || !userData.user) {
+                console.warn('[DataManager] Supabase 사용자 정보 없음 - 동기화 건너뜀');
+                return false;
+            }
+
+            const authUser = userData.user;
+            console.log(`[DataManager] Supabase 연차 동기화 시작 (User ID: ${authUser.id})...`);
+
+            // RLS에 의해 현재 사용자의 연차만 조회됨 (또는 관리자는 모든 연차)
+            const { data: leaveRows, error: leaveError } = await window.supabaseClient
+                .from('leave_requests')
+                .select('*')
+                .order('request_date', { ascending: false });
+
+            if (leaveError) {
+                console.error('[DataManager] Supabase leave_requests 로드 오류:', leaveError);
+                return false;
+            }
+
+            if (Array.isArray(leaveRows)) {
+                const normalized = leaveRows.map(row => ({
+                    id: row.id,
+                    supabaseId: row.id, // Supabase ID 저장
+                    employeeId: row.employee_id,
+                    employeeName: row.employee_name,
+                    leaveType: row.leave_type,
+                    startDate: row.start_date,
+                    endDate: row.end_date,
+                    days: row.days,
+                    reason: row.reason,
+                    status: row.status,
+                    requestDate: row.request_date,
+                    approvalDate: row.approval_date,
+                    approver: row.approver,
+                    rejectionReason: row.rejection_reason,
+                    type: row.type || '휴가'
+                }));
+
+                this.leaveRequests = normalized;
+                this.saveData('leaveRequests', this.leaveRequests);
+                console.log(`[DataManager] ✅ Supabase에서 ${normalized.length}개의 연차 동기화 완료`);
+                return true;
+            }
+
+            return false;
+        } catch (err) {
+            console.error('[DataManager] Supabase 동기화 중 오류:', err);
+            return false;
+        }
     }
 
     // 통계 데이터 가져오기

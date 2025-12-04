@@ -8,51 +8,74 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <div class="logo">
-                <i class="fas fa-calendar-alt"></i>
-                <h1>연차관리 시스템</h1>
-            </div>
-            <nav class="nav">
-                <a href="index.html" class="nav-link active">
-                    <i class="fas fa-home"></i> 대시보드
-                </a>
-                <a href="calendar.html" class="nav-link">
-                    <i class="fas fa-calendar-alt"></i> 캘린더
-                </a>
-                <a href="main-management.html" class="nav-link">
-                    <i class="fas fa-cogs"></i> 메인관리
-                </a>
-                <div class="user-dropdown">
-                    <a href="mypage.html" id="profile-link">
-                        <i class="fas fa-user" id="navAvatarIcon"></i> 마이페이지
-                    </a>
-                    <a href="#" id="logout-link">
-                        <i class="fas fa-sign-out-alt"></i> 로그아웃
-                    </a>
-                </div>
-            </nav>
+    <!-- 좌측 사이드바 네비게이션 -->
+    <aside class="sidebar">
+        <div class="logo">
+            <h1>연차관리</h1>
         </div>
-    </header>
+        <nav class="nav">
+            <a href="index.html" class="nav-link active">
+                <i class="fas fa-home"></i>
+                <span>홈</span>
+            </a>
+            <a href="calendar.html" class="nav-link">
+                <i class="fas fa-calendar"></i>
+                <span>캘린더</span>
+            </a>
+            <a href="leave-status.html" class="nav-link">
+                <i class="fas fa-umbrella-beach"></i>
+                <span>연차현황</span>
+            </a>
+            <a href="approval.html" class="nav-link">
+                <i class="fas fa-check-circle"></i>
+                <span>연차승인</span>
+            </a>
+            <a href="employee-management.html" class="nav-link">
+                <i class="fas fa-users"></i>
+                <span>직원관리</span>
+            </a>
+            <a href="branch-management.html" class="nav-link">
+                <i class="fas fa-building"></i>
+                <span>지점관리</span>
+            </a>
+            <a href="statistics.html" class="nav-link">
+                <i class="fas fa-chart-bar"></i>
+                <span>통계</span>
+            </a>
+            <a href="settings.html" class="nav-link">
+                <i class="fas fa-cog"></i>
+                <span>설정</span>
+            </a>
+        </nav>
+        <div class="user-dropdown">
+            <a href="mypage.html" class="nav-link" id="profile-link">
+                <i class="fas fa-user"></i>
+                <span>마이페이지</span>
+            </a>
+            <a href="#" class="nav-link" id="logout-link">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>로그아웃</span>
+            </a>
+        </div>
+    </aside>
 
+    <!-- 메인 컨텐츠 -->
     <main class="main">
-        <div class="container">
-            <!-- 개선된 페이지 헤더 -->
-            <div class="page-header">
-                <div class="header-content">
-                    <div class="header-text">
-                        <h2>대시보드</h2>
-                        <p>연차 현황을 한눈에 확인하고 관리하세요</p>
-                    </div>
-                    <div class="header-actions">
-                        <button class="btn btn-primary" onclick="location.href='leave-status.html'">
-                            <i class="fas fa-plus"></i>
-                            연차 신청
-                        </button>
-                    </div>
+        <!-- 페이지 헤더 -->
+        <div class="page-header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h2>대시보드</h2>
+                    <p>연차 현황을 한눈에 확인하고 관리하세요</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="location.href='leave-status.html'">
+                        <i class="fas fa-plus"></i>
+                        연차 신청
+                    </button>
                 </div>
             </div>
+        </div>
 
             <!-- 개선된 통계 카드 그리드 -->
             <div class="stats-grid">
@@ -216,7 +239,6 @@
                     </button>
                 </div>
             </div>
-        </div>
     </main>
 
     <div id="pending-modal" class="modal">

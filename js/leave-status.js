@@ -13,8 +13,13 @@ class LeaveStatus {
     }
 
     async init() {
-        // Supabase가 사용 가능한 경우, 현재 사용자 기준으로 연차 데이터를 먼저 동기화
-        await this.syncWithSupabaseIfAvailable();
+        // DataManager의 Supabase 동기화 메서드 사용 (일관성)
+        if (this.dataManager && this.dataManager.syncLeaveRequestsFromSupabase) {
+            await this.dataManager.syncLeaveRequestsFromSupabase();
+        }
+        
+        // 기존 syncWithSupabaseIfAvailable는 복지휴가용으로 유지
+        await this.syncWelfareLeaveFromSupabase();
 
         this.getCurrentUser();
         this.updateCurrentYear();
@@ -29,12 +34,10 @@ class LeaveStatus {
     }
 
     /**
-     * Supabase가 활성화되어 있으면, 현재 로그인한 사용자 기준으로
-     * leave_requests / welfare_leave_grants 를 Supabase에서 불러와
-     * this.dataManager.* 를 Supabase 데이터로 덮어씁니다.
-     * (이 페이지에서는 Supabase를 단일 진실로 사용)
+     * Supabase에서 현재 사용자의 복지휴가 지급 내역을 동기화합니다.
+     * (연차 신청은 DataManager.syncLeaveRequestsFromSupabase()가 담당)
      */
-    async syncWithSupabaseIfAvailable() {
+    async syncWelfareLeaveFromSupabase() {
         try {
             if (!window.supabaseClient || !window.supabaseClient.auth) {
                 return;
@@ -47,38 +50,7 @@ class LeaveStatus {
             }
             const authUser = userData.user;
 
-            // 1) 현재 사용자 연차 신청 불러오기
-            const { data: leaveRows, error: leaveError } = await window.supabaseClient
-                .from('leave_requests')
-                .select('*')
-                .order('request_date', { ascending: false });
-
-            if (leaveError) {
-                console.error('[LeaveStatus] Supabase leave_requests 로드 오류:', leaveError);
-            } else if (Array.isArray(leaveRows)) {
-                // Supabase 레코드를 기존 DataManager.leaveRequests 형식으로 정규화
-                const normalized = leaveRows.map(row => ({
-                    id: row.id,
-                    employeeId: row.employee_id,
-                    employeeName: row.employee_name,
-                    leaveType: row.leave_type,
-                    startDate: row.start_date,
-                    endDate: row.end_date,
-                    days: row.days,
-                    reason: row.reason,
-                    status: row.status,
-                    requestDate: row.request_date,
-                    approvalDate: row.approval_date,
-                    approver: row.approver,
-                    rejectionReason: row.rejection_reason,
-                    type: row.type || '휴가'
-                }));
-
-                this.dataManager.leaveRequests = normalized;
-                console.log('[LeaveStatus] ✅ Supabase 연차 데이터로 동기화 완료:', normalized.length, '건');
-            }
-
-            // 2) 복지휴가 지급 이력 불러오기
+            // 복지휴가 지급 이력 불러오기
             const { data: grantRows, error: grantError } = await window.supabaseClient
                 .from('welfare_leave_grants')
                 .select('*')
@@ -1511,9 +1483,9 @@ class LeaveStatus {
     }
 
     // 연차 신청 승인
-    approveRequest(requestId) {
+    async approveRequest(requestId) {
         if (confirm('이 연차 신청을 승인하시겠습니까?')) {
-            this.dataManager.updateLeaveRequestStatus(requestId, 'approved');
+            await this.dataManager.updateLeaveRequestStatus(requestId, 'approved');
             this.refreshDashboard();
             this.showPendingRequests(); // 목록 새로고침
             this.showNotification('연차 신청이 승인되었습니다.', 'success');
@@ -1521,9 +1493,9 @@ class LeaveStatus {
     }
 
     // 연차 신청 거부
-    rejectRequest(requestId) {
+    async rejectRequest(requestId) {
         if (confirm('이 연차 신청을 거부하시겠습니까?')) {
-            this.dataManager.updateLeaveRequestStatus(requestId, 'rejected');
+            await this.dataManager.updateLeaveRequestStatus(requestId, 'rejected');
             this.refreshDashboard();
             this.showPendingRequests(); // 목록 새로고침
             this.showNotification('연차 신청이 거부되었습니다.', 'error');

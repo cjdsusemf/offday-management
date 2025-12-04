@@ -132,9 +132,9 @@ class Dashboard {
     }
 
     // 연차 신청 승인
-    approveRequest(requestId) {
+    async approveRequest(requestId) {
         if (confirm('이 연차 신청을 승인하시겠습니까?')) {
-            this.dataManager.updateLeaveRequestStatus(requestId, 'approved');
+            await this.dataManager.updateLeaveRequestStatus(requestId, 'approved');
             this.refreshDashboard();
             this.showPendingRequests(); // 목록 새로고침
             this.showNotification('연차 신청이 승인되었습니다.', 'success');
@@ -142,9 +142,9 @@ class Dashboard {
     }
 
     // 연차 신청 거부
-    rejectRequest(requestId) {
+    async rejectRequest(requestId) {
         if (confirm('이 연차 신청을 거부하시겠습니까?')) {
-            this.dataManager.updateLeaveRequestStatus(requestId, 'rejected');
+            await this.dataManager.updateLeaveRequestStatus(requestId, 'rejected');
             this.refreshDashboard();
             this.showPendingRequests(); // 목록 새로고침
             this.showNotification('연차 신청이 거부되었습니다.', 'error');

@@ -591,18 +591,18 @@
   }
   
   // 개별 항목 클릭 처리 (승인/거부 버튼, 체크박스)
-  function handleItemClick(e){
+  async function handleItemClick(e){
     const t=e.target.closest('button');
     if(t){
       const id=Number(t.getAttribute('data-id'));
       const act=t.getAttribute('data-act');
       if(act==='approve' && confirm('승인하시겠습니까?')){
-        dm.updateLeaveRequestStatus(id,'approved');
+        await dm.updateLeaveRequestStatus(id,'approved');
         selectedItems.delete(id); // 개별 처리 후 선택 해제
         refresh();
       }
       if(act==='reject' && confirm('거부하시겠습니까?')){
-        dm.updateLeaveRequestStatus(id,'rejected');
+        await dm.updateLeaveRequestStatus(id,'rejected');
         selectedItems.delete(id); // 개별 처리 후 선택 해제
         refresh();
       }
@@ -639,7 +639,7 @@
   }
 
   // 일괄 승인 처리
-  function handleBulkApprove(e){
+  async function handleBulkApprove(e){
     e.preventDefault();
     e.stopPropagation();
     console.log('일괄승인 버튼 클릭됨!');
@@ -668,16 +668,16 @@
     }
     
     if(confirm(`선택된 ${selectedPendingRequests.length}개 요청을 승인하시겠습니까?`)){
-      selectedPendingRequests.forEach(request => {
-        dm.updateLeaveRequestStatus(request.id, 'approved');
+      for (const request of selectedPendingRequests) {
+        await dm.updateLeaveRequestStatus(request.id, 'approved');
         selectedItems.delete(request.id);
-      });
+      }
       refresh();
     }
   }
 
   // 일괄 거부 처리
-  function handleBulkReject(e){
+  async function handleBulkReject(e){
     e.preventDefault();
     e.stopPropagation();
     console.log('일괄거부 버튼 클릭됨!');
@@ -706,15 +706,15 @@
     }
     
     if(confirm(`선택된 ${selectedPendingRequests.length}개 요청을 거부하시겠습니까?`)){
-      selectedPendingRequests.forEach(request => {
-        dm.updateLeaveRequestStatus(request.id, 'rejected');
+      for (const request of selectedPendingRequests) {
+        await dm.updateLeaveRequestStatus(request.id, 'rejected');
         selectedItems.delete(request.id);
-      });
+      }
       refresh();
     }
   }
   
-  window.addEventListener('DOMContentLoaded', function(){
+  window.addEventListener('DOMContentLoaded', async function(){
     if(!window.AuthGuard || !AuthGuard.checkAuth()) return;
     
     // 관리자 권한 체크
@@ -722,6 +722,9 @@
     
     dm = window.dataManager || new DataManager(); 
     window.dataManager = dm;
+    
+    // Supabase 동기화 (페이지 로드 시)
+    await dm.syncLeaveRequestsFromSupabase();
 
     // 지점 필터 초기화
     loadBranchFilter();
@@ -1009,19 +1012,18 @@
           return;
         }
         const req = {
-          id: Date.now()+Math.floor(Math.random()*10000),
           employeeId: emp.id,
           employeeName: emp.name || emp.email,
           startDate: admStart.value,
           endDate: admEnd.value,
           days: parseFloat(admDays.value),
-          type: admType.value,
+          leaveType: admType.value,
           reason: admType.value==='other' ? (admReason.value || '') : (admReason.value || ''),
-          status: 'pending',
-          requestDate: new Date().toISOString().split('T')[0]
+          type: admType.value
         };
-        dm.leaveRequests.push(req); 
-        dm.saveData('leaveRequests', dm.leaveRequests);
+        
+        // DataManager의 addLeaveRequest 사용 (Supabase + LocalStorage 자동 저장)
+        dm.addLeaveRequest(req);
         console.log('연차 등록 성공:', req);
         alert('연차 신청이 등록되었습니다.');
         

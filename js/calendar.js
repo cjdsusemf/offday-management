@@ -91,10 +91,12 @@
         initializeCalendar();
         setupEventListeners();
         
-        // DataManager 로드 대기 후 데이터 로드
-        const checkDataManager = () => {
+        // DataManager 로드 대기 후 Supabase 동기화 → 데이터 로드
+        const checkDataManager = async () => {
             if (window.dataManager) {
                 console.log('DataManager 로드 완료');
+                // Supabase 동기화 먼저 실행
+                await window.dataManager.syncLeaveRequestsFromSupabase();
                 loadLeaveData();
             } else {
                 console.log('DataManager 로드 대기 중...');
@@ -1195,7 +1197,6 @@
         }
         
         const leaveRequest = {
-            id: Date.now(),
             employeeId: employee.id,
             employeeName: employee.name,
             leaveType: finalLeaveType,
@@ -1204,13 +1205,11 @@
             endDate: endDate,
             days: parseFloat(formData.get('days')),
             reason: formData.get('reason'),
-            status: 'pending',
-            requestDate: new Date().toISOString().split('T')[0],
             type: reasonType && (reasonType.includes('half_morning') || reasonType.includes('half_afternoon')) ? '반차' : '휴가'
         };
         
-        dm.leaveRequests.push(leaveRequest);
-        dm.saveData('leaveRequests', dm.leaveRequests);
+        // DataManager의 addLeaveRequest 사용 (Supabase + LocalStorage 자동 저장)
+        dm.addLeaveRequest(leaveRequest);
         
         alert('연차 신청이 완료되었습니다.');
         closeLeaveRequestModal();
