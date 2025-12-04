@@ -1196,3 +1196,151 @@ tr.resigned td {
     font-weight: 500;
     margin-left: 1rem;
 }
+
+/* ===== 지점 관리자 관련 스타일 ===== */
+
+/* 역할 뱃지 스타일 */
+.status-branch-manager {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.status-manager {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 2px 4px rgba(240, 147, 251, 0.2);
+}
+
+.status-team-leader {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 2px 4px rgba(79, 172, 254, 0.2);
+}
+
+/* 지점 관리자 지정 버튼 */
+.btn-branch-manager {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.btn-branch-manager:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+    opacity: 0.9;
+}
+
+.btn-branch-manager:active {
+    transform: translateY(0);
+}
+
+/* 지점 관리자 모달 스타일 */
+#branchManagerModal .modal-content {
+    max-width: 500px;
+}
+
+#branchManagerModal .form-group label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+#branchManagerModal .form-group select,
+#branchManagerModal .form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease;
+}
+
+#branchManagerModal .form-group select:focus,
+#branchManagerModal .form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+#branchManagerModal .alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+#branchManagerModal .alert-info {
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    border: 1px solid #bae6fd;
+    color: #075985;
+}
+
+#branchManagerModal .alert-info i {
+    color: #0284c7;
+    margin-right: 0.5rem;
+}
+
+#branchManagerModal .alert strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+/* 모달 푸터 버튼 */
+#branchManagerModal .modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    padding-top: 1.5rem;
+}
+
+#branchManagerModal .modal-footer .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+#branchManagerModal .modal-footer .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+#branchManagerModal .modal-footer .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 역할 표시 시 지점명 스타일 */
+.status-badge small {
+    display: inline-block;
+    margin-top: 2px;
+    font-weight: 500;
+    opacity: 0.9;
+}

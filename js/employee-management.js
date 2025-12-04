@@ -98,9 +98,29 @@
                                 }
                                 return 'user';
                             })();
-                            const roleText = userRole === 'admin' ? '관리자' : '일반';
-                            const roleClass = userRole === 'admin' ? 'status-badge status-active' : 'status-badge status-resigned';
-                            return `<span class="${roleClass}">${roleText}</span>`;
+                            
+                            const roleMap = {
+                                'admin': { text: '관리자', class: 'status-badge status-active' },
+                                'manager': { text: '매니저', class: 'status-badge status-manager' },
+                                'branch_manager': { text: '지점 관리자', class: 'status-badge status-branch-manager' },
+                                'team_leader': { text: '팀장', class: 'status-badge status-team-leader' },
+                                'user': { text: '일반', class: 'status-badge status-resigned' }
+                            };
+                            
+                            const roleInfo = roleMap[userRole] || roleMap['user'];
+                            
+                            // 지점 관리자인 경우 관리 지점 표시
+                            const managedBranch = (() => {
+                                if (userRole === 'branch_manager' && typeof window.authManager !== 'undefined') {
+                                    const user = window.authManager.getStoredUsers().find(u => u.email === emp.email);
+                                    return user?.managedBranch || emp.branch;
+                                }
+                                return '';
+                            })();
+                            
+                            const branchText = managedBranch ? `<br><small style="font-size: 0.85em;">(${managedBranch})</small>` : '';
+                            
+                            return `<span class="${roleInfo.class}">${roleInfo.text}${branchText}</span>`;
                         })()}
                     </td>
                     <td class="actions-column">
@@ -111,6 +131,11 @@
                             ${status === 'active' ? 
                                 `<button class="btn-icon btn-welfare" onclick="grantWelfareLeave(${emp.id})" title="복지휴가 지급">
                                     <i class="fas fa-gift"></i>
+                                </button>` : ''
+                            }
+                            ${getCurrentUser() && getCurrentUser().role === 'admin' && status === 'active' ? 
+                                `<button class="btn-icon btn-branch-manager" onclick="assignBranchManager(${emp.id})" title="지점 관리자 지정">
+                                    <i class="fas fa-user-shield"></i>
                                 </button>` : ''
                             }
                             ${status === 'active' ? 
@@ -1973,4 +1998,211 @@
 
         departmentSelect.disabled = false;
     }
+
+    // 지점 관리자 지정 함수
+    window.assignBranchManager = function(employeeId) {
+        const employee = dm.employees.find(emp => emp.id === employeeId);
+        if (!employee) {
+            alert('직원 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        // 현재 사용자가 관리자인지 확인
+        const currentUser = getCurrentUser();
+        if (!currentUser || currentUser.role !== 'admin') {
+            alert('관리자만 지점 관리자를 지정할 수 있습니다.');
+            return;
+        }
+
+        // 모달 생성
+        const modalHtml = `
+            <div class="modal-overlay" id="branchManagerModal" style="display: flex;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-shield"></i> 지점 관리자 지정</h3>
+                        <button class="modal-close" onclick="closeBranchManagerModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>직원 정보</label>
+                            <p><strong>${employee.name}</strong> (${employee.branch} - ${employee.department})</p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="branchManagerRole">역할 선택 *</label>
+                            <select id="branchManagerRole" required>
+                                <option value="">선택하세요</option>
+                                <option value="branch_manager">지점 관리자</option>
+                                <option value="manager">매니저 (전체 관리)</option>
+                                <option value="team_leader">팀장</option>
+                                <option value="user">일반 사용자</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="managedBranchGroup" style="display: none;">
+                            <label for="managedBranchSelect">관리할 지점 *</label>
+                            <select id="managedBranchSelect" required>
+                                <option value="">선택하세요</option>
+                                ${(dm.branches || []).map(branch => 
+                                    `<option value="${branch.name}" ${branch.name === employee.branch ? 'selected' : ''}>${branch.name}</option>`
+                                ).join('')}
+                            </select>
+                            <small style="color: #666; margin-top: 5px; display: block;">
+                                <i class="fas fa-info-circle"></i> 기본값: 직원의 현재 지점
+                            </small>
+                        </div>
+
+                        <div class="alert alert-info" style="margin-top: 15px;">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>지점 관리자 권한:</strong><br>
+                            - 해당 지점의 연차 신청 조회<br>
+                            - 해당 지점의 연차 승인/거절<br>
+                            - 해당 지점의 통계 조회
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeBranchManagerModal()">
+                            <i class="fas fa-times"></i> 취소
+                        </button>
+                        <button class="btn btn-primary" onclick="saveBranchManagerRole()">
+                            <i class="fas fa-check"></i> 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 모달 추가
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // 역할 선택 시 관리 지점 표시/숨김
+        const roleSelect = document.getElementById('branchManagerRole');
+        const managedBranchGroup = document.getElementById('managedBranchGroup');
+        
+        roleSelect.addEventListener('change', function() {
+            if (this.value === 'branch_manager') {
+                managedBranchGroup.style.display = 'block';
+            } else {
+                managedBranchGroup.style.display = 'none';
+            }
+        });
+
+        // 현재 역할 선택
+        const userInfo = window.authManager.getStoredUsers().find(u => u.email === employee.email);
+        if (userInfo) {
+            roleSelect.value = userInfo.role || 'user';
+            if (userInfo.role === 'branch_manager') {
+                managedBranchGroup.style.display = 'block';
+                if (userInfo.managedBranch) {
+                    document.getElementById('managedBranchSelect').value = userInfo.managedBranch;
+                }
+            }
+        }
+
+        // 전역으로 저장 함수 노출
+        window.currentBranchManagerEmployeeId = employeeId;
+    };
+
+    // 지점 관리자 모달 닫기
+    window.closeBranchManagerModal = function() {
+        const modal = document.getElementById('branchManagerModal');
+        if (modal) {
+            modal.remove();
+        }
+        window.currentBranchManagerEmployeeId = null;
+    };
+
+    // 지점 관리자 역할 저장
+    window.saveBranchManagerRole = async function() {
+        const employeeId = window.currentBranchManagerEmployeeId;
+        if (!employeeId) return;
+
+        const employee = dm.employees.find(emp => emp.id === employeeId);
+        if (!employee) {
+            alert('직원 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        const roleSelect = document.getElementById('branchManagerRole');
+        const newRole = roleSelect.value;
+
+        if (!newRole) {
+            alert('역할을 선택해주세요.');
+            return;
+        }
+
+        let managedBranch = null;
+        if (newRole === 'branch_manager') {
+            const managedBranchSelect = document.getElementById('managedBranchSelect');
+            managedBranch = managedBranchSelect.value;
+            
+            if (!managedBranch) {
+                alert('관리할 지점을 선택해주세요.');
+                return;
+            }
+        }
+
+        try {
+            // authManager를 통해 역할 업데이트
+            if (window.authManager) {
+                const users = window.authManager.getStoredUsers();
+                const userIndex = users.findIndex(u => u.email === employee.email);
+                
+                if (userIndex !== -1) {
+                    users[userIndex].role = newRole;
+                    if (newRole === 'branch_manager') {
+                        users[userIndex].managedBranch = managedBranch;
+                    } else {
+                        delete users[userIndex].managedBranch;
+                    }
+                    
+                    localStorage.setItem('users', JSON.stringify(users));
+                    
+                    // Supabase 업데이트 (있는 경우)
+                    if (window.supabaseClient) {
+                        // users 테이블 업데이트
+                        await window.supabaseClient
+                            .from('users')
+                            .update({
+                                role: newRole,
+                                managed_branch: newRole === 'branch_manager' ? managedBranch : null,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', users[userIndex].id);
+                    }
+
+                    const roleText = {
+                        'admin': '관리자',
+                        'manager': '매니저',
+                        'branch_manager': '지점 관리자',
+                        'team_leader': '팀장',
+                        'user': '일반 사용자'
+                    }[newRole] || '일반 사용자';
+
+                    const message = managedBranch 
+                        ? `${employee.name}님을 ${roleText}(${managedBranch})로 지정했습니다.`
+                        : `${employee.name}님의 역할을 ${roleText}로 변경했습니다.`;
+
+                    alert(message);
+                    closeBranchManagerModal();
+                    
+                    // 테이블 새로고침
+                    if (typeof loadEmployees === 'function') {
+                        loadEmployees();
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert('해당 직원의 계정 정보를 찾을 수 없습니다.');
+                }
+            } else {
+                alert('AuthManager를 찾을 수 없습니다.');
+            }
+        } catch (error) {
+            console.error('역할 저장 오류:', error);
+            alert('역할 저장 중 오류가 발생했습니다.');
+        }
+    };
 })();

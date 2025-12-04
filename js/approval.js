@@ -179,7 +179,12 @@
     const departmentFilter = document.getElementById('departmentFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
     const leaveTypeFilter = document.getElementById('leaveTypeFilter').value;
-    const reqs = dm.leaveRequests || [];
+    
+    // 권한 기반 필터링: 지점 관리자는 자신의 지점만 조회 가능
+    let reqs = dm.leaveRequests || [];
+    if (window.permissionManager) {
+      reqs = window.permissionManager.filterByBranch(reqs);
+    }
     
     return reqs.filter(r => {
       const employee = resolveEmployee(r);

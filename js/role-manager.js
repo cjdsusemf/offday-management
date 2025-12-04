@@ -64,6 +64,23 @@ class RoleManager {
                 },
                 {
                     id: 3,
+                    name: 'branch_manager',
+                    displayName: '지점 관리자',
+                    description: '지점 내 승인 및 관리 권한',
+                    priority: 40,
+                    permissions: [
+                        'leave.approve_branch',     // 지점 내 연차 승인
+                        'leave.reject_branch',      // 지점 내 연차 거부
+                        'leave.view_branch',        // 지점 연차 조회
+                        'employee.view_branch',     // 지점 직원 조회
+                        'statistics.view_branch',   // 지점 통계 조회
+                        'welfare.grant_branch'      // 지점 내 복지휴가 지급
+                    ],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                },
+                {
+                    id: 4,
                     name: 'team_leader',
                     displayName: '팀장',
                     description: '팀 내 승인 권한',
@@ -79,7 +96,7 @@ class RoleManager {
                     updatedAt: new Date().toISOString()
                 },
                 {
-                    id: 4,
+                    id: 5,
                     name: 'user',
                     displayName: '일반 사용자',
                     description: '기본 사용자 권한',
