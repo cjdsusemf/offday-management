@@ -405,6 +405,112 @@
         }
         // 취소를 누르면 아무것도 하지 않음 (팝업만 닫힘)
     }
+
+    // 회원가입 메서드
+    async register(userData) {
+        try {
+            console.log('회원가입 시작:', userData);
+
+            // 1. 이메일 중복 확인
+            const users = this.getStoredUsers();
+            const existingUser = users.find(u => u.email === userData.email || u.username === userData.username);
+            
+            if (existingUser) {
+                return {
+                    success: false,
+                    error: '이미 사용 중인 이메일입니다.'
+                };
+            }
+
+            // 2. 새 사용자 ID 생성
+            const newUserId = `user_${Date.now()}`;
+
+            // 3. 사용자 데이터 생성
+            const newUser = {
+                id: newUserId,
+                username: userData.username,
+                password: userData.password, // 실제로는 암호화 필요
+                name: userData.name,
+                email: userData.email,
+                role: 'user', // 기본 역할
+                roleId: 5, // user 역할 ID
+                phone: userData.phone,
+                birthDate: userData.birthdate,
+                profileImage: '',
+                branch: userData.branch,
+                department: userData.department,
+                team: userData.department, // 부서를 팀으로도 사용
+                position: userData.position,
+                hireDate: userData.joindate,
+                annualLeaveDays: 15,
+                usedLeaveDays: 0,
+                remainingLeaveDays: 15,
+                welfareLeaveDays: 0,
+                status: 'active',
+                resignationDate: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                deletedAt: null
+            };
+
+            // 4. LocalStorage에 저장
+            users.push(newUser);
+            this.saveUsers(users);
+            console.log('✅ LocalStorage에 사용자 저장 완료');
+
+            // 5. Supabase에 저장
+            if (window.supabaseClient) {
+                try {
+                    const { data, error} = await window.supabaseClient
+                        .from('users')
+                        .insert([{
+                            id: newUserId,
+                            username: userData.username,
+                            password: userData.password,
+                            name: userData.name,
+                            email: userData.email,
+                            role: 'user',
+                            phone: userData.phone,
+                            birth_date: userData.birthdate,
+                            profile_image: '',
+                            branch: userData.branch,
+                            department: userData.department,
+                            position: userData.position,
+                            hire_date: userData.joindate,
+                            annual_leave_days: 15,
+                            used_leave_days: 0,
+                            remaining_leave_days: 15,
+                            welfare_leave_days: 0,
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }]);
+
+                    if (error) {
+                        console.error('❌ Supabase 저장 오류:', error);
+                    } else {
+                        console.log('✅ Supabase에 사용자 저장 완료');
+                    }
+                } catch (supabaseError) {
+                    console.error('❌ Supabase 연결 오류:', supabaseError);
+                }
+            } else {
+                console.warn('⚠️ Supabase 클라이언트가 없습니다. LocalStorage만 사용합니다.');
+            }
+
+            return {
+                success: true,
+                message: '회원가입이 완료되었습니다!'
+            };
+
+        } catch (error) {
+            console.error('회원가입 오류:', error);
+            return {
+                success: false,
+                error: '회원가입 중 오류가 발생했습니다.'
+            };
+        }
+    }
 }
 
 window.authManager = new AuthManager();
