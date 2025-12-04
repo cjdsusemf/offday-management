@@ -86,36 +86,46 @@ class DataManager {
     // 🔥 Supabase 동기화 - 연차 신청 저장
     async saveLeaveRequestToSupabase(leaveRequest) {
         try {
-            if (!window.supabaseClient) {
+            if (!window.supabaseClient || !window.supabaseClient.auth) {
                 console.warn('[DataManager] Supabase 연결 안 됨 - LocalStorage만 사용');
                 return false;
             }
-            
-            const { data, error } = await window.supabaseClient
+
+            // RLS 정책을 만족하기 위해 auth.uid()와 employee_id를 일치시켜야 함
+            const { data: userData, error: userError } = await window.supabaseClient.auth.getUser();
+            if (userError || !userData || !userData.user) {
+                console.warn('[DataManager] Supabase 사용자 정보를 가져오지 못해 연차를 DB에 저장하지 않습니다.', userError);
+                return false;
+            }
+            const authUser = userData.user;
+
+            const payload = {
+                // id는 SERIAL이므로 명시하지 않으면 자동 생성됨
+                employee_id: authUser.id,                              // 🔥 auth.uid() 와 동일
+                employee_name: leaveRequest.employeeName,
+                leave_type: leaveRequest.leaveType,
+                start_date: leaveRequest.startDate,
+                end_date: leaveRequest.endDate,
+                days: leaveRequest.days,
+                reason: leaveRequest.reason || '사유 없음',            // ✅ 기본값
+                status: leaveRequest.status,
+                request_date: leaveRequest.requestDate,
+                approval_date: leaveRequest.approvalDate || null,
+                approver: leaveRequest.approver || null,
+                rejection_reason: leaveRequest.rejectionReason || null,
+                type: leaveRequest.type || '휴가'
+            };
+
+            const { error } = await window.supabaseClient
                 .from('leave_requests')
-                .upsert({
-                    id: leaveRequest.id,
-                    employee_id: String(leaveRequest.employeeId),
-                    employee_name: leaveRequest.employeeName,
-                    leave_type: leaveRequest.leaveType,
-                    start_date: leaveRequest.startDate,
-                    end_date: leaveRequest.endDate,
-                    days: leaveRequest.days,
-                    reason: leaveRequest.reason || '사유 없음',  // ✅ 기본값 추가
-                    status: leaveRequest.status,
-                    request_date: leaveRequest.requestDate,
-                    approval_date: leaveRequest.approvalDate || null,
-                    approver: leaveRequest.approver || null,
-                    rejection_reason: leaveRequest.rejectionReason || null,
-                    type: leaveRequest.type || '휴가'
-                }, { onConflict: 'id' });
+                .insert([payload]);
             
             if (error) {
-                console.error('[DataManager] ❌ Supabase 저장 실패:', error);
+                console.error('[DataManager] ❌ Supabase 연차 저장 실패:', error);
                 return false;
             }
             
-            console.log('[DataManager] ✅ Supabase에 연차 저장 완료:', leaveRequest.id);
+            console.log('[DataManager] ✅ Supabase에 연차 저장 완료 (employee:', authUser.id, ')');
             return true;
         } catch (err) {
             console.error('[DataManager] Supabase 저장 오류:', err);
@@ -319,10 +329,10 @@ class DataManager {
         try {
             localStorage.setItem(key, JSON.stringify(data));
             
-            // 🔥 leaveRequests 저장 시 Supabase에도 동기화
-            if (key === 'leaveRequests' && Array.isArray(data)) {
-                this.syncLeaveRequestsToSupabase(data);
-            }
+            // NOTE:
+            // - 과거에는 여기서 leaveRequests 전체를 Supabase에 다시 동기화했지만
+            //   이제는 addLeaveRequest()에서 개별 insert만 수행합니다.
+            // - 전체 동기화는 마이그레이션 시에만 manualCleanup / 별도 도구로 처리하세요.
             
             // 동일 탭에서도 변화를 감지할 수 있도록 커스텀 이벤트 디스패치
             if (typeof window !== 'undefined' && window.dispatchEvent) {
@@ -339,27 +349,23 @@ class DataManager {
         }
     }
     
-    // 🔥 모든 연차 신청을 Supabase에 동기화
+    // 🔥 모든 연차 신청을 Supabase에 동기화 (개발/마이그레이션 용도)
     async syncLeaveRequestsToSupabase(leaveRequests) {
         try {
             if (!window.supabaseClient) {
-                console.warn('[DataManager] ⚠️ Supabase 연결 안 됨 - 저장 대기 중');
-                // Supabase가 로드되면 다시 시도
-                setTimeout(() => this.syncLeaveRequestsToSupabase(leaveRequests), 1000);
+                console.warn('[DataManager] ⚠️ Supabase 연결 안 됨 - 동기화 취소');
                 return;
             }
             
-            console.log('[DataManager] 🔄 Supabase 동기화 시작:', leaveRequests.length, '개');
+            console.log('[DataManager] (개발용) Supabase 전체 동기화 시작:', leaveRequests.length, '개');
             
-            // 순차적으로 저장
+            // 주의: RLS / auth.uid() 제약 때문에 실제 운영 환경에서는
+            // 이 함수보다 서버 사이드 마이그레이션을 사용하는 것을 권장합니다.
             for (const leave of leaveRequests) {
-                const success = await this.saveLeaveRequestToSupabase(leave);
-                if (!success) {
-                    console.error('[DataManager] ❌ 저장 실패:', leave.id);
-                }
+                await this.saveLeaveRequestToSupabase(leave);
             }
             
-            console.log('[DataManager] ✅ Supabase 동기화 완료:', leaveRequests.length, '개');
+            console.log('[DataManager] (개발용) Supabase 전체 동기화 완료');
         } catch (err) {
             console.error('[DataManager] Supabase 동기화 오류:', err);
         }
@@ -1117,7 +1123,7 @@ class DataManager {
         }
     }
 
-    // 연차 신청 추가
+    // 연차 신청 추가 (Supabase 우선, LocalStorage 병행 저장)
     addLeaveRequest(request) {
         const newRequest = {
             ...request,
@@ -1125,11 +1131,24 @@ class DataManager {
             status: 'pending',
             requestDate: new Date().toISOString().split('T')[0]
         };
+
+        // 로컬에 먼저 반영 (기존 화면들과의 호환성 유지)
         this.leaveRequests.push(newRequest);
         this.saveData('leaveRequests', this.leaveRequests);
         
-        console.log('✅ 연차 신청 추가됨:', newRequest);
+        console.log('✅ 연차 신청 추가됨 (로컬):', newRequest);
         console.log('📊 현재 총 연차 신청 수:', this.leaveRequests.length);
+
+        // 백그라운드로 Supabase에도 저장 시도 (실패해도 UI에는 영향 없음)
+        this.saveLeaveRequestToSupabase(newRequest)
+            .then((ok) => {
+                if (!ok) {
+                    console.warn('[DataManager] Supabase에 연차를 저장하지 못했습니다. (로컬 데이터는 유지됩니다)');
+                }
+            })
+            .catch(err => {
+                console.error('[DataManager] Supabase 연차 저장 중 예외:', err);
+            });
         
         return newRequest;
     }

@@ -113,23 +113,129 @@
         return this.getCurrentUser() !== null; 
     }
     
-    login(username, password) { 
+    /**
+     * Supabase 중심 로그인
+     * - 가능하면 Supabase Auth로 먼저 로그인
+     * - 실패 시 기존 LocalStorage 기반 로그인으로 폴백
+     * - username 입력값은 "이메일(아이디)" 라벨이므로 이메일/아이디 둘 다 허용
+     */
+    async login(username, password) { 
+        const loginId = (username || '').trim();
+        const pwd = password || '';
+
+        // 1) Supabase Auth 로그인 우선 시도
+        if (window.supabaseClient && window.supabaseClient.auth && loginId && pwd) {
+            try {
+                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+                    email: loginId,
+                    password: pwd
+                });
+
+                if (!error && data && data.user) {
+                    const supaUser = data.user;
+                    console.log('[AuthManager] ✅ Supabase 로그인 성공:', supaUser.id, supaUser.email);
+
+                    // LocalStorage 사용자 목록과 동기화
+                    const users = this.getStoredUsers();
+                    let localUser = users.find(u => u.email === supaUser.email) 
+                                  || users.find(u => u.username === supaUser.email);
+
+                    if (!localUser) {
+                        // DB 기반 신규 사용자 → 최소 정보로 로컬 사용자 생성
+                        localUser = {
+                            id: supaUser.id,                       // 🔥 Supabase UID와 일치
+                            username: supaUser.email,
+                            password: pwd,                         // TODO: 추후 제거/해시
+                            name: supaUser.user_metadata?.name || (supaUser.email || '').split('@')[0],
+                            email: supaUser.email,
+                            role: 'user',
+                            roleId: 5,
+                            phone: '',
+                            birthDate: '',
+                            profileImage: '',
+                            branch: '',
+                            branchId: null,
+                            department: '',
+                            team: '',
+                            position: '',
+                            hireDate: '',
+                            annualLeaveDays: 15,
+                            usedLeaveDays: 0,
+                            remainingLeaveDays: 15,
+                            welfareLeaveDays: 0,
+                            status: 'active',
+                            resignationDate: null,
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                            deletedAt: null
+                        };
+                        users.push(localUser);
+                        this.saveUsers(users);
+                    } else {
+                        // 기존 로컬 사용자와 Supabase UID 동기화
+                        if (localUser.id !== supaUser.id) {
+                            console.log('[AuthManager] 로컬 사용자 ID를 Supabase UID로 정렬:', localUser.id, '→', supaUser.id);
+                            localUser.id = supaUser.id;
+                            this.saveUsers(users);
+                        }
+                    }
+
+                    // 세션 저장 (기존 코드 호환)
+                    localStorage.setItem('current_user', localUser.id);
+                    try {
+                        sessionStorage.setItem('currentUser', JSON.stringify(localUser));
+                    } catch (e) {
+                        console.warn('sessionStorage 저장 실패:', e);
+                    }
+
+                    return { success: true, message: 'Login success', user: localUser };
+                }
+
+                if (error) {
+                    console.warn('[AuthManager] Supabase 로그인 실패, 로컬 로그인으로 폴백:', error.message);
+                }
+            } catch (supErr) {
+                console.error('[AuthManager] Supabase 로그인 중 오류:', supErr);
+            }
+        }
+
+        // 2) Supabase를 사용할 수 없거나 실패한 경우 → 기존 LocalStorage 기반 로그인
         const users = this.getStoredUsers(); 
-        const user = users.find(u => u.username === username && u.password === password); 
+        const user = users.find(u => 
+            (u.username === loginId || u.email === loginId) && 
+            u.password === pwd
+        ); 
+
         if (user) { 
             // 삭제된 사용자인지 확인
             if (user.status === 'deleted' || user.deletedAt) {
                 return { success: false, message: "삭제된 계정입니다." };
             }
             localStorage.setItem("current_user", user.id); 
+            try {
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+            } catch (e) {
+                console.warn('sessionStorage 저장 실패:', e);
+            }
             return { success: true, message: "Login success", user: user }; 
         } else { 
-            return { success: false, message: "Invalid username or password" }; 
+            return { success: false, message: "아이디 또는 비밀번호가 올바르지 않습니다." }; 
         } 
     }
     
     logout() { 
+        // Supabase 세션도 함께 종료
+        if (window.supabaseClient && window.supabaseClient.auth) {
+            window.supabaseClient.auth.signOut().catch(err => {
+                console.error('[AuthManager] Supabase 로그아웃 오류:', err);
+            });
+        }
         localStorage.removeItem("current_user");
+        try {
+            sessionStorage.removeItem('currentUser');
+        } catch (e) {
+            // 무시
+        }
         return { success: true, message: "Logout success" }; 
     }
     
@@ -284,65 +390,6 @@
         console.log('삭제된 사용자 정리 완료');
     }
     
-    register(userData) {
-        const users = this.getStoredUsers();
-        const deletedUsers = this.getDeletedUsers();
-        
-        // 중복 아이디 확인 (활성 사용자만)
-        if (users.find(u => u.username === userData.username && u.status === 'active')) {
-            return { success: false, error: "이미 사용 중인 아이디입니다." };
-        }
-        
-        // 중복 이메일 확인 (활성 사용자만)
-        if (users.find(u => u.email === userData.email && u.status === 'active')) {
-            return { success: false, error: "이미 사용 중인 이메일입니다." };
-        }
-        
-        // 새 사용자 생성 (통합된 구조)
-        const newUser = {
-            // 인증 정보
-            id: Date.now().toString(),
-            username: userData.username,
-            password: userData.password,
-            role: "user",
-            roleId: 4,  // 일반 사용자 역할
-            
-            // 개인 정보
-            name: userData.name,
-            email: userData.email,
-            phone: userData.phone || '',
-            birthDate: userData.birthdate,
-            profileImage: '',
-            
-            // 회사 정보
-            branch: userData.branch,
-            branchId: null, // 지점 ID는 나중에 설정
-            department: userData.department,
-            team: userData.department, // 팀은 부서와 동일하게 설정
-            position: userData.position,
-            hireDate: userData.joindate,
-            
-            // 연차 정보
-            annualLeaveDays: 15,
-            usedLeaveDays: 0,
-            remainingLeaveDays: 15,
-            welfareLeaveDays: 0,
-            
-            // 상태 정보
-            status: 'active',
-            resignationDate: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            deletedAt: null
-        };
-        
-        users.push(newUser);
-        this.saveUsers(users);
-        
-        return { success: true, message: "회원가입이 완료되었습니다." };
-    }
-    
-
     // 네비게이션 바 설정
     setupNavbar() {
         // DOM이 로드된 후 실행
@@ -411,9 +458,12 @@
         try {
             console.log('회원가입 시작:', userData);
 
-            // 1. 이메일 중복 확인
+            // 1. 이메일/아이디 중복 확인 (기존 로컬 사용자 기준)
             const users = this.getStoredUsers();
-            const existingUser = users.find(u => u.email === userData.email || u.username === userData.username);
+            const existingUser = users.find(u => 
+                u.email === userData.email || 
+                u.username === userData.username
+            );
             
             if (existingUser) {
                 return {
@@ -422,18 +472,54 @@
                 };
             }
 
-            // 2. 새 사용자 ID 생성
-            const newUserId = `user_${Date.now()}`;
+            let supabaseUser = null;
 
-            // 3. 사용자 데이터 생성
+            // 2. Supabase Auth 계정 생성 (가능한 경우)
+            if (window.supabaseClient && window.supabaseClient.auth) {
+                try {
+                    const { data, error } = await window.supabaseClient.auth.signUp({
+                        email: userData.email,
+                        password: userData.password,
+                        options: {
+                            data: {
+                                name: userData.name
+                            }
+                        }
+                    });
+
+                    if (error) {
+                        console.error('[AuthManager] Supabase 회원가입 오류:', error);
+                        return {
+                            success: false,
+                            error: error.message || 'Supabase 회원가입 중 오류가 발생했습니다.'
+                        };
+                    }
+
+                    supabaseUser = data.user;
+                    console.log('[AuthManager] ✅ Supabase 계정 생성 완료:', supabaseUser.id);
+                } catch (supErr) {
+                    console.error('[AuthManager] Supabase 회원가입 예외:', supErr);
+                    return {
+                        success: false,
+                        error: 'Supabase 회원가입 중 예외가 발생했습니다.'
+                    };
+                }
+            } else {
+                console.warn('⚠️ Supabase 클라이언트가 없어, 로컬 계정만 생성합니다.');
+            }
+
+            // 3. 새 사용자 ID 결정
+            const newUserId = supabaseUser ? supabaseUser.id : `user_${Date.now()}`;
+
+            // 4. 로컬 사용자 데이터 생성 (기존 앱 구조 유지용)
             const newUser = {
                 id: newUserId,
                 username: userData.username,
-                password: userData.password, // 실제로는 암호화 필요
+                password: userData.password, // TODO: 추후 암호화/제거
                 name: userData.name,
                 email: userData.email,
-                role: 'user', // 기본 역할
-                roleId: 5, // user 역할 ID
+                role: 'user',        // 기본 역할
+                roleId: 5,           // RoleManager의 user ID
                 phone: userData.phone,
                 birthDate: userData.birthdate,
                 profileImage: '',
@@ -453,49 +539,48 @@
                 deletedAt: null
             };
 
-            // 4. LocalStorage에 저장
+            // 5. LocalStorage에 저장 (기존 화면들과 호환)
             users.push(newUser);
             this.saveUsers(users);
             console.log('✅ LocalStorage에 사용자 저장 완료');
 
-            // 5. Supabase에 저장
-            if (window.supabaseClient) {
+            // 6. Supabase users 테이블에 프로필 저장 (가능한 경우)
+            if (supabaseUser && window.supabaseClient) {
                 try {
-                    const { data, error} = await window.supabaseClient
+                    const { error } = await window.supabaseClient
                         .from('users')
-                        .insert([{
-                            id: newUserId,
+                        .upsert([{
+                            id: supabaseUser.id,           // 🔥 auth.uid() 와 동일
+                            login_id: userData.username,
                             username: userData.username,
-                            password: userData.password,
+                            password: userData.password,   // ⚠️ 운영 시 반드시 해시 필요
                             name: userData.name,
                             email: userData.email,
-                            role: 'user',
                             phone: userData.phone,
                             birth_date: userData.birthdate,
                             profile_image: '',
                             branch: userData.branch,
                             department: userData.department,
+                            team: userData.department,
                             position: userData.position,
                             hire_date: userData.joindate,
                             annual_leave_days: 15,
                             used_leave_days: 0,
                             remaining_leave_days: 15,
                             welfare_leave_days: 0,
-                            status: 'active',
+                            status: 1,
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
-                        }]);
+                        }], { onConflict: 'id' });
 
                     if (error) {
-                        console.error('❌ Supabase 저장 오류:', error);
+                        console.error('❌ Supabase users 저장 오류:', error);
                     } else {
-                        console.log('✅ Supabase에 사용자 저장 완료');
+                        console.log('✅ Supabase users 테이블에 사용자 저장 완료');
                     }
                 } catch (supabaseError) {
-                    console.error('❌ Supabase 연결 오류:', supabaseError);
+                    console.error('❌ Supabase users 저장 중 예외:', supabaseError);
                 }
-            } else {
-                console.warn('⚠️ Supabase 클라이언트가 없습니다. LocalStorage만 사용합니다.');
             }
 
             return {
